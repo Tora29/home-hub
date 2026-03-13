@@ -17,7 +17,8 @@ export default [
 		},
 		rules: {
 			...tsPlugin.configs.recommended.rules,
-			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }]
+			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+			'no-undef': 'off' // TypeScript が未定義変数チェックを担うため不要
 		}
 	},
 	prettier
