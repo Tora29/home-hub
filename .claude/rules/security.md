@@ -1,66 +1,50 @@
 # Security
 
-セキュリティ要件と対策方針を定義するカテゴリ。
+セキュリティ要件と対策方針。
 
-## このファイルに定義すべきこと
+## 認証・認可
 
-### 認証・認可
+- 認証方式: **Better Auth**（Hono ミドルウェア + Prisma アダプター）、Cookie セッション
+- 認可モデル: ロール不要。2ユーザーとも全リソースに同権限
+- セッション有効期限: **30日**（Better Auth の `sessionMaxAge` で設定）
 
-- 認証方式（Cookie セッション / JWT / OAuth 等）
-- 認可モデル（RBAC / ABAC 等）
-- セッション管理の方針
+## CSRF / XSS 対策
 
-### CSRF / XSS 対策
+- CSRF 対策: Better Auth に委ねる
+- XSS 対策: SvelteKit のテンプレート自動エスケープに委ねる
+- Content-Type 制限: `application/json` のみ受け付ける
 
-- CSRF 対策の手段（トークン / SameSite Cookie / JSON 専用 API 等）
-- XSS 対策の手段（フレームワーク自動エスケープ / CSP 等）
-- Content-Type 制限
+## 入力検証
 
-### 入力検証
+- バリデーション実施箇所: `@hono/standard-validator` でルートミドルウェアとして実施（→ `schemas.md` 参照）
+- SQL インジェクション対策: Prisma ORM のパラメータ化クエリに委ねる
 
-- 入力バリデーションの実施箇所（→ `schemas.md` と連携）
-- SQL インジェクション対策（ORM / パラメータ化クエリ）
-- ファイルアップロード時のバリデーション
+## センシティブデータ
 
-### センシティブデータ
+- パスワードハッシュ化: Better Auth に委ねる（自前実装しない）
+- シークレット管理: `wrangler secret put` で登録。ローカル開発は `.dev.vars`（`.gitignore` 対象）
+- ログに含めてはいけない情報: パスワード・セッショントークン・認証ヘッダー（→ `error-handling.md` 参照）
 
-- パスワードのハッシュ化方式
-- API キー・シークレットの管理方針
-- ログに含めてはいけない情報（→ `error-handling.md` と連携）
+## CORS 設定
 
-### CORS 設定
+- 開発環境: `http://localhost:5173`
+- 本番環境: 環境変数 `ALLOWED_ORIGIN` で管理（Cloudflare Workers の環境変数）
+- `credentials: true` を設定するため `origin` に wildcard（`*`）は使用不可
 
-- 開発環境 / 本番環境の CORS ポリシー
-- 許可オリジンの管理方針
+## サプライチェーンセキュリティ
 
-### サプライチェーンセキュリティ
+- `npm audit` を CI で実行
+- `dependency-review-action` を GitHub Actions に追加（PR 時に脆弱性・ライセンスチェック）
+- `package-lock.json` は必ずコミット
+- パッケージ追加の承認プロセス: 個人アプリのため不要（hook の警告で十分）
 
-- 依存パッケージの管理方針（追加・更新の承認プロセス、許可スコープ）
-- lockfile の運用ルール（コミット必須化、差分レビューの方針）
-- 依存パッケージの脆弱性監査（監査ツール、実行頻度、CI での自動チェック）
-- パッケージ完全性検証（署名検証 / ハッシュ検証 / レジストリ制限 等）
+### 多層防御の実装方針
 
-#### 多層防御の実装方針
-
-依存パッケージの追加は「開発時」と「PR レビュー時」の 2 段階で検知する。
-
-| レイヤー | タイミング | 対象 | 仕組み | 設定ファイル |
-|---------|-----------|------|--------|-------------|
-| L1 | 開発時 | CLI コマンド（`npm add`, `pip install` 等） | hook で**ブロック** → ターミナルで直接実行して回避 | `.claude/hooks/pre-commit-checks.sh` |
-| L2 | 開発時 | ファイル編集（`pom.xml`, `build.gradle`, `package.json` 等） | hook で**警告**（systemMessage） → 編集は許可 | `.claude/hooks/pre-commit-checks.sh` |
-| L3 | PR 時 | 全依存変更 | `dependency-review-action` が脆弱性・ライセンスをチェック → 違反時マージ阻止 | `.github/workflows/dependency-review.yml` |
-| L4 | PR 時 | コードレビュー | review-changes スキルのチェックリストで人間が確認 | `.claude/skills/review-changes/SKILL.md` |
-
-- L1/L2 は速度重視（リアルタイム検知）、L3/L4 は精度重視（脆弱性 DB 照合・人間判断）
-- CLI コマンドがない言語（Java/Kotlin/Scala 等）は L2 + L3 + L4 でカバー
-- CLI コマンドがある言語も、ファイル直接編集でバイパスされうるため L2 を併用
-
-## なぜ必要か
-
-- scaffold-be スキルがセキュアなコードを生成するための規約
-- review-changes スキルがセキュリティ観点でレビューする際の基準
-- OWASP Top 10 等のリスクを事前に軽減するため
-- サプライチェーン攻撃（依存パッケージ経由の侵害）を予防するため
+| レイヤー | タイミング | 対象 | 仕組み |
+|---------|-----------|------|--------|
+| L1 | 開発時 | CLI コマンド（`npm add` 等） | hook で**ブロック** |
+| L2 | 開発時 | `package.json` 編集 | hook で**警告** |
+| L3 | PR 時 | 全依存変更 | `dependency-review-action` が脆弱性チェック |
 
 ## 参照するスキル
 

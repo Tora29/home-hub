@@ -1,43 +1,69 @@
 # Error Handling
 
-エラーハンドリングの戦略を定義するカテゴリ。
+エラーハンドリングの戦略。
 
-## このファイルに定義すべきこと
+## エラー分類と HTTP ステータスマッピング
 
-### エラー分類
+| エラーコード | HTTP | 用途 |
+|------------|------|------|
+| `VALIDATION_ERROR` | 400 | 入力バリデーション失敗 |
+| `UNAUTHORIZED` | 401 | 未認証 |
+| `FORBIDDEN` | 403 | 権限なし |
+| `NOT_FOUND` | 404 | リソース不在 |
+| `CONFLICT` | 409 | 重複（name ユニーク違反等） |
+| `INTERNAL_ERROR` | 500 | 予期しないエラー |
 
-- 期待されるエラー（バリデーション、リソース不在、重複）と予期しないエラー（バグ、インフラ障害）の区分
-- 各エラーに対応する HTTP ステータスコードのマッピング
+- エラーコードは `packages/constants/` で定数として定義する
+- エラーコードの命名規則: `SCREAMING_SNAKE_CASE`
+- エラーメッセージは日本語
 
-### ハンドリング戦略
+## ハンドリング戦略
 
-- Service 層のエラー返却方式（Result Pattern / 例外 throw / Either 型 等）
-- API 層でのエラー変換方式
-- グローバルエラーハンドラの設計
+**カスタムエラークラス（`AppError`）を throw + Hono の `onError` でグローバルに変換** する。
 
-### エラーコード体系
+```ts
+// packages/constants/errors.ts
+export type ErrorCode = 'VALIDATION_ERROR' | 'UNAUTHORIZED' | 'FORBIDDEN'
+  | 'NOT_FOUND' | 'CONFLICT' | 'INTERNAL_ERROR'
 
-- エラーコードの命名規則（例: `NOT_FOUND`, `CONFLICT`, `VALIDATION_ERROR`）
-- エラーメッセージの言語方針（コードは英語、メッセージは日本語 等）
-- エラーコード拡張時の手順
+// apps/api/src/lib/errors.ts
+export class AppError extends Error {
+  constructor(
+    public code: ErrorCode,
+    public status: number,
+    message: string,
+    public fields?: { field: string; message: string }[]
+  ) { super(message) }
+}
 
-### ロギングルール
+// Service 層での使い方
+throw new AppError('NOT_FOUND', 404, '料理が見つかりません')
 
-- ログに出すべき情報（エラー ID、タイムスタンプ、リクエスト情報）
-- ログに出してはいけない情報（パスワード、トークン、個人情報）
-- ユーザーへのエラー表示方針（汎用メッセージ + エラー ID）
+// apps/api/src/index.ts
+app.onError((err, c) => {
+  if (err instanceof AppError) {
+    return c.json({ error: { code: err.code, message: err.message, fields: err.fields } }, err.status)
+  }
+  console.error(err)
+  return c.json({ error: { code: 'INTERNAL_ERROR', message: 'エラーが発生しました' } }, 500)
+})
+```
 
-### FE エラーハンドリング
+## ロギングルール
 
-- API エラーの受信・表示パターン
-- フィールドエラー vs フォームエラーの表示方式
-- ネットワークエラーの処理
+**出す情報**: リクエストメソッド・パス・ステータスコード・レスポンスタイム・エラーコード
 
-## なぜ必要か
+**出してはいけない情報**: パスワード・セッショントークン・認証ヘッダー・個人情報
 
-- scaffold-be スキルが Service 層・API 層のエラー処理を生成する際の規約
-- scaffold-fe スキルがエラー表示を生成する際の規約
-- エラーレスポンスの一貫性を保つため
+## FE エラーハンドリング
+
+| エラー種別 | 表示方法 |
+|----------|---------|
+| 通常の API エラー（4xx） | **トースト**で表示 |
+| フィールドエラー（`VALIDATION_ERROR` の `fields`） | フォームフィールド直下に**インライン**表示 |
+| 予期しないエラー（500） | **エラーページ**に遷移 |
+
+- 500 エラーの詳細はユーザーに表示しない（「エラーが発生しました」の汎用メッセージのみ）
 
 ## 参照するスキル
 

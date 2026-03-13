@@ -1,0 +1,177 @@
+openapi: 3.0.3
+info:
+  title: Tags API
+  description: タグマスタ管理 API
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+
+paths:
+  /tags:
+    get:
+      summary: タグ一覧取得
+      description: 登録済みの全タグを name 昇順で返す
+      operationId: listTags
+      tags:
+        - tags
+      responses:
+        '200':
+          description: タグ一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: タグ作成
+      description: 新しいタグを作成する
+      operationId: createTag
+      tags:
+        - tags
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagCreate'
+      responses:
+        '201':
+          description: 作成されたタグ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: タグ名が重複している
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: CONFLICT
+                message: 同名のタグがすでに存在します
+
+  /tags/{id}:
+    delete:
+      summary: タグ削除
+      description: 指定した ID のタグを削除する
+      operationId: deleteTag
+      tags:
+        - tags
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: タグ ID
+      responses:
+        '204':
+          description: 削除成功（レスポンスボディなし）
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    Tag:
+      type: object
+      required:
+        - id
+        - name
+        - createdAt
+      properties:
+        id:
+          type: string
+          description: タグ ID (cuid)
+          example: clxyz123
+        name:
+          type: string
+          description: タグ名
+          example: 肉
+        createdAt:
+          type: string
+          format: date-time
+          description: 作成日時 (ISO 8601)
+          example: '2026-01-01T00:00:00.000Z'
+
+    TagCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: タグ名（ユニーク）
+          example: 肉
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: エラーコード
+          example: NOT_FOUND
+        message:
+          type: string
+          description: エラーメッセージ
+          example: タグが見つかりません
+        details:
+          type: array
+          description: フィールドエラー詳細（バリデーションエラー時のみ）
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+  responses:
+    Unauthorized:
+      description: 未認証
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNAUTHORIZED
+            message: 認証が必要です
+
+    NotFound:
+      description: リソースが見つからない
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: NOT_FOUND
+            message: タグが見つかりません
+
+    ValidationError:
+      description: バリデーションエラー
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: VALIDATION_ERROR
+            message: 入力内容に誤りがあります
+            details:
+              - field: name
+                message: タグ名は必須です

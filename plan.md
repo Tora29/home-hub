@@ -1,109 +1,183 @@
-# what-to-eat 計画書
+# Plan — 設計決定事項
 
-## 機能一覧
-
-### 1. 認証
-
-- ログイン・ログアウト
-- 新規登録なし。2ユーザー（夫・妻）を DB シードで固定登録
-- 未認証時は `/login` にリダイレクト
-
----
-
-### 2. タグ管理
-
-- タグ一覧表示
-- タグ追加（名前のみ）
-- タグ削除
-- マスタ管理画面として独立したページで提供
-
-**初期タグ（seed）:**
-肉・魚・野菜 / しょっぱい・さっぱり・こってり・辛い / 和食・洋食・中華
+> 技術スタックの前提（infra-spec.md より）
+> - FE: SvelteKit v5 + Tailwind CSS
+> - BE: Hono + Cloudflare Workers
+> - DB: Cloudflare D1 (Prisma)
+> - バリデーション: Zod v4 (`packages/shared`)
+> - テスト: Vitest + Playwright
+> - 認証: Better Auth (Cookie)
 
 ---
 
-### 3. レシピ登録・一覧
+## 1. スキーマ設計（→ `.claude/rules/schemas.md` に反映）
 
-**登録項目:**
+### 1-1. FE / BE バリデーション役割分担
+- FE: 必須・文字数・形式（URL等）の即時フィードバック。`packages/shared` のスキーマをそのまま使う
+- FE でやらないこと: ユニーク制約・権限チェック（BE のみ）
+- BE: すべてのリクエストで必ずバリデーション実施（唯一の信頼源）
 
-| フィールド | 内容 |
-|---|---|
-| 料理名 | テキスト（必須） |
-| レシピURL | URL（任意） |
-| レシピテキスト | 自由記述（任意）。サイトのレシピをコピペして使う想定 |
-| タグ | 複数選択可 |
-| 手間 | `EASY`（簡単）/ `HARD`（めんどい） |
-| カテゴリ | `MAIN`（メイン料理）/ `SIDE`（おかず） |
+### 1-2. スキーマ配置規約
+- `packages/shared/schemas/` → 入力スキーマ（Create/Update）を可能な限りすべて集約
+- `apps/api/.../schemas/response.ts` → DBモデルからレスポンス型への変換など BE 固有のもの
+- FE 固有スキーマ → コロケーション（`routes/{feature}/schemas/`）
 
-**一覧表示:**
+### 1-3. 入力 / 出力スキーマの分離方針
+- **PUT** を採用（編集フォームは全フィールド送信）
+- Create と Update は `packages/shared` で同一スキーマを共通化
+- レスポンス型の命名規則 → `{Entity}Response`（例: `DishResponse`）
+- `nullable`: DBのNULL許可カラムに使用。`optional`: PUT採用のためほぼ不要
 
-- 全件表示（夫婦共有）
-- 誰が登録したか表示（登録者名）
-- タグでの絞り込み（セレクトボックス、スマホ操作前提）
-
----
-
-### 4. レコメンド
-
-**入力:** メイン or おかず を選択
-
-**処理:**
-1. 選択カテゴリの登録済みレシピを取得
-2. 直近5件（`cookedAt` 降順）を除外
-3. `effort` ごとに分類（EASY / HARD）
-4. Cloudflare Workers AI（llama-3.1）が各グループから最適なメニューを選定
-
-**出力:** 6件（簡単3件 + めんどい3件）
+### 1-4. バリデーションメッセージ
+- 言語: **日本語**
+- フォーマット: `"名前は必須です"` 形式（フィールド名 + 日本語説明）
 
 ---
 
-## スキーマ
+## 2. テスト戦略（→ `.claude/rules/testing.md` に反映）
 
-### Tag
+### 2-1. テスト種別と境界
+- Unit Test の対象: Service 層 + ユーティリティ。Prisma は `vitest-mock-extended` でモック
+- API Test の対象: Hono ルートのリクエスト/レスポンス形式・ステータスコード検証。Service 層はモック
+- E2E テスト環境: `wrangler dev --local`（BE: `localhost:8787`）+ `npm run dev`（FE: `localhost:5173`）で起動し Playwright から接続
 
-| フィールド | 型 | 説明 |
-|---|---|---|
-| id | string (cuid) | |
-| name | string | ユニーク |
-| createdAt | DateTime | |
+### 2-2. テスト-仕様連携
+- AC 紐付け形式: `test("[AC-001] ...")` 形式
+- テストファイル配置: コロケーション（テスト対象と同ディレクトリ）
 
-### Dish
+### 2-3. カバレッジ方針
+- 目標: **行・ブランチ・関数すべて 80%**
+- CI での強制: しない（参考値として計測のみ）
 
-| フィールド | 型 | 説明 |
-|---|---|---|
-| id | string (cuid) | |
-| userId | string | 登録者（Better Auth の user.id） |
-| name | string | 料理名（必須） |
-| recipeUrl | string? | レシピURL（任意） |
-| recipeText | string? | レシピテキスト（任意） |
-| effort | `EASY` \| `HARD` | 簡単 / めんどい |
-| category | `MAIN` \| `SIDE` | メイン料理 / おかず |
-| cookedAt | DateTime | 作った日時（デフォルト: 登録日時） |
-| createdAt | DateTime | |
-
-### DishTag（中間テーブル）
-
-| フィールド | 型 | 説明 |
-|---|---|---|
-| dishId | string | |
-| tagId | string | |
-
-### User（Better Auth 管理）
-
-Better Auth の Prisma アダプターが自動生成。独自定義不要。
-`user.id` を `Dish.userId` で参照する。
+### 2-4. テストコマンド
+| コマンド | 内容 |
+|---------|------|
+| `npm run test` | Unit + API テスト（Vitest） |
+| `npm run test:unit` | Unit テストのみ |
+| `npm run test:api` | API テストのみ |
+| `npm run test:e2e` | E2E テスト（Playwright） |
+| `npm run test:watch` | Watch モード（Unit + API） |
 
 ---
 
-## 未決事項
+## 3. API パターン（→ `.claude/rules/api-patterns.md` に反映）
 
-- [ ] Cloudflare アカウント・プロジェクト名の確定
+### 3-1. レスポンス形式
+- 一覧: `{ "data": [...], "total": N, "page": N, "limit": N }` でラップ。ページサイズデフォルト **20**
+- 単体: ラップなし（リソースを直接返す）
+- 作成（201）: 作成後のリソースを返却
+- 更新（200）: 更新後のリソースを返却
+- 削除（204）: No Content（ボディなし）
 
-## 技術的な注意事項
+### 3-2. エラーレスポンス構造
+```json
+// 通常エラー
+{ "error": { "code": "NOT_FOUND", "message": "料理が見つかりません" } }
 
-- Better Auth の Zod v4 対応が不安定なため、初期セットアップ時に動作確認が必要（問題があれば Zod v3 に下げる）
+// バリデーションエラー
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "入力内容に誤りがあります",
+    "fields": [{ "field": "name", "message": "名前は必須です" }]
+  }
+}
+```
 
-## spec.md への申し送り
+### 3-3. API バージョニング
+- URL パス `/api/v1/` を使用
 
-- [ ] `specs/dishes/spec.md`: 料理一覧のタグ絞り込みはセレクトボックスで実装（スマホ操作前提）
-- [ ] UI/UX 全般: メイン操作はスマホを想定したタップ操作に最適化
+### 3-4. Controller / Handler パターン
+- Hono ルートの責務: バリデーション + Service 委譲 + レスポンス成形のみ（薄いコントローラー）
+- `@hono/standard-validator` の適用: `zValidator('json', schema)` をミドルウェアとして渡す
+
+### 3-5. FE からの API 呼び出し
+- ベースクライアント（`lib/api/`）の共通処理:
+  - ベースURL: 環境変数 `PUBLIC_API_URL` から取得
+  - `credentials: 'include'`（Cookie送信）
+  - `Content-Type: application/json`
+  - レスポンスが 4xx/5xx の場合は `AppError` に変換して throw
+- Hono 側 CORS: `cors({ origin: process.env.ALLOWED_ORIGIN, credentials: true })`
+
+---
+
+## 4. エラーハンドリング（→ `.claude/rules/error-handling.md` に反映）
+
+### 4-1. エラー分類と HTTP ステータスマッピング
+| エラーコード | HTTP | 用途 |
+|------------|------|------|
+| `VALIDATION_ERROR` | 400 | 入力バリデーション失敗 |
+| `UNAUTHORIZED` | 401 | 未認証 |
+| `FORBIDDEN` | 403 | 権限なし |
+| `NOT_FOUND` | 404 | リソース不在 |
+| `CONFLICT` | 409 | 重複（name ユニーク違反等） |
+| `INTERNAL_ERROR` | 500 | 予期しないエラー |
+
+- 500 エラー: ユーザーには「エラーが発生しました」の汎用メッセージ表示（詳細は非表示）
+
+### 4-2. Service 層のエラー返却方式
+- カスタムエラークラス（`AppError`）を throw + Hono の `onError` でグローバルに変換
+
+### 4-3. エラーコード体系（`packages/constants/`）
+- 命名規則: `SCREAMING_SNAKE_CASE`
+- 一覧: 4-1 のテーブル通り
+
+### 4-4. ロギングルール
+- 出す情報: リクエストメソッド・パス・ステータスコード・レスポンスタイム・エラーコード
+- 出してはいけない情報: パスワード・セッショントークン・認証ヘッダー・個人情報
+
+### 4-5. FE エラーハンドリング
+- 通常の API エラー（4xx）→ **トースト**で表示
+- フィールドエラー（`VALIDATION_ERROR` の `fields`）→ フォームフィールド直下に**インライン**表示
+- 予期しないエラー（500）→ **エラーページ**に遷移
+
+---
+
+## 5. E2E セレクタ規約（→ `.claude/rules/data-testid.md` に反映）
+
+### 5-1. セレクタ戦略
+- 属性名: `data-testid`
+
+### 5-2. 命名規則
+- パターン: `{feature}-{element}-{type}`
+- 動的要素: `{feature}-item-{id}`（例: `dish-item-42`）
+- 編集モード区別: `{feature}-view` / `{feature}-edit-form`
+
+### 5-3. 命名テーブル
+| セレクタ | 要素 |
+|---------|------|
+| `{feature}-list` | 一覧コンテナ |
+| `{feature}-item-{id}` | リストアイテム |
+| `{feature}-create-button` | 新規作成ボタン |
+| `{feature}-edit-button-{id}` | 編集ボタン |
+| `{feature}-delete-button-{id}` | 削除ボタン |
+| `{feature}-create-form` | 作成フォーム |
+| `{feature}-edit-form` | 編集フォーム |
+| `{feature}-{field}-input` | 入力フィールド（例: `dish-name-input`） |
+| `{feature}-submit-button` | フォーム送信ボタン |
+| `{feature}-cancel-button` | キャンセルボタン |
+
+---
+
+## 6. セキュリティ（→ `.claude/rules/security.md` に反映）
+
+### 6-1. 認証・認可
+- 認可モデル: ロール不要。2ユーザーとも全リソースに同権限
+- セッション有効期限: **30日**
+
+### 6-2. CSRF / XSS 対策
+- CSRF 対策: Better Auth に委ねる
+- Content-Type 制限: `application/json` のみ受け付ける
+
+### 6-3. CORS 設定
+- 開発環境: `http://localhost:5173`
+- 本番環境: 環境変数 `ALLOWED_ORIGIN` で管理（Cloudflare Workers の環境変数）
+
+### 6-4. センシティブデータ
+- パスワードハッシュ化: Better Auth に委ねる
+- シークレット管理: `wrangler secret put` で登録。ローカル開発は `.dev.vars`（`.gitignore` 対象）
+
+### 6-5. サプライチェーンセキュリティ
+- `npm audit` を CI で実行
+- `dependency-review-action` を GitHub Actions に追加
+- パッケージ追加の承認プロセス: 個人アプリのため不要（hook の警告で十分）

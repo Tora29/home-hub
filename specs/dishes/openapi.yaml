@@ -1,0 +1,347 @@
+openapi: 3.0.3
+info:
+  title: Dishes API
+  description: 料理管理 API
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+
+paths:
+  /dishes:
+    get:
+      summary: 料理一覧取得
+      description: 登録済みの全料理を cookedAt 降順で返す。tagId でフィルタ可。
+      operationId: listDishes
+      tags:
+        - dishes
+      parameters:
+        - name: tagId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 絞り込むタグ ID
+      responses:
+        '200':
+          description: 料理一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Dish'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: 料理登録
+      description: 新しい料理を登録する。登録者は認証セッションから自動設定。
+      operationId: createDish
+      tags:
+        - dishes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DishCreate'
+      responses:
+        '201':
+          description: 登録された料理
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dish'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /dishes/{id}:
+    get:
+      summary: 料理詳細取得
+      description: 指定した ID の料理を取得する
+      operationId: getDish
+      tags:
+        - dishes
+      parameters:
+        - $ref: '#/components/parameters/DishId'
+      responses:
+        '200':
+          description: 料理詳細
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dish'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: 料理更新
+      description: 指定した ID の料理を部分更新する
+      operationId: updateDish
+      tags:
+        - dishes
+      parameters:
+        - $ref: '#/components/parameters/DishId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DishUpdate'
+      responses:
+        '200':
+          description: 更新後の料理
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dish'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: 料理削除
+      description: 指定した ID の料理を削除する。自分が登録した料理のみ削除可。
+      operationId: deleteDish
+      tags:
+        - dishes
+      parameters:
+        - $ref: '#/components/parameters/DishId'
+      responses:
+        '204':
+          description: 削除成功（レスポンスボディなし）
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 他ユーザーの料理は削除不可
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: FORBIDDEN
+                message: この料理を削除する権限がありません
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  parameters:
+    DishId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: 料理 ID
+
+  schemas:
+    Dish:
+      type: object
+      required:
+        - id
+        - userId
+        - name
+        - effort
+        - category
+        - cookedAt
+        - createdAt
+        - tags
+        - createdBy
+      properties:
+        id:
+          type: string
+          description: 料理 ID (cuid)
+          example: clxyz456
+        userId:
+          type: string
+          description: 登録者 ID
+        name:
+          type: string
+          description: 料理名
+          example: 肉じゃが
+        recipeUrl:
+          type: string
+          nullable: true
+          description: レシピURL
+          example: https://example.com/recipe
+        recipeText:
+          type: string
+          nullable: true
+          description: レシピテキスト
+        effort:
+          type: string
+          enum: [EASY, HARD]
+          description: 手間（EASY=簡単、HARD=めんどい）
+          example: EASY
+        category:
+          type: string
+          enum: [MAIN, SIDE]
+          description: カテゴリ（MAIN=メイン料理、SIDE=おかず）
+          example: MAIN
+        cookedAt:
+          type: string
+          format: date-time
+          description: 作った日時 (ISO 8601)
+          example: '2026-01-15T18:00:00.000Z'
+        createdAt:
+          type: string
+          format: date-time
+          description: 登録日時 (ISO 8601)
+          example: '2026-01-15T12:00:00.000Z'
+        tags:
+          type: array
+          description: 付与されたタグ
+          items:
+            type: object
+            required:
+              - id
+              - name
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+        createdBy:
+          type: string
+          description: 登録者の表示名
+          example: 夫
+
+    DishCreate:
+      type: object
+      required:
+        - name
+        - effort
+        - category
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 料理名
+          example: 肉じゃが
+        recipeUrl:
+          type: string
+          nullable: true
+          description: レシピURL
+          example: https://example.com/recipe
+        recipeText:
+          type: string
+          nullable: true
+          maxLength: 10000
+          description: レシピテキスト
+        effort:
+          type: string
+          enum: [EASY, HARD]
+          description: 手間
+          example: EASY
+        category:
+          type: string
+          enum: [MAIN, SIDE]
+          description: カテゴリ
+          example: MAIN
+        tagIds:
+          type: array
+          items:
+            type: string
+          default: []
+          description: タグ ID の配列
+        cookedAt:
+          type: string
+          format: date-time
+          description: 作った日時（省略時は登録日時を使用）
+
+    DishUpdate:
+      type: object
+      description: 全フィールド optional の部分更新スキーマ
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        recipeUrl:
+          type: string
+          nullable: true
+        recipeText:
+          type: string
+          nullable: true
+          maxLength: 10000
+        effort:
+          type: string
+          enum: [EASY, HARD]
+        category:
+          type: string
+          enum: [MAIN, SIDE]
+        tagIds:
+          type: array
+          items:
+            type: string
+        cookedAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: エラーコード
+          example: NOT_FOUND
+        message:
+          type: string
+          description: エラーメッセージ
+          example: 料理が見つかりません
+        details:
+          type: array
+          description: フィールドエラー詳細（バリデーションエラー時のみ）
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+  responses:
+    Unauthorized:
+      description: 未認証
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNAUTHORIZED
+            message: 認証が必要です
+
+    NotFound:
+      description: リソースが見つからない
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: NOT_FOUND
+            message: 料理が見つかりません
+
+    ValidationError:
+      description: バリデーションエラー
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: VALIDATION_ERROR
+            message: 入力内容に誤りがあります
+            details:
+              - field: name
+                message: 料理名は必須です

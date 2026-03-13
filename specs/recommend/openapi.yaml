@@ -1,0 +1,155 @@
+openapi: 3.0.3
+info:
+  title: Recommend API
+  description: Cloudflare Workers AI を使ったカテゴリ別料理レコメンド API
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+
+paths:
+  /recommend:
+    get:
+      summary: 料理レコメンド取得
+      description: |
+        指定カテゴリの料理から AI が最適なレシピを選定して返す。
+        - 直近5件（cookedAt 降順）は除外される
+        - effort（EASY / HARD）ごとに最大3件ずつ選定
+        - 合計最大6件（easy 3件 + hard 3件）を返す
+      operationId: getRecommend
+      tags:
+        - recommend
+      parameters:
+        - name: category
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [MAIN, SIDE]
+          description: 料理カテゴリ（MAIN=メイン料理、SIDE=おかず）
+          example: MAIN
+      responses:
+        '200':
+          description: レコメンド結果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendResponse'
+              example:
+                easy:
+                  - id: clxyz001
+                    name: 肉じゃが
+                    recipeUrl: https://example.com/recipe/nikujaga
+                    tags:
+                      - id: clxyz010
+                        name: 肉
+                      - id: clxyz011
+                        name: 和食
+                hard:
+                  - id: clxyz002
+                    name: ローストビーフ
+                    recipeUrl: null
+                    tags:
+                      - id: clxyz010
+                        name: 肉
+        '400':
+          description: バリデーションエラー（category が MAIN / SIDE 以外）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: VALIDATION_ERROR
+                message: category は MAIN または SIDE である必要があります
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Workers AI が利用不可
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: SERVICE_UNAVAILABLE
+                message: AIサービスが一時的に利用できません。しばらくしてからお試しください
+
+components:
+  schemas:
+    RecommendedDish:
+      type: object
+      required:
+        - id
+        - name
+        - tags
+      properties:
+        id:
+          type: string
+          description: 料理 ID
+          example: clxyz001
+        name:
+          type: string
+          description: 料理名
+          example: 肉じゃが
+        recipeUrl:
+          type: string
+          nullable: true
+          description: レシピURL
+          example: https://example.com/recipe
+        tags:
+          type: array
+          description: タグ一覧
+          items:
+            type: object
+            required:
+              - id
+              - name
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+
+    RecommendResponse:
+      type: object
+      required:
+        - easy
+        - hard
+      properties:
+        easy:
+          type: array
+          description: EASY グループの推薦料理（最大3件）
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/RecommendedDish'
+        hard:
+          type: array
+          description: HARD グループの推薦料理（最大3件）
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/RecommendedDish'
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: エラーコード
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          description: エラーメッセージ
+          example: category は MAIN または SIDE である必要があります
+
+  responses:
+    Unauthorized:
+      description: 未認証
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNAUTHORIZED
+            message: 認証が必要です

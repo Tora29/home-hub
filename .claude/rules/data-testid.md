@@ -1,35 +1,37 @@
 # data-testid
 
-E2E テスト用セレクタの規約を定義するカテゴリ。
+E2E テスト用セレクタの規約。
 
-## このファイルに定義すべきこと
+## セレクタ戦略
 
-### セレクタ戦略
+- 属性名: **`data-testid`**
+- 優先順位: `data-testid` > role > テキスト
 
-- テスト用セレクタの属性名（`data-testid` / `data-cy` / `data-test` 等）
-- セレクタの優先順位（テスト用属性 > role > テキスト 等）
+## 命名規則
 
-### 命名規則
+- パターン: `{feature}-{element}-{type}`
+- 動的要素: `{feature}-item-{id}`（例: `dish-item-42`）
+- 編集モード区別: `{feature}-view` / `{feature}-edit-form`
 
-- 要素種別ごとの命名パターン（ボタン、入力、リスト等）
-- 動的要素（リストアイテム等）の選択方法
-- 編集フォーム等、同一エンティティの別モードでの区別方法
+## 命名テーブル（唯一の定義元）
 
-### 維持ルール
+| セレクタ | 要素 | 例 |
+|---------|------|----|
+| `{feature}-list` | 一覧コンテナ | `dish-list` |
+| `{feature}-item-{id}` | リストアイテム | `dish-item-42` |
+| `{feature}-create-button` | 新規作成ボタン | `dish-create-button` |
+| `{feature}-edit-button-{id}` | 編集ボタン | `dish-edit-button-42` |
+| `{feature}-delete-button-{id}` | 削除ボタン | `dish-delete-button-42` |
+| `{feature}-create-form` | 作成フォーム | `dish-create-form` |
+| `{feature}-edit-form` | 編集フォーム | `dish-edit-form` |
+| `{feature}-{field}-input` | 入力フィールド | `dish-name-input` |
+| `{feature}-submit-button` | フォーム送信ボタン | `dish-submit-button` |
+| `{feature}-cancel-button` | キャンセルボタン | `dish-cancel-button` |
 
-- コンポーネント分割・リファクタリング時のセレクタ維持義務
-- セレクタ変更時の影響範囲確認手順
+## 維持ルール
 
-### 命名テーブル
-
-- プロジェクトで使用する全セレクタの一覧表
-- このテーブルが **唯一の定義元** であることを明記
-
-## なぜ必要か
-
-- scaffold-fe スキルが UI にテスト用属性を付与する際の規約
-- scaffold-test-e2e スキルがセレクタを使用する際の規約
-- E2E テストの安定性を保つため
+- コンポーネント分割・リファクタリング時もセレクタ値を変更しない
+- セレクタを変更する場合は上記テーブルを必ず更新し、対応する E2E テストも修正する
 
 ## 参照するスキル
 
