@@ -1,0 +1,15 @@
+{
+	"name": "@what-to-eat/shared",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./schemas/tag": "./src/schemas/tag.ts",
+		"./schemas/dish": "./src/schemas/dish.ts",
+		"./schemas/auth": "./src/schemas/auth.ts"
+	},
+	"dependencies": {
+		"zod": "^4.0.0"
+	}
+}

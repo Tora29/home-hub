@@ -1,0 +1,17 @@
+{
+	"name": "what-to-eat-api",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-01-01",
+	"compatibility_flags": ["nodejs_compat"],
+	"d1_databases": [
+		{
+			// wrangler d1 create what-to-eat で作成後に database_id を設定する
+			"binding": "DB",
+			"database_name": "what-to-eat",
+			"database_id": "00000000-0000-0000-0000-000000000000"
+		}
+	],
+	"ai": {
+		"binding": "AI"
+	}
+}
