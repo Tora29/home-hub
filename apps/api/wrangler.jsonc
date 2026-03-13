@@ -8,10 +8,11 @@
 			// wrangler d1 create what-to-eat で作成後に database_id を設定する
 			"binding": "DB",
 			"database_name": "what-to-eat",
-			"database_id": "00000000-0000-0000-0000-000000000000"
+			"database_id": "80e61546-4f7e-48b3-a28f-04f6caee5257"
 		}
 	],
 	"ai": {
 		"binding": "AI"
-	}
+	},
+	"workers_dev": true
 }

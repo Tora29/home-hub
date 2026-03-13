@@ -1,0 +1,68 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-api:
+    name: Deploy API (Workers)
+    runs-on: ubuntu-latest
+    if: |
+      contains(toJSON(github.event.commits.*.modified), 'apps/api/') ||
+      contains(toJSON(github.event.commits.*.added), 'apps/api/') ||
+      contains(toJSON(github.event.commits.*.modified), 'packages/')
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Deploy to Cloudflare Workers
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  deploy-web:
+    name: Deploy Web (Pages)
+    runs-on: ubuntu-latest
+    if: |
+      contains(toJSON(github.event.commits.*.modified), 'apps/web/') ||
+      contains(toJSON(github.event.commits.*.added), 'apps/web/') ||
+      contains(toJSON(github.event.commits.*.modified), 'packages/')
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Build
+        run: npm run build
+        env:
+          PUBLIC_API_BASE_URL: https://what-to-eat-api.tora29.workers.dev
+
+      - name: Deploy to Cloudflare Pages
+        run: npx wrangler pages deploy build --project-name what-to-eat --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
