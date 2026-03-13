@@ -9,10 +9,6 @@ jobs:
   deploy-api:
     name: Deploy API (Workers)
     runs-on: ubuntu-latest
-    if: |
-      contains(toJSON(github.event.commits.*.modified), 'apps/api/') ||
-      contains(toJSON(github.event.commits.*.added), 'apps/api/') ||
-      contains(toJSON(github.event.commits.*.modified), 'packages/')
     defaults:
       run:
         working-directory: apps/api
@@ -37,10 +33,6 @@ jobs:
   deploy-web:
     name: Deploy Web (Pages)
     runs-on: ubuntu-latest
-    if: |
-      contains(toJSON(github.event.commits.*.modified), 'apps/web/') ||
-      contains(toJSON(github.event.commits.*.added), 'apps/web/') ||
-      contains(toJSON(github.event.commits.*.modified), 'packages/')
     defaults:
       run:
         working-directory: apps/web
