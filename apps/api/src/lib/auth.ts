@@ -50,5 +50,11 @@ export function createAuth(d1: D1Database, secret: string, baseURL: string, allo
     session: {
       expiresIn: 60 * 60 * 24 * 30,
     },
+    advanced: {
+      defaultCookieAttributes: {
+        sameSite: 'none',
+        secure: baseURL.startsWith('https'),
+      },
+    },
   });
 }
