@@ -1,5 +1,5 @@
 -- ユーザー（夫・妻）
--- パスワード: password（Better Auth の scrypt ハッシュ形式: {salt}:{hash}）
+-- パスワード: password（PBKDF2-SHA256 ハッシュ形式: {salt}:{hash}）
 -- 開発用途のため固定 salt を使用
 INSERT OR IGNORE INTO "user" ("id", "name", "email", "emailVerified", "image", "createdAt", "updatedAt")
 VALUES
@@ -10,8 +10,8 @@ VALUES
 -- password: password
 INSERT OR IGNORE INTO "account" ("id", "accountId", "providerId", "userId", "password", "createdAt", "updatedAt")
 VALUES
-  ('acc_husband', 'husband@example.com', 'credential', 'user_husband', '0102030405060708090a0b0c0d0e0f10:6d88fb2d910375c2e0975f56ee9f19a1343d4d114253219ede90aa7505afcf6d88fc064fe6171389789e389aa0c287038d724a31871c727942bce9b9787e4ca0', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('acc_wife',    'wife@example.com',    'credential', 'user_wife',    '0102030405060708090a0b0c0d0e0f10:6d88fb2d910375c2e0975f56ee9f19a1343d4d114253219ede90aa7505afcf6d88fc064fe6171389789e389aa0c287038d724a31871c727942bce9b9787e4ca0', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  ('acc_husband', 'husband@example.com', 'credential', 'user_husband', '0102030405060708090a0b0c0d0e0f10:edcc81643686f4e956b14698b0d2460877a2fdc111c51fc514f7d1af547803d3', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('acc_wife',    'wife@example.com',    'credential', 'user_wife',    '0102030405060708090a0b0c0d0e0f10:edcc81643686f4e956b14698b0d2460877a2fdc111c51fc514f7d1af547803d3', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- 初期タグ
 INSERT OR IGNORE INTO "tag" ("id", "name") VALUES
