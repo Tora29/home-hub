@@ -9,6 +9,9 @@
 			"database_name": "what-to-eat",
 			"database_id": "00000000-0000-0000-0000-000000000000"
 		}
-	]
+	],
+	"vars": {
+		"ALLOWED_ORIGIN": "http://localhost:5173"
+	}
 	// AI binding は省略（ローカル開発ではレコメンド機能はモック or 未使用）
 }

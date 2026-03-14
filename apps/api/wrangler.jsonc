@@ -14,5 +14,9 @@
 	"ai": {
 		"binding": "AI"
 	},
-	"workers_dev": true
+	"workers_dev": true,
+	"vars": {
+		// 本番値は `wrangler secret put ALLOWED_ORIGIN` で設定する
+		"ALLOWED_ORIGIN": ""
+	}
 }

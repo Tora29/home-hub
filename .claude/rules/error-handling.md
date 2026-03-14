@@ -11,7 +11,7 @@
 | `FORBIDDEN` | 403 | 権限なし |
 | `NOT_FOUND` | 404 | リソース不在 |
 | `CONFLICT` | 409 | 重複（name ユニーク違反等） |
-| `INTERNAL_ERROR` | 500 | 予期しないエラー |
+| `INTERNAL_SERVER_ERROR` | 500 | 予期しないエラー |
 
 - エラーコードは `packages/constants/` で定数として定義する
 - エラーコードの命名規則: `SCREAMING_SNAKE_CASE`
@@ -24,7 +24,7 @@
 ```ts
 // packages/constants/errors.ts
 export type ErrorCode = 'VALIDATION_ERROR' | 'UNAUTHORIZED' | 'FORBIDDEN'
-  | 'NOT_FOUND' | 'CONFLICT' | 'INTERNAL_ERROR'
+  | 'NOT_FOUND' | 'CONFLICT' | 'INTERNAL_SERVER_ERROR'
 
 // apps/api/src/lib/errors.ts
 export class AppError extends Error {
@@ -45,7 +45,7 @@ app.onError((err, c) => {
     return c.json({ error: { code: err.code, message: err.message, fields: err.fields } }, err.status)
   }
   console.error(err)
-  return c.json({ error: { code: 'INTERNAL_ERROR', message: 'エラーが発生しました' } }, 500)
+  return c.json({ error: { code: 'INTERNAL_SERVER_ERROR', message: 'エラーが発生しました' } }, 500)
 })
 ```
 
