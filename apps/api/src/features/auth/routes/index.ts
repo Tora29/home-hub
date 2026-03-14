@@ -22,7 +22,7 @@ import type { Env } from '../../../index.js';
 const authRoutes = new Hono<{ Bindings: Env }>();
 
 authRoutes.on(['GET', 'POST'], '/auth/*', (c) => {
-  const auth = createAuth(c.env.DB);
+  const auth = createAuth(c.env.DB, c.env.BETTER_AUTH_SECRET, c.env.BETTER_AUTH_URL, c.env.ALLOWED_ORIGIN);
   return auth.handler(c.req.raw);
 });
 

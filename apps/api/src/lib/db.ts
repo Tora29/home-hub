@@ -5,7 +5,7 @@
  * @description
  * Cloudflare D1 用 Prisma クライアントを初期化する。
  */
-import { PrismaClient } from '../generated/prisma/edge.js';
+import { PrismaClient } from '../generated/prisma/wasm.js';
 import { PrismaD1 } from '@prisma/adapter-d1';
 
 export function createDb(d1: D1Database): PrismaClient {

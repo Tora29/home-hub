@@ -11,7 +11,8 @@
 		}
 	],
 	"vars": {
-		"ALLOWED_ORIGIN": "http://localhost:5173"
+		"ALLOWED_ORIGIN": "http://localhost:5173",
+		"BETTER_AUTH_URL": "http://localhost:8787"
 	}
 	// AI binding は省略（ローカル開発ではレコメンド機能はモック or 未使用）
 }

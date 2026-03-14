@@ -15,6 +15,8 @@ export type Env = {
   DB: D1Database;
   AI: Ai;
   ALLOWED_ORIGIN: string;
+  BETTER_AUTH_SECRET: string;
+  BETTER_AUTH_URL: string;
 };
 
 const app = new Hono<{ Bindings: Env }>();

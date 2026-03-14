@@ -10,9 +10,12 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { createDb } from './db.js';
 
-export function createAuth(d1: D1Database) {
+export function createAuth(d1: D1Database, secret: string, baseURL: string, allowedOrigin: string) {
   const db = createDb(d1);
   return betterAuth({
+    secret,
+    baseURL,
+    trustedOrigins: [allowedOrigin],
     database: prismaAdapter(db, { provider: 'sqlite' }),
     emailAndPassword: {
       enabled: true,

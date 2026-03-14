@@ -16,7 +16,7 @@ import { AppError } from '../lib/errors.js';
 import type { Env } from '../index.js';
 
 export const authMiddleware = createMiddleware<{ Bindings: Env }>(async (c, next) => {
-  const auth = createAuth(c.env.DB);
+  const auth = createAuth(c.env.DB, c.env.BETTER_AUTH_SECRET, c.env.BETTER_AUTH_URL, c.env.ALLOWED_ORIGIN);
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   if (!session) {
     throw new AppError('UNAUTHORIZED', 401, '認証が必要です');

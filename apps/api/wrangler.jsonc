@@ -16,7 +16,7 @@
 	},
 	"workers_dev": true,
 	"vars": {
-		// 本番値は `wrangler secret put ALLOWED_ORIGIN` で設定する
-		"ALLOWED_ORIGIN": ""
+		"ALLOWED_ORIGIN": "https://what-to-eat-c0c.pages.dev",
+		"BETTER_AUTH_URL": "https://what-to-eat-api.tora29.workers.dev"
 	}
 }

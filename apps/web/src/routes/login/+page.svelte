@@ -27,7 +27,7 @@
 	async function handleLoginSuccess() {
 		// ログイン後にセッション取得してストアを更新
 		try {
-			const res = await fetch(`${PUBLIC_API_BASE_URL}/api/auth/session`, {
+			const res = await fetch(`${PUBLIC_API_BASE_URL}/api/auth/get-session`, {
 				credentials: 'include'
 			});
 			if (res.ok) {

@@ -27,7 +27,7 @@ export async function load({ url }: { url: URL }) {
 	let user: AuthUser | null = null;
 
 	try {
-		const res = await fetch(`${PUBLIC_API_BASE_URL}/api/auth/session`, {
+		const res = await fetch(`${PUBLIC_API_BASE_URL}/api/auth/get-session`, {
 			credentials: 'include'
 		});
 		if (res.ok) {
