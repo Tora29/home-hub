@@ -17,6 +17,7 @@
 		"test:e2e": "playwright test"
 	},
 	"dependencies": {
+		"@what-to-eat/shared": "*",
 		"lucide-svelte": "^0.511.0"
 	},
 	"devDependencies": {
