@@ -6,7 +6,7 @@
 
 ### Unit Test（Vitest）
 - **対象**: Service 層 + ユーティリティ
-- **モック方針**: Prisma は `vitest-mock-extended` でモック。D1 バインディングは直接使わない
+- **モック方針**: Prisma は `vi.fn()` / `vi.mock()` でモック。D1 バインディングは直接使わない
 
 ### API Test（Vitest）
 - **対象**: Hono ルートのリクエスト形式・レスポンス形式・ステータスコード検証
@@ -29,8 +29,8 @@ test("[AC-101] 名前が空の場合エラーを表示する", async () => { ...
 
 ## モック戦略
 
-- Prisma: `vitest-mock-extended` でモック
-- 外部API（Workers AI 等）: vi.mock でモック
+- Prisma: `vi.fn()` / `vi.mock()` でモック
+- 外部API（Workers AI 等）: `vi.mock` でモック
 - **モックしないもの**: Zod スキーマ・純粋関数ユーティリティ
 
 ## カバレッジ方針
@@ -43,11 +43,11 @@ test("[AC-101] 名前が空の場合エラーを表示する", async () => { ...
 
 | コマンド | 内容 |
 |---------|------|
-| `npm run test` | Unit + API テスト（Vitest） |
-| `npm run test:unit` | Unit テストのみ |
-| `npm run test:api` | API テストのみ |
-| `npm run test:e2e` | E2E テスト（Playwright） |
-| `npm run test:watch` | Watch モード（Unit + API） |
+| `npm run test` | 全テスト（workspaces 一括） |
+| `cd apps/api && npm run test` | API の Unit + API テスト（Vitest） |
+| `cd apps/web && npm run test` | Web のテスト（Vitest） |
+| `cd apps/web && npm run test:e2e` | E2E テスト（Playwright） |
+| `cd apps/api && npm run test:watch` | API Watch モード |
 
 ## 参照するスキル
 

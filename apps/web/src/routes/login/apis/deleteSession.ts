@@ -16,6 +16,7 @@ export async function deleteSession(): Promise<void> {
 	await fetch(`${PUBLIC_API_BASE_URL}/api/auth/sign-out`, {
 		method: 'POST',
 		credentials: 'include',
-		headers: { 'Content-Type': 'application/json' }
+		headers: { 'Content-Type': 'application/json' },
+		body: '{}'
 	});
 }

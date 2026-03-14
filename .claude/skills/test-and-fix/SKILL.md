@@ -63,7 +63,7 @@ npm run test
 
 | モック対象 | 方法 |
 |-----------|------|
-| Prisma（DB） | `vitest-mock-extended` でモック |
+| Prisma（DB） | `vi.fn()` / `vi.mock()` でモック |
 | Service 層（API テスト用） | `vi.mock('../../services/...')` |
 | 外部 API（Workers AI 等） | `vi.mock` |
 | Zod スキーマ・純粋関数 | **モックしない** |

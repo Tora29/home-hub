@@ -28,7 +28,6 @@
 		isSigningOut = true;
 		try {
 			await deleteSession();
-			currentUser.set(null);
 			// eslint-disable-next-line svelte/no-navigation-without-resolve
 			await goto('/login');
 		} finally {

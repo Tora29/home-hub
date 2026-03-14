@@ -70,14 +70,16 @@ app.post('/dishes',
 
 ベースクライアント（`apps/web/src/lib/api/`）の共通処理:
 
-- ベースURL: 環境変数 `PUBLIC_API_URL` から取得
+- ベースURL: 環境変数 `PUBLIC_API_BASE_URL` から取得
 - `credentials: 'include'`（Cookie 送信）
 - `Content-Type: application/json`
 - レスポンスが 4xx/5xx の場合は `AppError` に変換して throw
 
 ```ts
 // apps/web/src/lib/api/client.ts の例
-const res = await fetch(`${PUBLIC_API_URL}/api/v1${path}`, {
+import { PUBLIC_API_BASE_URL } from '$env/static/public';
+
+const res = await fetch(`${PUBLIC_API_BASE_URL}/api/v1${path}`, {
   credentials: 'include',
   headers: { 'Content-Type': 'application/json' },
   ...options,
@@ -90,10 +92,13 @@ if (!res.ok) {
 
 Hono 側 CORS 設定:
 ```ts
-app.use('*', cors({
-  origin: process.env.ALLOWED_ORIGIN,  // wildcard 不可（credentials: include と共存不可）
-  credentials: true,
-}))
+// Cloudflare Workers では c.env 経由で環境変数を取得する（process.env は使用不可）
+app.use('/api/*', async (c, next) => {
+  return cors({
+    origin: c.env.ALLOWED_ORIGIN,  // wildcard 不可（credentials: include と共存不可）
+    credentials: true,
+  })(c, next);
+});
 ```
 
 ## 参照するスキル
