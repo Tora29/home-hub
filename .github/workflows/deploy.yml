@@ -24,6 +24,9 @@ jobs:
         run: npm ci
         working-directory: .
 
+      - name: Generate Prisma Client
+        run: npm run db:generate
+
       - name: Deploy to Cloudflare Workers
         run: npx wrangler deploy
         env:
@@ -54,7 +57,7 @@ jobs:
           PUBLIC_API_BASE_URL: https://what-to-eat-api.tora29.workers.dev
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy build --project-name what-to-eat --commit-dirty=true
+        run: npx wrangler pages deploy build --project-name what-to-eat --commit-dirty=true --commit-message "Deploy $(git rev-parse --short HEAD)"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
