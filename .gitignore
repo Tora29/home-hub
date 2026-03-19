@@ -16,8 +16,8 @@ Thumbs.db
 # SvelteKit generated
 .svelte-kit/
 
-# Prisma / Better Auth generated
-src/lib/generated/
+# Drizzle
+drizzle/meta/
 
 # Editor
 .vscode/

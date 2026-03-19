@@ -7,7 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 binding = "DB"
 database_name = "home-hub"
 database_id = "d8430f83-51ef-47f6-9e9a-40dca3cd12e2"
-migrations_dir = "prisma/migrations"
+migrations_dir = "drizzle/migrations"
 
 [ai]
 binding = "AI"

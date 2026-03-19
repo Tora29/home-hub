@@ -39,9 +39,4 @@ git push origin main
 
 - コミット前に `git diff` で変更内容を確認
 - 機密情報（.env、credentials等）がないか確認
-
-### 4. クリーンアップ
-ユーザーから「完了」と指示を受けたら以下の手順を行う
-1. git switch main
-2. git pull
-3. 作業ブランチの削除
+- 

@@ -5,9 +5,8 @@ const config = {
 	kit: {
 		adapter: adapter()
 	},
-	vitePlugin: {
-		dynamicCompileOptions: ({ filename }) =>
-			filename.includes('node_modules') ? undefined : { runes: true }
+	compilerOptions: {
+		runes: true
 	}
 };
 

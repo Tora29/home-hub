@@ -14,7 +14,9 @@
 		"format": "prettier --write .",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"db:generate": "drizzle-kit generate",
+		"db:studio": "drizzle-kit studio"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20260317.1",
@@ -28,6 +30,7 @@
 		"@tailwindcss/vite": "^4.1.18",
 		"@types/node": "^22",
 		"@vitest/browser-playwright": "^4.1.0",
+		"drizzle-kit": "^0.31.10",
 		"eslint": "^9.39.2",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.14.0",
@@ -46,9 +49,7 @@
 		"vitest-browser-svelte": "^2.0.2"
 	},
 	"dependencies": {
-		"@prisma/adapter-d1": "^7.5.0",
-		"@prisma/client": "^7.5.0",
 		"better-auth": "^1.5.5",
-		"prisma": "^7.5.0"
+		"drizzle-orm": "^0.45.1"
 	}
 }
