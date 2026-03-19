@@ -1,53 +1,44 @@
 # Testing
 
-テスト戦略と実装規約。
+テスト戦略と実装規約を定義するカテゴリ。
 
-## テスト種別と境界
+## このファイルに定義すべきこと
 
-### Unit Test（Vitest）
-- **対象**: Service 層 + ユーティリティ
-- **モック方針**: Prisma は `vi.fn()` / `vi.mock()` でモック。D1 バインディングは直接使わない
+### テスト種別と境界
 
-### API Test（Vitest）
-- **対象**: Hono ルートのリクエスト形式・レスポンス形式・ステータスコード検証
-- **DB の扱い**: Service 層をモック（ルートの I/O のみテスト）
+- Unit Test: テスト対象の範囲、モックの方針
+- Integration / API Test: テスト対象の範囲、DB の扱い
+- E2E Test: テスト対象の範囲、テスト環境の構成
 
-### E2E Test（Playwright）
-- **環境**: `wrangler dev --local`（BE: `localhost:8787`）+ `npm run dev`（FE: `localhost:5173`）を起動し Playwright から接続
-- **対象**: ユーザー操作シナリオ全体（AC に対応したフロー）
+### テスト-仕様連携
 
-## テスト-仕様連携
+- AC（受入条件）とテストケースの紐付け形式（例: `[SPEC: AC-001]`）
+- テストケース名の命名規約
+- テストファイルの配置場所
 
-- AC 紐付け形式: `test("[AC-001] ...")` 形式
-- テストファイル配置: **コロケーション**（テスト対象ファイルと同ディレクトリ）
+### モック戦略
 
-```ts
-// 例
-test("[AC-001] 料理一覧が表示される", async () => { ... })
-test("[AC-101] 名前が空の場合エラーを表示する", async () => { ... })
-```
+- 何をモックすべきか / すべきでないか
+- モックライブラリの選定
+- テストデータの管理方針
 
-## モック戦略
+### カバレッジ方針
 
-- Prisma: `vi.fn()` / `vi.mock()` でモック
-- 外部API（Workers AI 等）: `vi.mock` でモック
-- **モックしないもの**: Zod スキーマ・純粋関数ユーティリティ
+- カバレッジ目標（行 / ブランチ / 関数）
+- カバレッジ計測ツール
+- カバレッジレポートの活用方法
 
-## カバレッジ方針
+### テストコマンド
 
-- 目標: **行・ブランチ・関数すべて 80%**
-- CI での強制: しない（参考値として計測のみ）
-- 計測ツール: Vitest の組み込みカバレッジ（`@vitest/coverage-v8`）
+- 各テスト種別の実行コマンド
+- Watch モード / 単発実行の使い分け
+- CI での実行方法
 
-## テストコマンド
+## なぜ必要か
 
-| コマンド | 内容 |
-|---------|------|
-| `npm run test` | 全テスト（workspaces 一括） |
-| `cd apps/api && npm run test` | API の Unit + API テスト（Vitest） |
-| `cd apps/web && npm run test` | Web のテスト（Vitest） |
-| `cd apps/web && npm run test:e2e` | E2E テスト（Playwright） |
-| `cd apps/api && npm run test:watch` | API Watch モード |
+- scaffold-test-unit / scaffold-test-e2e スキルがテストコードを生成する際の規約
+- test-and-fix スキルがテスト実行コマンドを判断する際の参照先
+- spec-coverage スキルがカバレッジ分析する際の基準
 
 ## 参照するスキル
 

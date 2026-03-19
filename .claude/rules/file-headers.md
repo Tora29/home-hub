@@ -22,7 +22,6 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
 | Java / Kotlin / Scala | `/** ... */` |
 | Go | `/* ... */` または `// ...` |
 | HTML テンプレート（Vue, Svelte 等） | `<!-- ... -->` |
-| Svelte `<script>` ブロック内 | `/** ... */` |
 | Ruby | `# ...` |
 
 テンプレートは TypeScript 記法で例示しているが、**実プロジェクトの言語に合わせて変更すること**。

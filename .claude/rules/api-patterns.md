@@ -1,105 +1,42 @@
 # API Patterns
 
-API 設計の規約。
+API 設計の規約を定義するカテゴリ。プロジェクトの技術スタックに合わせて具体的なルールを記述する。
 
-## レスポンス形式
+## このファイルに定義すべきこと
 
-### 一覧
-```json
-{ "data": [...], "total": 42, "page": 1, "limit": 20 }
-```
-- ページサイズのデフォルト: **20**
+### レスポンス形式
 
-### 単体
-```json
-{ "id": 1, "name": "..." }
-```
-ラップなし（リソースを直接返す）
+- 成功レスポンスの JSON 構造（単一リソース、一覧、ページネーション）
+- 作成・更新・削除時のステータスコードとレスポンスボディ
+- 配列 vs ページネーションの使い分け基準
 
-### 作成・更新・削除
+### エラーレスポンス構造
 
-| 操作 | ステータス | レスポンスボディ |
-|------|----------|----------------|
-| 作成 | 201 | 作成後のリソース |
-| 更新 | 200 | 更新後のリソース |
-| 削除 | 204 | なし（No Content） |
+- エラーレスポンスの統一フォーマット
+- エラーコードの体系（→ `error-handling.md` と連携）
+- バリデーションエラーのフィールドエラー形式
 
-## エラーレスポンス構造
+### API バージョニング
 
-```json
-// 通常エラー
-{ "error": { "code": "NOT_FOUND", "message": "料理が見つかりません" } }
+- バージョニング戦略（URL パス / ヘッダー / クエリパラメータ）
+- バージョン移行ポリシー
 
-// バリデーションエラー
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "入力内容に誤りがあります",
-    "fields": [{ "field": "name", "message": "名前は必須です" }]
-  }
-}
-```
+### Controller / Handler パターン
 
-- Zod のエラー構造はそのまま返さず、上記フォーマットに変換する
-- エラーコード体系は `error-handling.md` を参照
+- API ハンドラの責務範囲（薄い Controller の原則）
+- リクエストバリデーションの実行位置
+- Service 層への委譲パターン
 
-## API バージョニング
+### ページ初期データ取得
 
-- URL パス `/api/v1/` を使用（例: `GET /api/v1/dishes`）
+- SSR / CSR でのデータ取得パターン
+- FE から API を呼ぶ際の規約
 
-## Controller / Handler パターン
+## なぜ必要か
 
-Hono ルートの責務は「受取 → バリデーション → Service 委譲 → レスポンス成形」のみ。
-
-```ts
-// apps/api/src/features/dishes/routes/create.ts の例
-app.post('/dishes',
-  zValidator('json', dishSchema),   // バリデーション
-  async (c) => {
-    const input = c.req.valid('json')
-    const dish = await createDish(c.env.DB, input)  // Service に委譲
-    return c.json(dish, 201)
-  }
-)
-```
-
-- `@hono/standard-validator` の `zValidator('json', schema)` をミドルウェアとして渡す
-- ビジネスロジック・DB 操作は Service 層に委譲する
-
-## FE からの API 呼び出し
-
-ベースクライアント（`apps/web/src/lib/api/`）の共通処理:
-
-- ベースURL: 環境変数 `PUBLIC_API_BASE_URL` から取得
-- `credentials: 'include'`（Cookie 送信）
-- `Content-Type: application/json`
-- レスポンスが 4xx/5xx の場合は `AppError` に変換して throw
-
-```ts
-// apps/web/src/lib/api/client.ts の例
-import { PUBLIC_API_BASE_URL } from '$env/static/public';
-
-const res = await fetch(`${PUBLIC_API_BASE_URL}/api/v1${path}`, {
-  credentials: 'include',
-  headers: { 'Content-Type': 'application/json' },
-  ...options,
-})
-if (!res.ok) {
-  const body = await res.json()
-  throw new AppError(body.error.code, body.error.message, body.error.fields)
-}
-```
-
-Hono 側 CORS 設定:
-```ts
-// Cloudflare Workers では c.env 経由で環境変数を取得する（process.env は使用不可）
-app.use('/api/*', async (c, next) => {
-  return cors({
-    origin: c.env.ALLOWED_ORIGIN,  // wildcard 不可（credentials: include と共存不可）
-    credentials: true,
-  })(c, next);
-});
-```
+- scaffold-be スキルが API コードを生成する際の規約として参照
+- scaffold-fe スキルが API 呼び出しコードを生成する際の規約として参照
+- チーム内で API 設計の一貫性を保つため
 
 ## 参照するスキル
 

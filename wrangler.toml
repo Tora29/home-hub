@@ -1,0 +1,13 @@
+name = "home-hub"
+pages_build_output_dir = ".svelte-kit/cloudflare"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "home-hub"
+database_id = "d8430f83-51ef-47f6-9e9a-40dca3cd12e2"
+migrations_dir = "prisma/migrations"
+
+[ai]
+binding = "AI"

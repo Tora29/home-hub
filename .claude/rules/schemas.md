@@ -1,51 +1,41 @@
 # Schemas
 
-バリデーションスキーマの設計規約。
+バリデーションスキーマの設計規約を定義するカテゴリ。
 
-## バリデーションライブラリ
+## このファイルに定義すべきこと
 
-- **Zod v4** を使用
-- `@hono/standard-validator` の `zValidator` でリクエストバリデーションをミドルウェアとして適用
+### バリデーションライブラリ
 
-## FE/BE バリデーション役割分担
+- 使用するバリデーションライブラリ（Zod / Yup / Joi / Bean Validation 等）
+- スキーマ定義のコーディングスタイル
 
-- **FE**: UX 向上の即時フィードバック（補助）。必須・文字数・形式（URL等）を実施。`packages/shared` のスキーマをそのまま使う
-- **BE**: 信頼できる唯一のバリデーション（正）。すべてのリクエストで必ず実施
-- **FE でやらないこと**: ユニーク制約（name の重複）・権限チェック → BE のみ
+### FE/BE バリデーション役割分担
 
-## スキーマ配置規約
+- FE バリデーション: UX 向上の即時フィードバック（補助）
+- BE バリデーション: 信頼できる唯一のバリデーション（正）
+- FE で実施しないバリデーション（ユニーク制約、権限チェック等）
 
-| 種別 | 配置場所 | 例 |
-|------|---------|-----|
-| 入力スキーマ（Create/Update） | `packages/shared/schemas/` | `dish.ts`, `tag.ts` |
-| BE 固有スキーマ（レスポンス変換等） | `apps/api/src/features/{feature}/schemas/response.ts` | DBモデル → レスポンス型への変換 |
-| FE 固有スキーマ（フォームバリデーション等） | `apps/web/src/routes/{feature}/schemas/` | コロケーション配置 |
+### スキーマ配置規約
 
-- 入力スキーマは可能な限り `packages/shared` に集約する
+- 1 つの機能内でのみ使用するスキーマの配置場所
+- 複数機能から参照されるスキーマの配置場所
+- FE/BE 間のスキーマ同期方針
 
-## 入力 / 出力スキーマの分離方針
+### 入力/出力スキーマの分離
 
-- **PUT** を採用（編集フォームは全フィールド送信）
-- Create と Update は `packages/shared` で同一スキーマを共通化してよい
-- レスポンス型の命名規則: `{Entity}Response`（例: `DishResponse`）
-- `nullable`: DBのNULL許可カラムに使用
-- `optional`: PUT採用のためほぼ不要
+- Create / Update / Patch / Response 各スキーマの定義方針
+- PUT（全フィールド必須）と PATCH（部分更新）の使い分け
+- optional / nullable の使い分け基準
 
-```ts
-// packages/shared/schemas/dish.ts の例
-export const dishSchema = z.object({
-  name: z.string().min(1, "名前は必須です"),
-  recipeUrl: z.string().url("正しいURLを入力してください").nullable(),
-  effort: z.enum(["EASY", "HARD"]),
-  category: z.enum(["MAIN", "SIDE"]),
-})
-export type DishInput = z.infer<typeof dishSchema>
-```
+### バリデーションメッセージ
 
-## バリデーションメッセージ
+- メッセージの言語（日本語 / 英語）
+- メッセージのフォーマット規約
 
-- 言語: **日本語**
-- フォーマット: `"名前は必須です"` 形式（フィールド名 + 日本語説明）
+## なぜ必要か
+
+- scaffold-be / scaffold-fe スキルがスキーマコードを生成する際の規約
+- FE/BE 間のデータ整合性を保つため
 
 ## 参照するスキル
 

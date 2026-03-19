@@ -12,3 +12,21 @@ Thumbs.db
 
 # Logs
 *.log
+
+# SvelteKit generated
+.svelte-kit/
+
+# Prisma / Better Auth generated
+src/lib/generated/
+
+# Editor
+.vscode/
+
+# Wrangler local state
+.wrangler/
+
+# Better Auth local dev
+.dev.vars
+
+# plan
+plan.md
