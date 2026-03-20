@@ -19,7 +19,7 @@ scaffold-fe スキルがコード生成時に参照する。
 
 ## カラートークン
 
-`app.css` で定義済み。必ず Tailwind クラス経由で使うこと（インラインの hex 指定は禁止）。
+`src/app.css` の `@theme` ブロックで定義済み。必ず Tailwind クラス経由で使うこと（インラインの hex 指定は禁止）。
 
 ### ライトモード実値（参考）
 
@@ -39,7 +39,7 @@ scaffold-fe スキルがコード生成時に参照する。
 
 ## フォント
 
-`app.css` で `font-sans` に **Zen Maru Gothic**（Google Fonts）を設定済み。
+`src/app.css` の `@theme` で `font-sans` に **Zen Maru Gothic**（Google Fonts）を設定済み。
 `font-sans` クラスを使えば自動適用される。追加のフォント指定は不要。
 
 ## 形状・レイアウト
@@ -51,7 +51,7 @@ scaffold-fe スキルがコード生成時に参照する。
 
 ## アイコン
 
-**`@lucide/svelte`**（Svelte 5 専用パッケージ）を使用する。`lucide-svelte` は Svelte 4 用なので使わない。SVG をインラインで書かない。
+**`@lucide/svelte`**（Svelte 5 専用パッケージ）を使用する。SVG をインラインで書かない。
 
 ```svelte
 <script>
