@@ -1,37 +1,101 @@
 # Error Handling
 
-エラーハンドリングの戦略を定義するカテゴリ。
+`src/lib/server/errors.ts` の `AppError` を中心としたエラーハンドリング規約。
 
-## このファイルに定義すべきこと
+---
 
-### エラー分類
+## エラークラス
 
-- 期待されるエラー（バリデーション、リソース不在、重複）と予期しないエラー（バグ、インフラ障害）の区分
-- 各エラーに対応する HTTP ステータスコードのマッピング
+`AppError` を throw してエラーを伝播する。Result Pattern は使わない。
 
-### ハンドリング戦略
+```typescript
+// src/lib/server/errors.ts
+throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 
-- Service 層のエラー返却方式（Result Pattern / 例外 throw / Either 型 等）
-- API 層でのエラー変換方式
-- グローバルエラーハンドラの設計
+// バリデーションエラー（フィールドエラー付き）
+throw new AppError('VALIDATION_ERROR', 400, '入力値が正しくありません', [
+	{ field: 'name', message: '名前は必須です' }
+]);
+```
 
-### エラーコード体系
+---
 
-- エラーコードの命名規則（例: `NOT_FOUND`, `CONFLICT`, `VALIDATION_ERROR`）
-- エラーメッセージの言語方針（コードは英語、メッセージは日本語 等）
-- エラーコード拡張時の手順
+## エラーコード一覧
 
-### ロギングルール
+`src/lib/server/errors.ts` の `ErrorCode` 型が唯一の定義元。新しいコードが必要になったらそちらに追加する。
 
-- ログに出すべき情報（エラー ID、タイムスタンプ、リクエスト情報）
-- ログに出してはいけない情報（パスワード、トークン、個人情報）
-- ユーザーへのエラー表示方針（汎用メッセージ + エラー ID）
+- エラーコードは英語、メッセージは日本語
 
-### FE エラーハンドリング
+---
 
-- API エラーの受信・表示パターン
-- フィールドエラー vs フォームエラーの表示方式
-- ネットワークエラーの処理
+## ハンドリング戦略
+
+### service.ts
+
+期待されるエラー（NOT_FOUND、CONFLICT 等）は `AppError` を throw する。
+予期しないエラー（DB 障害等）はそのまま上位に伝播させる。
+
+```typescript
+// service.ts
+export async function getItem(db: DrizzleD1, id: string) {
+	const item = await db.select().from(items).where(eq(items.id, id)).get();
+	if (!item) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
+	return item;
+}
+```
+
+### +server.ts
+
+`AppError` と予期しないエラーを分けて catch する。
+
+```typescript
+// +server.ts
+try {
+  const result = await someService(db, ...);
+  return json(result);
+} catch (e) {
+  if (e instanceof AppError) {
+    return json({ code: e.code, message: e.message, fields: e.fields }, { status: e.status });
+  }
+  // 予期しないエラーはログを出してから汎用メッセージを返す
+  console.error(e);
+  return json({ code: 'INTERNAL_SERVER_ERROR', message: 'サーバーエラーが発生しました' }, { status: 500 });
+}
+```
+
+### 認証エラー（UNAUTHORIZED）
+
+`hooks.server.ts` が一括処理するため、`+server.ts` では対応不要。
+
+---
+
+## ロギングルール
+
+- `console.error()` は予期しないエラー（500 系）のみ
+- `AppError` はログ不要（想定内のエラーのため）
+- ログに含めてはいけない情報: パスワード、トークン、セッション ID
+
+---
+
+## FE エラーハンドリング
+
+API レスポンスの構造に合わせて処理する。
+
+```typescript
+const res = await fetch('/{feature}', { method: 'POST', body: JSON.stringify(data) });
+if (!res.ok) {
+	const err = await res.json();
+	if (err.code === 'VALIDATION_ERROR') {
+		// フィールドエラーをフォームに表示
+		// err.fields: [{ field: 'name', message: '名前は必須です' }]
+	} else {
+		// トースト等で汎用エラーを表示
+		// err.message をそのまま表示してよい（日本語）
+	}
+}
+```
+
+---
 
 ## なぜ必要か
 

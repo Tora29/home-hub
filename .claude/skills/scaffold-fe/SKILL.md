@@ -43,13 +43,13 @@ options:
 
 以下の rules を Read ツールで読み込み、コード生成の規約とする:
 
-| rule | 参照するもの |
-|------|-------------|
+| rule                                | 参照するもの                                             |
+| ----------------------------------- | -------------------------------------------------------- |
 | `.claude/references/ui-patterns.md` | コンポーネント分割、状態管理、命名規則、アクセシビリティ |
-| `.claude/rules/schemas.md` | FE バリデーション方針、スキーマ配置 |
-| `.claude/rules/data-testid.md` | テスト用セレクタの命名規則 |
-| `.claude/rules/security.md` | XSS 対策、入力検証 |
-| `.claude/rules/file-headers.md` | ファイルヘッダーコメントのテンプレートと記述ルール |
+| `.claude/rules/schemas.md`          | FE バリデーション方針、スキーマ配置                      |
+| `.claude/rules/data-testid.md`      | テスト用セレクタの命名規則                               |
+| `.claude/rules/security.md`         | XSS 対策、入力検証                                       |
+| `.claude/rules/file-headers.md`     | ファイルヘッダーコメントのテンプレートと記述ルール       |
 
 ### Step 3: コード生成
 
@@ -75,6 +75,7 @@ spec.md の画面仕様・UI Requirements に基づき、infra-spec.md のディ
 - [ ] アクセシビリティ要件が ui-patterns rule に従っている
 - [ ] ディレクトリ構成が infra-spec.md に従っている
 - [ ] 全生成ファイルに file-headers rule に従ったヘッダーコメントが付与されている
+- [ ] **テストファイルを一切編集・削除していない**
 
 ## 生成ルール
 

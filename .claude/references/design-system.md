@@ -23,19 +23,19 @@ scaffold-fe スキルがコード生成時に参照する。
 
 ### ライトモード実値（参考）
 
-| トークン（Tailwindクラス） | 実値 | 用途 |
-|--------------------------|------|------|
-| `bg-bg` / `bg-bg-tertiary` | `#fdfaf6` | ページ背景 |
-| `bg-bg-secondary` | `#f5efe6` | セクション背景 |
-| `bg-bg-grouped` | `#f0e9de` | グループ背景 |
-| `bg-bg-card` | `#ffffff` | カード背景 |
-| `text-label` | `#3d3530` | 本文テキスト |
-| `text-secondary` | `rgba(61,53,48,.6)` | 補助テキスト |
-| `text-tertiary` | `rgba(61,53,48,.3)` | プレースホルダー |
-| `bg-accent` / `text-accent` | `#c4705a` | プライマリアクション（テラコッタ） |
-| `bg-success` | `#5a9e65` | 成功（セージグリーン） |
-| `bg-destructive` | `#c94b4b` | エラー |
-| `border-separator` | `rgba(180,155,135,.35)` | 区切り線 |
+| トークン（Tailwindクラス）  | 実値                    | 用途                               |
+| --------------------------- | ----------------------- | ---------------------------------- |
+| `bg-bg` / `bg-bg-tertiary`  | `#fdfaf6`               | ページ背景                         |
+| `bg-bg-secondary`           | `#f5efe6`               | セクション背景                     |
+| `bg-bg-grouped`             | `#f0e9de`               | グループ背景                       |
+| `bg-bg-card`                | `#ffffff`               | カード背景                         |
+| `text-label`                | `#3d3530`               | 本文テキスト                       |
+| `text-secondary`            | `rgba(61,53,48,.6)`     | 補助テキスト                       |
+| `text-tertiary`             | `rgba(61,53,48,.3)`     | プレースホルダー                   |
+| `bg-accent` / `text-accent` | `#c4705a`               | プライマリアクション（テラコッタ） |
+| `bg-success`                | `#5a9e65`               | 成功（セージグリーン）             |
+| `bg-destructive`            | `#c94b4b`               | エラー                             |
+| `border-separator`          | `rgba(180,155,135,.35)` | 区切り線                           |
 
 ## フォント
 
@@ -55,7 +55,7 @@ scaffold-fe スキルがコード生成時に参照する。
 
 ```svelte
 <script>
-  import { UtensilsCrossed, Heart, Home, BookOpen } from '@lucide/svelte';
+	import { UtensilsCrossed, Heart, Home, BookOpen } from '@lucide/svelte';
 </script>
 
 <UtensilsCrossed size={20} class="text-accent" />
@@ -67,20 +67,26 @@ scaffold-fe スキルがコード生成時に参照する。
 ## 装飾パターン
 
 ### 背景テクスチャ
+
 薄いドットパターンを CSS で実装：
+
 ```html
-<div class="bg-bg-grouped"
-  style="background-image: radial-gradient(circle, rgba(180,155,135,.2) 1px, transparent 1px); background-size: 20px 20px;">
+<div
+	class="bg-bg-grouped"
+	style="background-image: radial-gradient(circle, rgba(180,155,135,.2) 1px, transparent 1px); background-size: 20px 20px;"
+></div>
 ```
 
 ### カード
+
 ```html
-<div class="rounded-3xl bg-bg-card shadow-md p-6">
+<div class="bg-bg-card rounded-3xl p-6 shadow-md"></div>
 ```
 
 ### アクセントボタン
+
 ```html
-<button class="rounded-2xl bg-accent text-white font-medium px-6 py-3 shadow-sm">
+<button class="bg-accent rounded-2xl px-6 py-3 font-medium text-white shadow-sm"></button>
 ```
 
 ## 避けること

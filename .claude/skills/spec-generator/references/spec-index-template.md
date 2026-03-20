@@ -15,10 +15,10 @@
 
 ## Sub-Domains
 
-| Domain | File | Description |
-|--------|------|-------------|
-| Task | task.md | タスクの CRUD 操作 |
-| Member | member.md | メンバーの管理 |
+| Domain | File      | Description        |
+| ------ | --------- | ------------------ |
+| Task   | task.md   | タスクの CRUD 操作 |
+| Member | member.md | メンバーの管理     |
 
 ## User Stories (Optional)
 
@@ -49,15 +49,15 @@
 
 各ドメインファイルは `spec-template.md` に準拠するが、以下の違いがある:
 
-| セクション | インデックス | ドメインファイル |
-|-----------|------------|----------------|
-| Overview | 機能全体 | ドメイン固有 |
-| User Stories | 横断的 | ドメイン固有 |
-| Schema | - | ドメイン固有 |
-| API Endpoints | - | ドメイン固有 |
-| Acceptance Criteria | - | ドメイン固有 |
-| UI Requirements | - | ドメイン固有 |
-| Non-Functional Requirements | 集約 | -（省略） |
+| セクション                  | インデックス | ドメインファイル |
+| --------------------------- | ------------ | ---------------- |
+| Overview                    | 機能全体     | ドメイン固有     |
+| User Stories                | 横断的       | ドメイン固有     |
+| Schema                      | -            | ドメイン固有     |
+| API Endpoints               | -            | ドメイン固有     |
+| Acceptance Criteria         | -            | ドメイン固有     |
+| UI Requirements             | -            | ドメイン固有     |
+| Non-Functional Requirements | 集約         | -（省略）        |
 
 ### AC 番号の採番
 

@@ -3,9 +3,6 @@
 ソースコードから設計書をリバースエンジニアリングするインデックスとして、
 各ファイル先頭に構造化されたコメントを付与する規約。
 
-> **注意**: 具体的なファイルパス・ファイル名・コメント記法は採用技術スタックに依存する。
-> `specs/infra-spec.md` のディレクトリ構成を参照し、プロジェクトの実態に合わせて記述すること。
-
 scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
 コードを生成する際、**全ファイルにヘッダーコメントを付与すること**。
 
@@ -13,79 +10,62 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
 
 ## コメント記法
 
-採用言語に応じて適切なコメント記法を使用する。
-
-| 言語 / フォーマット | 記法 |
-| ------------------- | ---- |
-| TypeScript / JavaScript | `/** ... */` |
-| Python | `""" ... """` または `# ...` |
-| Java / Kotlin / Scala | `/** ... */` |
-| Go | `/* ... */` または `// ...` |
-| HTML テンプレート（Vue, Svelte 等） | `<!-- ... -->` |
-| Ruby | `# ...` |
-
-テンプレートは TypeScript 記法で例示しているが、**実プロジェクトの言語に合わせて変更すること**。
+| ファイル種別 | 記法           |
+| ------------ | -------------- |
+| `.ts`        | `/** ... */`   |
+| `.svelte`    | `<!-- ... -->` |
 
 ---
 
 ## 共通タグ
 
-| タグ           | 必須 | 説明 |
-| -------------- | ---- | ---- |
-| `@file`        | ◯    | 種別と名称（例: `画面: タスク一覧`、`API: タスク`） |
-| `@module`      | ◯    | `infra-spec.md` で定義されたディレクトリ構成に基づくフルパス |
+| タグ           | 必須 | 説明                                                                                         |
+| -------------- | ---- | -------------------------------------------------------------------------------------------- |
+| `@file`        | ◯    | 種別と名称（例: `画面: タスク一覧`、`API: タスク`）                                          |
+| `@module`      | ◯    | `infra-spec.md` で定義されたディレクトリ構成に基づくフルパス                                 |
 | `@feature`     | ◯    | 機能名（`specs/` 配下の feature ディレクトリ名、ネストしない）。共通ライブラリ配下では省略可 |
-| `@description` | ◯    | 1〜3行の概要説明 |
-| `@spec`        | △    | `specs/{feature}/spec.md` への相対パス。共通ライブラリ配下では省略可 |
-| `@acceptance`  | △    | 対応する受入条件番号（`AC-001, AC-002`） |
+| `@description` | ◯    | 1〜3行の概要説明                                                                             |
+| `@spec`        | △    | `specs/{feature}/spec.md` への相対パス。共通ライブラリ配下では省略可                         |
+| `@acceptance`  | △    | 対応する受入条件番号（`AC-001, AC-002`）                                                     |
 
 ---
 
 ## ファイル種別ごとのテンプレート
 
-ファイル種別はフレームワーク固有の名称ではなく**責務（ロール）**で分類する。
-`@module` のパスは `infra-spec.md` のディレクトリ構成に合わせて記述すること。
-
 ---
 
-### 画面（View / Page コンポーネント）
-
-FE の画面単位コンポーネント。React Page / Vue Page / Svelte Page など。
+### 画面（`+page.svelte`）
 
 ```
-/**
- * @file 画面: {機能名}
- * @module {infra-spec.md に定義された FE ディレクトリ}/{feature}/{ファイル名}
- * @feature {feature}
- *
- * @description
- * {画面の概要説明}
- *
- * @spec specs/{feature}/spec.md
- * @acceptance AC-001, AC-002
- *
- * @navigation
- * - 遷移元: {パス} - {説明}
- * - 遷移先: {パス} - {説明}
- *
- * @api
- * - GET /api/v1/{feature} → 200 {Entity}[] - 一覧取得
- * - POST /api/v1/{feature} → 201 {Entity} - 新規作成
- */
+<!--
+  @file 画面: {機能名}
+  @module src/routes/{feature}/+page.svelte
+  @feature {feature}
+
+  @description
+  {画面の概要説明}
+
+  @spec specs/{feature}/spec.md
+  @acceptance AC-001, AC-002
+
+  @navigation
+  - 遷移元: {パス} - {説明}
+  - 遷移先: {パス} - {説明}
+
+  @api
+  - GET /{feature} → 200 {Entity}[] - 一覧取得
+  - POST /{feature} → 201 {Entity} - 新規作成
+-->
 ```
 
 ---
 
-### データ取得層（Loader / SSR Handler）
-
-画面の初期データをサーバーサイドで取得する層。
-SvelteKit の `+page.ts`、Next.js の `getServerSideProps`、Remix の `loader` など。
-フレームワークにこの概念がない場合は省略する。
+### SSR データ取得（`+page.server.ts`）
 
 ```
 /**
  * @file データ取得: {機能名}
- * @module {infra-spec.md に定義された FE ディレクトリ}/{feature}/{ファイル名}
+ * @module src/routes/{feature}/+page.server.ts
  * @feature {feature}
  *
  * @description
@@ -98,15 +78,12 @@ SvelteKit の `+page.ts`、Next.js の `getServerSideProps`、Remix の `loader`
 
 ---
 
-### API ルート（Controller / Handler）
-
-HTTP リクエストを受け取るエンドポイント定義。
-Express Router / Hono / FastAPI / Spring Controller など。
+### API ルート（`+server.ts`）
 
 ```
 /**
  * @file API: {機能名}
- * @module {infra-spec.md に定義された BE ディレクトリ}/{feature}/{ファイル名}
+ * @module src/routes/{feature}/+server.ts
  * @feature {feature}
  *
  * @description
@@ -116,13 +93,13 @@ Express Router / Hono / FastAPI / Spring Controller など。
  * @acceptance AC-001, AC-002
  *
  * @endpoints
- * - GET /api/v1/{feature} → 200 {Entity}[] - 一覧取得
- * - POST /api/v1/{feature} → 201 {Entity} - 新規作成
+ * - GET /{feature} → 200 {Entity}[] - 一覧取得
+ * - POST /{feature} → 201 {Entity} - 新規作成
  *   @body {entity}CreateSchema
  *   @errors 400(VALIDATION_ERROR)
  *
- * @service {サービス層ファイルへの相対パス}
- * @schema {スキーマファイルへの相対パス}
+ * @service ./service.ts
+ * @schema ./schema.ts
  */
 ```
 
@@ -137,14 +114,12 @@ Express Router / Hono / FastAPI / Spring Controller など。
 
 ---
 
-### サービス層（Service / Use Case）
-
-ビジネスロジックと DB 操作を担う層。
+### サービス層（`service.ts`）
 
 ```
 /**
  * @file サービス: {Entity}
- * @module {infra-spec.md に定義された BE ディレクトリ}/{feature}/{ファイル名}
+ * @module src/routes/{feature}/service.ts
  * @feature {feature}
  *
  * @description
@@ -156,27 +131,24 @@ Express Router / Hono / FastAPI / Spring Controller など。
  * @entity {Entity}
  *
  * @functions
- * - getEntities    - 一覧取得
- * - getEntityById  - ID 指定取得
- * - createEntity   - 新規作成
- * - updateEntity   - 更新
- * - deleteEntity   - 削除
+ * - get{Entities}    - 一覧取得
+ * - get{Entity}ById  - ID 指定取得
+ * - create{Entity}   - 新規作成
+ * - update{Entity}   - 更新
+ * - delete{Entity}   - 削除
  *
- * @test {テストファイルへの相対パス}
+ * @test ./service.integration.test.ts
  */
 ```
 
 ---
 
-### スキーマ / バリデーション定義（Schema / Validation）
-
-リクエスト・レスポンスの型定義とバリデーションスキーマ。
-Zod / Yup / Joi / Pydantic / Bean Validation など。
+### スキーマ（`schema.ts`）
 
 ```
 /**
  * @file スキーマ: {Entity}
- * @module {infra-spec.md に定義された BE/FE ディレクトリ}/{feature}/{ファイル名}
+ * @module src/routes/{feature}/schema.ts
  * @feature {feature}
  *
  * @description
@@ -187,48 +159,41 @@ Zod / Yup / Joi / Pydantic / Bean Validation など。
  * @schemas
  * - {entity}CreateSchema - 作成用入力
  * - {entity}UpdateSchema - 更新用入力
- * - {entity}Schema       - 出力型
  *
  * @types
  * - {Entity}Create - 作成用入力型
  * - {Entity}Update - 更新用入力型
- * - {Entity}       - 出力型
  */
 ```
 
 ---
 
-### UI コンポーネント（Component）
-
-ページ固有または共有の UI 部品。
-React Component / Vue Component / Svelte Component など。
+### UI コンポーネント（`{ComponentName}.svelte`）
 
 ```
-/**
- * @file コンポーネント: {ComponentName}
- * @module {infra-spec.md に定義された FE ディレクトリ}/{feature または shared}/{ファイル名}
- * @feature {feature}  ← 共有コンポーネントの場合は省略
- *
- * @description
- * {コンポーネントの概要説明}
- *
- * @props
- * - {propName}: {型} - {説明}
- * - onCreate: (item: {Entity}) => void - 作成完了時のコールバック
- */
+<!--
+  @file コンポーネント: {ComponentName}
+  @module src/routes/{feature}/components/{ComponentName}.svelte
+  @feature {feature}
+
+  @description
+  {コンポーネントの概要説明}
+
+  @props
+  - {propName}: {型} - {説明}
+-->
 ```
+
+共有コンポーネント（`src/lib/components/`）は `@feature` を省略する。
 
 ---
 
-### 共通ユーティリティ / ヘルパー（Utility / Helper）
-
-複数機能から横断的に利用される汎用モジュール。
-feature に紐づかないため `@feature`・`@spec` は省略可。
+### 共通ユーティリティ（`src/lib/`）
 
 ```
 /**
  * @file ヘルパー: {名称}
- * @module {infra-spec.md に定義された共通ライブラリパス}/{ファイル名}
+ * @module src/lib/{ファイル名}
  *
  * @description
  * {概要説明}
@@ -237,15 +202,15 @@ feature に紐づかないため `@feature`・`@spec` は省略可。
 
 ---
 
-### ユニットテスト / API テスト（Unit / API Test）
+### ユニットテスト（`*.test.ts`）
 
 ```
 /**
  * @file テスト: {対象}
- * @module {テスト対象ファイルと同ディレクトリ or infra-spec.md 定義のテストディレクトリ}
- * @testType unit | api
+ * @module src/routes/{feature}/{ファイル名}.test.ts
+ * @testType unit
  *
- * @target {テスト対象ファイルへの相対パス}
+ * @target ./{ファイル名}.ts
  * @spec specs/{feature}/spec.md
  * @covers AC-001, AC-002, AC-101, AC-102
  */
@@ -253,12 +218,28 @@ feature に紐づかないため `@feature`・`@spec` は省略可。
 
 ---
 
-### E2E テスト（E2E Test）
+### インテグレーションテスト（`*.integration.test.ts`）
+
+```
+/**
+ * @file テスト: {対象}
+ * @module src/routes/{feature}/{ファイル名}.integration.test.ts
+ * @testType integration
+ *
+ * @target ./{ファイル名}.ts
+ * @spec specs/{feature}/spec.md
+ * @covers AC-001, AC-002
+ */
+```
+
+---
+
+### E2E テスト（`e2e/{feature}.e2e.ts`）
 
 ```
 /**
  * @file E2Eテスト: {シナリオ名}
- * @module {infra-spec.md に定義された E2E ディレクトリ}/{feature}.spec.{拡張子}
+ * @module e2e/{feature}.e2e.ts
  * @testType e2e
  *
  * @spec specs/{feature}/spec.md
@@ -275,12 +256,52 @@ feature に紐づかないため `@feature`・`@spec` は省略可。
 
 ---
 
+## 関数コメント
+
+ファイルヘッダーに加え、**`service.ts` と `+server.ts` の公開関数・ハンドラーには関数コメントを付与する**。
+
+### `service.ts` 関数コメント
+
+```typescript
+/**
+ * {処理の概要}。
+ * @ac AC-001
+ * @throws {ErrorCode} - {条件}
+ */
+export async function get{Entities}(db: DrizzleD1Database, userId: string): Promise<{Entity}[]>
+```
+
+- `@throws` はエラーを投げる可能性がある場合のみ記述する
+
+### `+server.ts` ハンドラーコメント
+
+```typescript
+/**
+ * {処理の概要}。
+ * @ac AC-001
+ * @calls {serviceFunction}
+ */
+export const GET: RequestHandler = async ({ locals, platform }) => {
+
+/**
+ * {処理の概要}。{schema} で入力値を検証後、service に委譲する。
+ * @ac AC-001, AC-101
+ * @body {schema}
+ * @throws {ErrorCode} - {条件}
+ */
+export const POST: RequestHandler = async ({ request, locals, platform }) => {
+```
+
+- ファイルヘッダーの `@endpoints` が全体概観、ハンドラーコメントが処理の意図・エラーパターンを担う
+
+---
+
 ## 受入条件の採番ルール
 
-| 分類                | 番号範囲    | 説明 |
-| ------------------- | ----------- | ---- |
-| 正常系              | AC-001〜099 | 正常動作ケース |
-| 異常系              | AC-101〜199 | エラー・例外ケース |
+| 分類                | 番号範囲    | 説明                 |
+| ------------------- | ----------- | -------------------- |
+| 正常系              | AC-001〜099 | 正常動作ケース       |
+| 異常系              | AC-101〜199 | エラー・例外ケース   |
 | 境界値/エッジケース | AC-201〜299 | 境界値・エッジケース |
 
 上限を超える場合は 4 桁に拡張（`AC-0001〜`）。頻繁に超える場合は機能分割を検討。

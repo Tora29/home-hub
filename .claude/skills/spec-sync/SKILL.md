@@ -37,14 +37,14 @@ spec.md / openapi.yaml のフィールド定義と実装のスキーマ定義を
 
 **検出対象:**
 
-| 比較項目 | spec 側 | 実装側 | 例 |
-|---------|---------|--------|-----|
-| 制約値 | max: 20 | max(30) | 文字数上限の不一致 |
-| 型 | string | number | 型の不一致 |
-| 必須/任意 | required | optional | 必須性の不一致 |
-| デフォルト値 | default: "active" | default: "pending" | 初期値の不一致 |
-| ステータスコード | 201 | 200 | API レスポンスの不一致 |
-| 定数/Enum 値 | ["draft", "published"] | ["draft", "review", "published"] | 列挙値の不一致 |
+| 比較項目         | spec 側                | 実装側                           | 例                     |
+| ---------------- | ---------------------- | -------------------------------- | ---------------------- |
+| 制約値           | max: 20                | max(30)                          | 文字数上限の不一致     |
+| 型               | string                 | number                           | 型の不一致             |
+| 必須/任意        | required               | optional                         | 必須性の不一致         |
+| デフォルト値     | default: "active"      | default: "pending"               | 初期値の不一致         |
+| ステータスコード | 201                    | 200                              | API レスポンスの不一致 |
+| 定数/Enum 値     | ["draft", "published"] | ["draft", "review", "published"] | 列挙値の不一致         |
 
 #### 1-3: API エンドポイント値ドリフトの検出
 
@@ -67,10 +67,10 @@ spec 側が古い（実装が先行して変更された）可能性のあるド
 ```markdown
 ### 検出された値ドリフト
 
-| # | 対象 | spec の値 | 実装の値 | 方向 |
-|---|------|----------|---------|------|
-| 1 | taskCreateSchema.title.max | 20 | 30 | spec → 実装 |
-| 2 | taskSchema.status enum | ["active","done"] | ["active","in_progress","done"] | 実装先行 |
+| #   | 対象                       | spec の値         | 実装の値                        | 方向        |
+| --- | -------------------------- | ----------------- | ------------------------------- | ----------- |
+| 1   | taskCreateSchema.title.max | 20                | 30                              | spec → 実装 |
+| 2   | taskSchema.status enum     | ["active","done"] | ["active","in_progress","done"] | 実装先行    |
 ```
 
 ドリフトが検出されなかった場合は、その旨を報告して終了する。
@@ -110,25 +110,25 @@ options:
 
 ### サマリー
 
-| 項目 | 件数 |
-|------|------|
-| 検出されたドリフト | N 件 |
-| 解決済み（実装を修正） | X 件 |
+| 項目                    | 件数 |
+| ----------------------- | ---- |
+| 検出されたドリフト      | N 件 |
+| 解決済み（実装を修正）  | X 件 |
 | 解決済み（spec を更新） | Y 件 |
-| スキップ | Z 件 |
+| スキップ                | Z 件 |
 
 ### 解決済みアクション
 
-| # | 対象 | 方針 | 修正内容 |
-|---|------|------|---------|
-| 1 | taskCreateSchema.title.max | 実装を修正 | `_schemas/task.ts` の max を 30 → 20 に変更 |
-| 2 | taskSchema.status enum | spec を更新 | `specs/tasks/spec.md` の status enum に "in_progress" を追加 |
+| #   | 対象                       | 方針        | 修正内容                                                     |
+| --- | -------------------------- | ----------- | ------------------------------------------------------------ |
+| 1   | taskCreateSchema.title.max | 実装を修正  | `_schemas/task.ts` の max を 30 → 20 に変更                  |
+| 2   | taskSchema.status enum     | spec を更新 | `specs/tasks/spec.md` の status enum に "in_progress" を追加 |
 
 ### スキップされたドリフト
 
-| # | 対象 | spec の値 | 実装の値 |
-|---|------|----------|---------|
-| 3 | POST /api/tasks status | 201 | 200 |
+| #   | 対象                   | spec の値 | 実装の値 |
+| --- | ---------------------- | --------- | -------- |
+| 3   | POST /api/tasks status | 201       | 200      |
 
 > 💡 スキップされたドリフトは次回 `/spec-coverage` で再検出されます。
 ```

@@ -39,4 +39,4 @@ git push origin main
 
 - コミット前に `git diff` で変更内容を確認
 - 機密情報（.env、credentials等）がないか確認
-- 
+-
