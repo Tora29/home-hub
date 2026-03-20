@@ -8,8 +8,9 @@
  */
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import type { D1Database } from '@cloudflare/workers-types';
 import { createDb } from './db';
-import { user, session, account, verification } from './schema';
+import { user, session, account, verification } from './tables';
 
 export function createAuth(d1: D1Database, secret: string, baseURL: string) {
 	const db = createDb(d1);

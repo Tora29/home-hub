@@ -1,6 +1,6 @@
 /**
- * @file スキーマ: Drizzle テーブル定義
- * @module src/lib/server/schema.ts
+ * @file テーブル定義: Drizzle テーブル定義
+ * @module src/lib/server/tables.ts
  *
  * @description
  * Cloudflare D1（SQLite）のテーブル定義。
@@ -10,7 +10,7 @@
  * - user, session, account, verification — Better Auth 管理テーブル
  * - tag, dish, dishTag               — アプリ固有テーブル
  */
-import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 // ---- Better Auth テーブル ----
 

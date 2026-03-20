@@ -7,6 +7,26 @@ export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	test: {
 		expect: { requireAssertions: true },
+		coverage: {
+			provider: 'v8',
+			include: ['src/routes/**/*.ts', 'src/lib/**/*.ts'],
+			exclude: [
+				'src/lib/server/db.ts',
+				'src/lib/server/tables.ts',
+				'src/lib/server/auth.ts',
+				'src/lib/index.ts',
+				'src/lib/assets/**',
+				'src/hooks.server.ts',
+				'src/app.d.ts',
+				'**/*.test.ts',
+				'**/*.integration.test.ts',
+				'**/*.svelte.test.ts'
+			],
+			thresholds: {
+				functions: 80,
+				lines: 80
+			}
+		},
 		projects: [
 			{
 				extends: './vite.config.ts',
@@ -17,18 +37,17 @@ export default defineConfig({
 						provider: playwright(),
 						instances: [{ browser: 'chromium', headless: true }]
 					},
-					include: ['src/**/*.svelte.{test,spec}.{js,ts}'],
+					include: ['src/**/*.svelte.test.{js,ts}'],
 					exclude: ['src/lib/server/**']
 				}
 			},
-
 			{
 				extends: './vite.config.ts',
 				test: {
 					name: 'server',
 					environment: 'node',
-					include: ['src/**/*.{test,spec}.{js,ts}'],
-					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}']
+					include: ['src/**/*.test.{js,ts}'],
+					exclude: ['src/**/*.svelte.test.{js,ts}', 'src/**/*.integration.test.{js,ts}']
 				}
 			}
 		]
