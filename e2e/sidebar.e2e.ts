@@ -43,7 +43,17 @@ test.describe('サイドバー（デスクトップ）', () => {
 	test('[SPEC: AC-001] レシピ一覧メニュー項目をクリックすると /recipes へ遷移する', async ({
 		page
 	}) => {
+		// カテゴリを一度閉じてから開き、items が開閉後もクリック可能であることを検証する
 		await page.getByTestId('sidebar-category-meal').click();
+		await expect(page.getByTestId('sidebar-category-meal')).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
+		await page.getByTestId('sidebar-category-meal').click();
+		await expect(page.getByTestId('sidebar-category-meal')).toHaveAttribute(
+			'aria-expanded',
+			'true'
+		);
 		await page.getByTestId('sidebar-item-recipes').click();
 		await expect(page).toHaveURL('/recipes');
 	});
@@ -52,6 +62,15 @@ test.describe('サイドバー（デスクトップ）', () => {
 		page
 	}) => {
 		await page.getByTestId('sidebar-category-meal').click();
+		await expect(page.getByTestId('sidebar-category-meal')).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
+		await page.getByTestId('sidebar-category-meal').click();
+		await expect(page.getByTestId('sidebar-category-meal')).toHaveAttribute(
+			'aria-expanded',
+			'true'
+		);
 		await page.getByTestId('sidebar-item-recipes-tags').click();
 		await expect(page).toHaveURL('/recipes/tags');
 	});
@@ -60,6 +79,15 @@ test.describe('サイドバー（デスクトップ）', () => {
 		page
 	}) => {
 		await page.getByTestId('sidebar-category-expense').click();
+		await expect(page.getByTestId('sidebar-category-expense')).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
+		await page.getByTestId('sidebar-category-expense').click();
+		await expect(page.getByTestId('sidebar-category-expense')).toHaveAttribute(
+			'aria-expanded',
+			'true'
+		);
 		await page.getByTestId('sidebar-item-expenses').click();
 		await expect(page).toHaveURL('/expenses');
 	});

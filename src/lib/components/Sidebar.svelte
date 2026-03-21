@@ -112,7 +112,7 @@
 		style:box-shadow={(isMobile ? $mobileOpen : sidebarOpen)
 			? '4px 0 16px rgba(0,0,0,0.12)'
 			: 'none'}
-		style:transition="width 300ms ease-in-out, box-shadow 300ms ease-in-out"
+		style:transition="width 300ms ease-in-out, box-shadow 300ms ease-in-out, visibility 300ms"
 	>
 		<div
 			class="w-56 flex-1 space-y-1 overflow-y-auto px-3 py-4"
