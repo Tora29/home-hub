@@ -22,7 +22,12 @@ export default defineConfig(
 			globals: { ...globals.browser, ...globals.node },
 			parserOptions: {
 				projectService: {
-					allowDefaultProject: ['drizzle.config.ts', 'playwright.config.ts', '*.config.js']
+					allowDefaultProject: [
+						'drizzle.config.ts',
+						'playwright.config.ts',
+						'*.config.js',
+						'e2e/*.ts'
+					]
 				}
 			}
 		},
@@ -31,7 +36,9 @@ export default defineConfig(
 			// see: https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
 			'no-undef': 'off',
 			'@typescript-eslint/no-floating-promises': 'error',
-			'@typescript-eslint/consistent-type-imports': 'error'
+			'@typescript-eslint/consistent-type-imports': 'error',
+			// 通常の <a href> や goto() に対して誤検知するため無効化
+			'svelte/no-navigation-without-resolve': 'off'
 		}
 	},
 	{

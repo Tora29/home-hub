@@ -15,11 +15,11 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import Header from '$lib/components/Header.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	let { children } = $props();
 
-	let showNav = $derived(!$page.url.pathname.startsWith('/login'));
+	let showNav = $derived(!page.url.pathname.startsWith('/login'));
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -27,9 +27,9 @@
 {#if showNav}
 	<div class="flex h-screen flex-col bg-bg">
 		<Header />
-		<div class="flex flex-1 overflow-hidden">
+		<div class="relative flex-1 overflow-hidden">
 			<Sidebar />
-			<main class="flex-1 overflow-y-auto p-6">
+			<main class="h-full overflow-y-auto p-6">
 				{@render children()}
 			</main>
 		</div>

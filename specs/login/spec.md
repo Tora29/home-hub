@@ -38,16 +38,16 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, 'メールアドレスは必須です')
-    .max(254, '254文字以内で入力してください')
-    .email('正しいメールアドレスを入力してください'),
-  password: z
-    .string()
-    .min(1, 'パスワードは必須です')
-    .min(8, '8文字以上で入力してください')
-    .max(128, '128文字以内で入力してください')
+	email: z
+		.string()
+		.min(1, 'メールアドレスは必須です')
+		.max(254, '254文字以内で入力してください')
+		.email('正しいメールアドレスを入力してください'),
+	password: z
+		.string()
+		.min(1, 'パスワードは必須です')
+		.min(8, '8文字以上で入力してください')
+		.max(128, '128文字以内で入力してください')
 });
 
 export type Login = z.infer<typeof loginSchema>;
@@ -82,16 +82,16 @@ export type Login = z.infer<typeof loginSchema>;
 
 ## data-testid
 
-| testid                   | 要素種別    | 説明                               |
-| ------------------------ | ----------- | ---------------------------------- |
-| `login-form`             | `<form>`    | ログインフォーム全体               |
-| `login-email-input`      | `<input>`   | メールアドレス入力フィールド       |
-| `login-password-input`   | `<input>`   | パスワード入力フィールド           |
-| `login-password-toggle`  | `<button>`  | パスワード表示切替ボタン           |
-| `login-submit-button`    | `<button>`  | ログインボタン                     |
-| `login-email-error`      | `<p>`       | メールアドレスフィールドエラー     |
-| `login-password-error`   | `<p>`       | パスワードフィールドエラー         |
-| `login-auth-error`       | `<p>`       | 認証失敗エラー（フォーム全体）     |
+| testid                  | 要素種別   | 説明                           |
+| ----------------------- | ---------- | ------------------------------ |
+| `login-form`            | `<form>`   | ログインフォーム全体           |
+| `login-email-input`     | `<input>`  | メールアドレス入力フィールド   |
+| `login-password-input`  | `<input>`  | パスワード入力フィールド       |
+| `login-password-toggle` | `<button>` | パスワード表示切替ボタン       |
+| `login-submit-button`   | `<button>` | ログインボタン                 |
+| `login-email-error`     | `<p>`      | メールアドレスフィールドエラー |
+| `login-password-error`  | `<p>`      | パスワードフィールドエラー     |
+| `login-auth-error`      | `<p>`      | 認証失敗エラー（フォーム全体） |
 
 ## Non-Functional Requirements
 

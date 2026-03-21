@@ -16,6 +16,7 @@
 - AC-001: メニュー項目をクリックすると対応するページへ遷移する
 - AC-002: カテゴリ見出しをクリックすると配下のメニューが開閉する
 - AC-003: サイドバー開閉ボタンをクリックすると、サイドバー全体が表示/非表示に切り替わる
+- AC-007: サイドバー開閉状態が localStorage に保存され、ページリロード後も維持される
 - AC-004: 現在表示中のページに対応するメニュー項目がアクティブ状態（アンダーライン）で表示される
 - AC-005: モバイル幅（`< md`）ではサイドバーはデフォルト非表示で、ハンバーガーボタンから開くことができる
 - AC-006: デスクトップ幅（`>= md`）ではサイドバーはデフォルト表示される
@@ -51,7 +52,8 @@
 
 - メニュー項目クリック: SvelteKit の `<a href>` でページ遷移（ソフトナビゲーション）
 - カテゴリクリック: 該当カテゴリの `open` 状態をトグル（Svelte `$state`）
-- サイドバー開閉ボタンクリック: サイドバーの `open` 状態をトグル（Svelte `$state`）
+- サイドバー開閉ボタンクリック: サイドバーの `open` 状態をトグル（Svelte `$state`）し、`localStorage['sidebar-open']` に保存する
+- ページ初期化時: `localStorage['sidebar-open']` を読み取り、開閉状態を復元する
 - モバイルのハンバーガーボタンクリック: オーバーレイとともにサイドバーを表示
 - モバイルのオーバーレイクリック: サイドバーを閉じる
 - ページ遷移検知: `$page.url.pathname` を参照し、一致する項目をアクティブ状態に設定
@@ -62,17 +64,30 @@
 
 ## data-testid
 
-| testid                          | 要素種別    | 説明                             |
-| ------------------------------- | ----------- | -------------------------------- |
-| `sidebar`                       | `<nav>`     | サイドバー全体                   |
-| `sidebar-toggle`                | `<button>`  | デスクトップ用サイドバー開閉ボタン |
-| `sidebar-hamburger`             | `<button>`  | モバイル用ハンバーガーボタン     |
-| `sidebar-overlay`               | `<div>`     | モバイル用オーバーレイ           |
-| `sidebar-category-meal`         | `<button>`  | 献立系カテゴリ見出し             |
-| `sidebar-category-expense`      | `<button>`  | 収支系カテゴリ見出し             |
-| `sidebar-item-recipes`          | `<a>`       | レシピ一覧メニュー項目           |
-| `sidebar-item-recipes-tags`     | `<a>`       | タグメニュー項目                 |
-| `sidebar-item-expenses`         | `<a>`       | 家計簿メニュー項目               |
+| testid                      | 要素種別   | 説明                               |
+| --------------------------- | ---------- | ---------------------------------- |
+| `sidebar`                   | `<nav>`    | サイドバー全体                     |
+| `sidebar-toggle`            | `<button>` | デスクトップ用サイドバー開閉ボタン |
+| `sidebar-hamburger`         | `<button>` | モバイル用ハンバーガーボタン       |
+| `sidebar-overlay`           | `<div>`    | モバイル用オーバーレイ             |
+| `sidebar-category-meal`     | `<button>` | 献立系カテゴリ見出し               |
+| `sidebar-category-expense`  | `<button>` | 収支系カテゴリ見出し               |
+| `sidebar-item-recipes`      | `<a>`      | レシピ一覧メニュー項目             |
+| `sidebar-item-recipes-tags` | `<a>`      | タグメニュー項目                   |
+| `sidebar-item-expenses`     | `<a>`      | 家計簿メニュー項目                 |
+
+## テスト戦略
+
+| AC     | 種別 | 対象ファイル             | 備考                                                                   |
+| ------ | ---- | ------------------------ | ---------------------------------------------------------------------- |
+| AC-001 | E2E  | `e2e/sidebar.e2e.ts`     | `<a href>` によるナビゲーションはブラウザ全体が必要                    |
+| AC-002 | Unit | `Sidebar.svelte.test.ts` | カテゴリ開閉のトグル検証                                               |
+| AC-003 | Unit | `Sidebar.svelte.test.ts` | サイドバー開閉ボタンの検証                                             |
+| AC-007 | Unit | `Sidebar.svelte.test.ts` | localStorage への書き込み検証（toggle後の値確認）                      |
+| AC-007 | E2E  | `e2e/sidebar.e2e.ts`     | リロード後の状態復元はブラウザ全体が必要                               |
+| AC-004 | Unit | `Sidebar.svelte.test.ts` | `aria-current` 属性の検証                                              |
+| AC-005 | E2E  | `e2e/sidebar.e2e.ts`     | モバイルビューポートでのデフォルト表示状態はビューポート制御が必要     |
+| AC-006 | E2E  | `e2e/sidebar.e2e.ts`     | デスクトップビューポートでのデフォルト表示状態はビューポート制御が必要 |
 
 ## Non-Functional Requirements
 
