@@ -23,10 +23,20 @@
 		Menu
 	} from '@lucide/svelte';
 
-	let sidebarOpen = $state(true);
+	const STORAGE_KEY = 'sidebar-open';
+
+	let sidebarOpen = $state(
+		typeof localStorage !== 'undefined'
+			? (localStorage.getItem(STORAGE_KEY) ?? 'true') !== 'false'
+			: true
+	);
 	let mobileOpen = $state(false);
 	let mealOpen = $state(true);
 	let expenseOpen = $state(true);
+
+	$effect(() => {
+		localStorage.setItem(STORAGE_KEY, String(sidebarOpen));
+	});
 
 	const currentPath = $derived(page.url.pathname);
 
