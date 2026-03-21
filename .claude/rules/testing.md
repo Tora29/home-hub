@@ -53,9 +53,9 @@ src/routes/{feature}/
   +server.ts
   +server.test.ts                      ← API ハンドラ Unit テスト
   +page.svelte
-  +page.svelte.test.ts                 ← 画面コンポーネント Unit テスト
+  page.svelte.test.ts                  ← 画面コンポーネント Unit テスト（`+` は SvelteKit 予約のため省略）
   +page.server.ts
-  +page.server.integration.test.ts     ← load 関数 Integration テスト
+  page.server.integration.test.ts      ← load 関数 Integration テスト（`+` は SvelteKit 予約のため省略）
   service.ts
   service.integration.test.ts          ← サービス層 Integration テスト
   components/

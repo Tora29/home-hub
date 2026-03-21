@@ -16,8 +16,9 @@ import type { Handle } from '@sveltejs/kit';
 const PUBLIC_PATHS = ['/api/auth', '/login'];
 
 export const handle: Handle = async ({ event, resolve }) => {
-	const { DB, BETTER_AUTH_SECRET, BETTER_AUTH_URL } = event.platform!.env;
-	const auth = createAuth(DB, BETTER_AUTH_SECRET, BETTER_AUTH_URL);
+	const { DB, BETTER_AUTH_SECRET } = event.platform!.env;
+	const baseURL = `${event.url.protocol}//${event.url.host}`;
+	const auth = createAuth(DB, BETTER_AUTH_SECRET, baseURL);
 
 	// Better Auth が /api/auth/* を自前で処理するので先に渡す
 	if (event.url.pathname.startsWith('/api/auth')) {

@@ -14,6 +14,7 @@ spec.md を主入力として、フロントエンド実装コードを生成す
 - `.claude/references/ui-patterns.md` が存在すること
 - `.claude/references/design-system.md` が存在すること
 - `.claude/rules/` に schemas, data-testid, security が定義されていること
+- `/scaffold-test-unit` が実行済みであること（テストが存在すること）
 - （推奨）BE 実装が完了していること（API エンドポイントが利用可能）
 
 ## 起動時の挙動
@@ -44,14 +45,14 @@ options:
 
 以下の rules を Read ツールで読み込み、コード生成の規約とする:
 
-| rule                                      | 参照するもの                                             |
-| ----------------------------------------- | -------------------------------------------------------- |
-| `.claude/references/ui-patterns.md`       | コンポーネント分割、状態管理、命名規則、アクセシビリティ |
-| `.claude/references/design-system.md`     | カラートークン、フォント、形状・レイアウト、アイコン規約 |
-| `.claude/rules/schemas.md`                | FE バリデーション方針、スキーマ配置                      |
-| `.claude/rules/data-testid.md`            | テスト用セレクタの命名規則                               |
-| `.claude/rules/security.md`               | XSS 対策、入力検証                                       |
-| `.claude/rules/file-headers.md`           | ファイルヘッダーコメントのテンプレートと記述ルール       |
+| rule                                  | 参照するもの                                             |
+| ------------------------------------- | -------------------------------------------------------- |
+| `.claude/references/ui-patterns.md`   | コンポーネント分割、状態管理、命名規則、アクセシビリティ |
+| `.claude/references/design-system.md` | カラートークン、フォント、形状・レイアウト、アイコン規約 |
+| `.claude/rules/schemas.md`            | FE バリデーション方針、スキーマ配置                      |
+| `.claude/rules/data-testid.md`        | テスト用セレクタの命名規則                               |
+| `.claude/rules/security.md`           | XSS 対策、入力検証                                       |
+| `.claude/rules/file-headers.md`       | ファイルヘッダーコメントのテンプレートと記述ルール       |
 
 ### Step 3: コード生成
 
@@ -78,6 +79,20 @@ spec.md の画面仕様・UI Requirements に基づき、infra-spec.md のディ
 - [ ] ディレクトリ構成が infra-spec.md に従っている
 - [ ] 全生成ファイルに file-headers rule に従ったヘッダーコメントが付与されている
 - [ ] **テストファイルを一切編集・削除していない**
+
+### Step 5: 次のステップ案内
+
+チェックリスト完了後、以下をユーザーに表示する:
+
+```
+FE 実装が完了しました。
+次のステップ:
+1. `/test-and-fix` を実行してテストを GREEN にしてください。
+2. GREEN になったら `/spec-coverage` でドリフトを確認してください。
+3. ドリフトがあれば `/spec-sync` で解消してください。
+4. `/verify-app` でアプリの動作を確認してください。
+5. 問題なければ `/commit-push-pr` でコミット・PR を作成してください。
+```
 
 ## 生成ルール
 

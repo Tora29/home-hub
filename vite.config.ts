@@ -5,6 +5,9 @@ import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
+	optimizeDeps: {
+		exclude: ['@lucide/svelte']
+	},
 	test: {
 		expect: { requireAssertions: true },
 		coverage: {
@@ -35,7 +38,8 @@ export default defineConfig({
 					browser: {
 						enabled: true,
 						provider: playwright(),
-						instances: [{ browser: 'chromium', headless: true }]
+						instances: [{ browser: 'chromium', headless: true }],
+						viewport: { width: 1280, height: 800 }
 					},
 					include: ['src/**/*.svelte.test.{js,ts}'],
 					exclude: ['src/lib/server/**']

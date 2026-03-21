@@ -24,20 +24,16 @@
 	let password = $state('');
 	let showPassword = $state(false);
 	let isLoading = $state(false);
-	let emailError = $state('');
-	let passwordError = $state('');
-	let authError = $state('');
+	let errors = $state({ email: '', password: '', auth: '' });
 
 	async function handleSubmit() {
-		emailError = '';
-		passwordError = '';
-		authError = '';
+		errors = { email: '', password: '', auth: '' };
 
 		const result = loginSchema.safeParse({ email, password });
 		if (!result.success) {
 			for (const issue of result.error.issues) {
-				if (issue.path[0] === 'email' && !emailError) emailError = issue.message;
-				if (issue.path[0] === 'password' && !passwordError) passwordError = issue.message;
+				const field = issue.path[0] as 'email' | 'password';
+				if (!errors[field]) errors[field] = issue.message;
 			}
 			return;
 		}
@@ -50,7 +46,7 @@
 			});
 
 			if (error) {
-				authError = 'メールアドレスまたはパスワードが正しくありません';
+				errors.auth = 'メールアドレスまたはパスワードが正しくありません';
 				return;
 			}
 
@@ -62,46 +58,47 @@
 </script>
 
 <div
-	class="bg-bg-grouped min-h-screen flex items-center justify-center p-4"
+	class="flex min-h-screen items-center justify-center bg-bg-grouped p-4"
 	style="background-image: radial-gradient(circle, rgba(180,155,135,.2) 1px, transparent 1px); background-size: 20px 20px;"
 >
-	<div class="bg-bg-card rounded-3xl p-8 shadow-md w-full max-w-sm">
-		<div class="text-center mb-8">
+	<div class="w-full max-w-sm rounded-3xl bg-bg-card p-8 shadow-md">
+		<div class="mb-8 text-center">
 			<h1 class="text-2xl font-medium text-label">Home Hub</h1>
-			<p class="text-secondary text-sm mt-1">暮らしをふたりで</p>
+			<p class="mt-1 text-sm text-secondary">暮らしをふたりで</p>
 		</div>
 
 		<form
 			data-testid="login-form"
+			novalidate
 			onsubmit={(e) => {
 				e.preventDefault();
-				handleSubmit();
+				void handleSubmit();
 			}}
 			class="flex flex-col gap-5"
 		>
-			{#if authError}
-				<p data-testid="login-auth-error" class="text-destructive text-sm text-center">
-					{authError}
+			{#if errors.auth}
+				<p data-testid="login-auth-error" class="text-center text-sm text-destructive">
+					{errors.auth}
 				</p>
 			{/if}
 
 			<div class="flex flex-col gap-1">
-				<label for="login-email" class="text-label text-sm font-medium">メールアドレス</label>
+				<label for="login-email" class="text-sm font-medium text-label">メールアドレス</label>
 				<input
 					id="login-email"
 					type="email"
 					data-testid="login-email-input"
 					bind:value={email}
 					autocomplete="email"
-					class="border border-separator rounded-2xl px-4 py-3 text-label bg-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+					class="rounded-2xl border border-separator bg-bg px-4 py-3 text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
 				/>
-				{#if emailError}
-					<p data-testid="login-email-error" class="text-destructive text-xs">{emailError}</p>
+				{#if errors.email}
+					<p data-testid="login-email-error" class="text-xs text-destructive">{errors.email}</p>
 				{/if}
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label for="login-password" class="text-label text-sm font-medium">パスワード</label>
+				<label for="login-password" class="text-sm font-medium text-label">パスワード</label>
 				<div class="relative">
 					<input
 						id="login-password"
@@ -109,14 +106,14 @@
 						data-testid="login-password-input"
 						bind:value={password}
 						autocomplete="current-password"
-						class="w-full border border-separator rounded-2xl px-4 py-3 pr-12 text-label bg-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+						class="w-full rounded-2xl border border-separator bg-bg px-4 py-3 pr-12 text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
 					/>
 					<button
 						type="button"
 						data-testid="login-password-toggle"
 						onclick={() => (showPassword = !showPassword)}
 						aria-label={showPassword ? 'パスワードを隠す' : 'パスワードを表示する'}
-						class="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-label rounded-lg p-1 focus-visible:ring-2 focus-visible:ring-accent"
+						class="absolute top-1/2 right-3 -translate-y-1/2 rounded-lg p-1 text-secondary hover:text-label focus-visible:ring-2 focus-visible:ring-accent"
 					>
 						{#if showPassword}
 							<EyeOff size={18} />
@@ -125,8 +122,10 @@
 						{/if}
 					</button>
 				</div>
-				{#if passwordError}
-					<p data-testid="login-password-error" class="text-destructive text-xs">{passwordError}</p>
+				{#if errors.password}
+					<p data-testid="login-password-error" class="text-xs text-destructive">
+						{errors.password}
+					</p>
 				{/if}
 			</div>
 
@@ -135,7 +134,7 @@
 				data-testid="login-submit-button"
 				disabled={isLoading}
 				aria-busy={isLoading}
-				class="bg-accent text-white rounded-2xl px-6 py-3 font-medium w-full shadow-sm hover:opacity-90 transition-opacity disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+				class="w-full rounded-2xl bg-accent px-6 py-3 font-medium text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-60"
 			>
 				{isLoading ? 'ログイン中...' : 'ログイン'}
 			</button>

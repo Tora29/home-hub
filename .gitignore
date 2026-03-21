@@ -28,5 +28,9 @@ drizzle/meta/
 # Better Auth local dev
 .dev.vars
 
+# Playwright test results
+test-results/
+playwright-report/
+
 # plan
 plan.md

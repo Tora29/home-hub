@@ -80,13 +80,13 @@ scaffold-fe スキルがコード生成時に参照する。
 ### カード
 
 ```html
-<div class="bg-bg-card rounded-3xl p-6 shadow-md"></div>
+<div class="rounded-3xl bg-bg-card p-6 shadow-md"></div>
 ```
 
 ### アクセントボタン
 
 ```html
-<button class="bg-accent rounded-2xl px-6 py-3 font-medium text-white shadow-sm"></button>
+<button class="rounded-2xl bg-accent px-6 py-3 font-medium text-white shadow-sm"></button>
 ```
 
 ## 避けること
