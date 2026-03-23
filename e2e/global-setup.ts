@@ -14,7 +14,7 @@ const BASE_URL = 'http://localhost:4173';
 export default async function globalSetup() {
 	const res = await fetch(`${BASE_URL}/api/auth/sign-up/email`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
+		headers: { 'Content-Type': 'application/json', Origin: BASE_URL },
 		body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, name: 'Test User' })
 	});
 
