@@ -18,6 +18,7 @@
  * @schema ../schema.ts
  */
 import { json } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 import { AppError } from '$lib/server/errors';
 import { extractSchema } from '../schema';
@@ -60,15 +61,27 @@ The JSON must follow this exact structure:
 
 Return null for any field you cannot extract. Extract only recipe-related content, ignoring advertisements and navigation text.`;
 
-		// @ts-expect-error: llama-3.1-8b-instruct-fp8 is a valid CF Workers AI model not yet in type definitions
-		const aiResponse = await platform!.env.AI.run('@cf/meta/llama-3.1-8b-instruct-fp8', {
-			messages: [
-				{ role: 'system', content: systemPrompt },
-				{ role: 'user', content: result.data.text }
-			]
-		});
-
-		const rawText = (aiResponse as { response?: string }).response ?? '{}';
+		let rawText: string;
+		if (dev) {
+			rawText = JSON.stringify({
+				name: 'ダミーレシピ（ローカル開発用）',
+				description: '本番環境では Workers AI が実際のテキストから抽出します。',
+				servings: 2,
+				cookingTimeMinutes: 30,
+				ingredients: [{ name: 'ダミー食材', amount: '適量' }],
+				steps: ['手順1（ダミー）', '手順2（ダミー）']
+			});
+		} else {
+			type AiRunner = { run: (model: string, opts: unknown) => Promise<{ response?: string }> };
+			const ai = platform!.env.AI as unknown as AiRunner;
+			const aiResponse = await ai.run('@cf/meta/llama-3.1-8b-instruct-fp8', {
+				messages: [
+					{ role: 'system', content: systemPrompt },
+					{ role: 'user', content: result.data.text }
+				]
+			});
+			rawText = aiResponse.response ?? '{}';
+		}
 		const cleaned = rawText
 			.replace(/```json\n?/g, '')
 			.replace(/```\n?/g, '')

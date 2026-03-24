@@ -19,6 +19,7 @@
  * @schema ../schema.ts
  */
 import { json } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 import { AppError } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
@@ -67,16 +68,20 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 登録済みレシピ一覧:
 ${recipeContext || 'レシピが登録されていません。'}`;
 
-		// @ts-expect-error: llama-3.1-8b-instruct-fp8 is a valid CF Workers AI model not yet in type definitions
-		const aiResponse = await platform!.env.AI.run('@cf/meta/llama-3.1-8b-instruct-fp8', {
-			messages: [
-				{ role: 'system', content: systemPrompt },
-				{ role: 'user', content: result.data.question }
-			]
-		});
-
-		const answer =
-			(aiResponse as { response?: string }).response ?? 'AI からの回答を取得できませんでした。';
+		let answer: string;
+		if (dev) {
+			answer = `【ローカル開発用ダミー回答】\n「${result.data.question}」についての回答です。本番環境では Workers AI が実際の回答を生成します。`;
+		} else {
+			type AiRunner = { run: (model: string, opts: unknown) => Promise<{ response?: string }> };
+			const ai = platform!.env.AI as unknown as AiRunner;
+			const aiResponse = await ai.run('@cf/meta/llama-3.1-8b-instruct-fp8', {
+				messages: [
+					{ role: 'system', content: systemPrompt },
+					{ role: 'user', content: result.data.question }
+				]
+			});
+			answer = aiResponse.response ?? 'AI からの回答を取得できませんでした。';
+		}
 
 		return json({ answer });
 	} catch (e) {
