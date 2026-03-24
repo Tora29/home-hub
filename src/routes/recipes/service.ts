@@ -21,7 +21,7 @@
  *
  * @test ./service.integration.test.ts
  */
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql, type SQL } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { AppError } from '$lib/server/errors';
 import { recipe } from '$lib/server/tables';
@@ -87,7 +87,7 @@ export async function getRecipes(
 		.from(recipe)
 		.where(where);
 
-	let orderBy: Parameters<ReturnType<typeof db.select>['orderBy']>;
+	let orderBy: SQL<unknown>[];
 	switch (sort) {
 		case 'lastCookedAt_asc':
 			orderBy = [
@@ -111,7 +111,6 @@ export async function getRecipes(
 		.select()
 		.from(recipe)
 		.where(where)
-		// @ts-expect-error spread of dynamic orderBy tuple
 		.orderBy(...orderBy)
 		.limit(limit)
 		.offset(offset);
@@ -129,11 +128,7 @@ export async function getRecipes(
  * @ac AC-006
  */
 export async function getAllRecipes(db: Db, userId: string): Promise<Recipe[]> {
-	const rows = await db
-		.select()
-		.from(recipe)
-		.where(eq(recipe.userId, userId))
-		.limit(100);
+	const rows = await db.select().from(recipe).where(eq(recipe.userId, userId)).limit(100);
 	return rows.map(parseRow);
 }
 
@@ -156,11 +151,7 @@ export async function getRecipeById(db: Db, userId: string, id: string): Promise
  * レシピを新規作成する。
  * @ac AC-002
  */
-export async function createRecipe(
-	db: Db,
-	userId: string,
-	data: RecipeCreate
-): Promise<Recipe> {
+export async function createRecipe(db: Db, userId: string, data: RecipeCreate): Promise<Recipe> {
 	const id = crypto.randomUUID();
 	const now = new Date();
 

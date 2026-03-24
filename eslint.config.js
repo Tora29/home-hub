@@ -25,9 +25,11 @@ export default defineConfig(
 					allowDefaultProject: [
 						'drizzle.config.ts',
 						'playwright.config.ts',
+						'vitest.integration.config.ts',
 						'*.config.js',
 						'e2e/*.ts'
-					]
+					],
+					maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 15
 				}
 			}
 		},
@@ -35,6 +37,10 @@ export default defineConfig(
 			// typescript-eslint strongly recommend that you do not use the no-undef lint rule on TypeScript projects.
 			// see: https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
 			'no-undef': 'off',
+			'@typescript-eslint/no-unused-vars': [
+				'error',
+				{ varsIgnorePattern: '^_', argsIgnorePattern: '^_' }
+			],
 			'@typescript-eslint/no-floating-promises': 'error',
 			'@typescript-eslint/consistent-type-imports': 'error',
 			// 通常の <a href> や goto() に対して誤検知するため無効化

@@ -18,7 +18,9 @@ import { getRecipes } from './service';
 export const load: PageServerLoad = async ({ url, platform, locals }) => {
 	const rawQuery = Object.fromEntries(url.searchParams.entries());
 	const queryResult = listRecipesQuerySchema.safeParse(rawQuery);
-	const query = queryResult.success ? queryResult.data : { page: 1, limit: 20, sort: 'createdAt_desc' as const };
+	const query = queryResult.success
+		? queryResult.data
+		: { page: 1, limit: 20, sort: 'createdAt_desc' as const };
 
 	const db = createDb(platform!.env.DB);
 	return await getRecipes(db, locals.user!.id, query);

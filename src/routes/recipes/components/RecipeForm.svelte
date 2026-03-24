@@ -18,6 +18,7 @@
   - onCancel: () => void - キャンセル時コールバック
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { LoaderCircle, Plus, Trash2, X } from '@lucide/svelte';
 
 	interface Ingredient {
@@ -62,29 +63,29 @@
 		return local.toISOString().slice(0, 16);
 	}
 
-	// Tab state
-	let activeTab = $state<'ai' | 'manual'>(mode === 'edit' ? 'manual' : 'ai');
+	// Tab state - untrack props to intentionally capture only the initial value
+	let activeTab = $state<'ai' | 'manual'>(untrack(() => (mode === 'edit' ? 'manual' : 'ai')));
 
 	// AI extract state
 	let extractText = $state('');
 	let isExtracting = $state(false);
 
-	// Form fields
-	let name = $state(recipe?.name ?? '');
-	let description = $state(recipe?.description ?? '');
-	let imageUrl = $state(recipe?.imageUrl ?? '');
-	let sourceUrl = $state(recipe?.sourceUrl ?? '');
-	let servingsStr = $state(recipe?.servings?.toString() ?? '');
-	let cookingTimeStr = $state(recipe?.cookingTimeMinutes?.toString() ?? '');
-	let difficulty = $state(recipe?.difficulty ?? '');
-	let rating = $state(recipe?.rating ?? '');
-	let cookedCountStr = $state(recipe?.cookedCount?.toString() ?? '0');
-	let lastCookedAtStr = $state(toDatetimeLocal(recipe?.lastCookedAt));
+	// Form fields - untrack props to intentionally capture only the initial value
+	let name = $state(untrack(() => recipe?.name ?? ''));
+	let description = $state(untrack(() => recipe?.description ?? ''));
+	let imageUrl = $state(untrack(() => recipe?.imageUrl ?? ''));
+	let sourceUrl = $state(untrack(() => recipe?.sourceUrl ?? ''));
+	let servingsStr = $state(untrack(() => recipe?.servings?.toString() ?? ''));
+	let cookingTimeStr = $state(untrack(() => recipe?.cookingTimeMinutes?.toString() ?? ''));
+	let difficulty = $state(untrack(() => recipe?.difficulty ?? ''));
+	let rating = $state(untrack(() => recipe?.rating ?? ''));
+	let cookedCountStr = $state(untrack(() => recipe?.cookedCount?.toString() ?? '0'));
+	let lastCookedAtStr = $state(untrack(() => toDatetimeLocal(recipe?.lastCookedAt)));
 	let ingredients = $state<{ name: string; amount: string }[]>(
-		recipe?.ingredients?.map((i) => ({ name: i.name, amount: i.amount ?? '' })) ?? []
+		untrack(() => recipe?.ingredients?.map((i) => ({ name: i.name, amount: i.amount ?? '' })) ?? [])
 	);
-	let steps = $state<string[]>(recipe?.steps ?? []);
-	let memo = $state(recipe?.memo ?? '');
+	let steps = $state<string[]>(untrack(() => recipe?.steps ?? []));
+	let memo = $state(untrack(() => recipe?.memo ?? ''));
 
 	// Submit state
 	let isSubmitting = $state(false);
@@ -464,7 +465,7 @@
 						追加
 					</button>
 				</div>
-				{#each ingredients as _, i}
+				{#each ingredients as _ingredient, i (i)}
 					<div data-testid="recipes-ingredient-item" class="flex items-center gap-2">
 						<input
 							type="text"
@@ -507,7 +508,7 @@
 						追加
 					</button>
 				</div>
-				{#each steps as _, i}
+				{#each steps as _step, i (i)}
 					<div data-testid="recipes-step-item" class="flex items-start gap-2">
 						<span
 							class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-bg-secondary text-xs font-medium text-secondary"

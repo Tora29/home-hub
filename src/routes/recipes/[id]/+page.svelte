@@ -143,13 +143,17 @@
 			</span>
 		{/if}
 		{#if data.recipe.servings}
-			<span class="flex items-center gap-1 rounded-full bg-bg-secondary px-3 py-1 text-sm text-secondary">
+			<span
+				class="flex items-center gap-1 rounded-full bg-bg-secondary px-3 py-1 text-sm text-secondary"
+			>
 				<Users size={14} />
 				{data.recipe.servings} 人前
 			</span>
 		{/if}
 		{#if data.recipe.cookingTimeMinutes}
-			<span class="flex items-center gap-1 rounded-full bg-bg-secondary px-3 py-1 text-sm text-secondary">
+			<span
+				class="flex items-center gap-1 rounded-full bg-bg-secondary px-3 py-1 text-sm text-secondary"
+			>
 				<Clock size={14} />
 				{data.recipe.cookingTimeMinutes} 分
 			</span>
@@ -169,7 +173,7 @@
 				材料
 			</h2>
 			<ul class="flex flex-col gap-2">
-				{#each data.recipe.ingredients as ingredient}
+				{#each data.recipe.ingredients as ingredient (ingredient.name)}
 					<li class="flex items-baseline justify-between text-sm">
 						<span class="text-label">{ingredient.name}</span>
 						{#if ingredient.amount}
@@ -186,7 +190,7 @@
 		<section class="mb-6">
 			<h2 class="mb-4 font-medium text-label">手順</h2>
 			<ol class="flex flex-col gap-4">
-				{#each data.recipe.steps as step, i}
+				{#each data.recipe.steps as step, i (i)}
 					<li class="flex gap-4">
 						<span
 							class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-medium text-accent"
@@ -226,25 +230,24 @@
 	<!-- Stats -->
 	<div class="flex gap-6 rounded-3xl bg-bg-secondary p-4 text-sm text-secondary">
 		<span>作った回数: <strong class="text-label">{data.recipe.cookedCount} 回</strong></span>
-		<span>最終調理日: <strong class="text-label">{formatDate(data.recipe.lastCookedAt)}</strong></span>
+		<span
+			>最終調理日: <strong class="text-label">{formatDate(data.recipe.lastCookedAt)}</strong></span
+		>
 	</div>
 </div>
 
 <!-- Edit dialog -->
 {#if showEditDialog}
-	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div
 		role="dialog"
 		aria-modal="true"
 		aria-label="レシピ編集"
+		tabindex={-1}
 		class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8"
 		onclick={(e) => e.target === e.currentTarget && (showEditDialog = false)}
+		onkeydown={(e) => e.key === 'Escape' && (showEditDialog = false)}
 	>
-		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-		<div
-			class="w-full max-w-2xl rounded-3xl bg-bg-card shadow-md"
-			onclick={(e) => e.stopPropagation()}
-		>
+		<div class="w-full max-w-2xl rounded-3xl bg-bg-card shadow-md">
 			<RecipeForm
 				mode="edit"
 				recipe={data.recipe}

@@ -82,7 +82,7 @@
 				data-testid="recipes-sort-select"
 				value={currentSort}
 				onchange={handleSortChange}
-				class="appearance-none rounded-2xl border border-separator bg-bg py-2 pl-4 pr-9 text-sm text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+				class="appearance-none rounded-2xl border border-separator bg-bg py-2 pr-9 pl-4 text-sm text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
 			>
 				<option value="createdAt_desc">登録順</option>
 				<option value="lastCookedAt_asc">しばらく作ってない順</option>
@@ -91,7 +91,7 @@
 			</select>
 			<ChevronDown
 				size={16}
-				class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-secondary"
+				class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-secondary"
 			/>
 		</div>
 
@@ -165,19 +165,16 @@
 
 <!-- Create dialog -->
 {#if showCreateDialog}
-	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div
 		role="dialog"
 		aria-modal="true"
 		aria-label="レシピ登録"
+		tabindex={-1}
 		class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8"
 		onclick={(e) => e.target === e.currentTarget && (showCreateDialog = false)}
+		onkeydown={(e) => e.key === 'Escape' && (showCreateDialog = false)}
 	>
-		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-		<div
-			class="w-full max-w-2xl rounded-3xl bg-bg-card shadow-md"
-			onclick={(e) => e.stopPropagation()}
-		>
+		<div class="w-full max-w-2xl rounded-3xl bg-bg-card shadow-md">
 			<RecipeForm
 				mode="create"
 				onSuccess={handleCreateSuccess}

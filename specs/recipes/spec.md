@@ -19,14 +19,14 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 > 型定義・スキーマ・ステータスコード・エラーレスポンスは openapi.yaml が Single Source of Truth。
 
-| メソッド | パス | 説明 |
-|---------|------|------|
-| GET | `/recipes` | 一覧取得（SSR load 兼用） |
-| POST | `/recipes` | 登録 |
-| PUT | `/recipes/[id]` | 更新 |
-| DELETE | `/recipes/[id]` | 削除 |
-| POST | `/recipes/ask` | AI 献立相談 |
-| POST | `/recipes/extract` | AI レシピ抽出（テキスト → 構造化データ） |
+| メソッド | パス               | 説明                                     |
+| -------- | ------------------ | ---------------------------------------- |
+| GET      | `/recipes`         | 一覧取得（SSR load 兼用）                |
+| POST     | `/recipes`         | 登録                                     |
+| PUT      | `/recipes/[id]`    | 更新                                     |
+| DELETE   | `/recipes/[id]`    | 削除                                     |
+| POST     | `/recipes/ask`     | AI 献立相談                              |
+| POST     | `/recipes/extract` | AI レシピ抽出（テキスト → 構造化データ） |
 
 ## Acceptance Criteria
 
@@ -123,12 +123,14 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 登録フォームは **AI 解析タブ** と **手動入力タブ** の 2 タブ構成とする。
 
 **AI 解析タブ（デフォルト）**:
+
 - sourceUrl 入力欄（`recipes-source-url-input`、任意）: コピー元サイトの URL。解析後に手動入力タブへ引き継ぐ
 - テキストエリア（`recipes-extract-input`）: サイトから丸ごとコピペするための大きめの入力欄
 - 「AI で解析」ボタン（`recipes-extract-button`）: `POST /recipes/extract` を呼び出し、結果を手動入力タブのフォームに反映して手動入力タブへ切り替える
 - ローディング表示: 解析中はボタンを無効化しスピナーを表示
 
 **手動入力タブ（AI 解析後の確認・修正にも使用）**:
+
 - name（必須）、description、imageUrl、sourceUrl
 - servings（数値）、cookingTimeMinutes（数値）
 - difficulty（select: 簡単 / 普通 / 難しい）
@@ -147,8 +149,14 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - `POST /recipes/extract` に `{ text }` を送信
 - Workers AI（llama-3.1）が以下を JSON で返す:
   ```json
-  { "name": "...", "description": "...", "servings": 2, "cookingTimeMinutes": 30,
-    "ingredients": [{"name": "...", "amount": "..."}], "steps": ["..."] }
+  {
+  	"name": "...",
+  	"description": "...",
+  	"servings": 2,
+  	"cookingTimeMinutes": 30,
+  	"ingredients": [{ "name": "...", "amount": "..." }],
+  	"steps": ["..."]
+  }
   ```
 - 抽出できなかったフィールドは `null`。ユーザーが手動で補完する
 
@@ -170,62 +178,62 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 ## data-testid
 
-| testid | 要素種別 | 説明 |
-|--------|---------|------|
-| `recipes-sort-select` | `<select>` | ソート選択 |
-| `recipes-extract-input` | `<textarea>` | AI 解析用テキスト貼り付け欄 |
-| `recipes-extract-button` | `<button>` | AI で解析ボタン |
-| `recipes-list` | `<ul>` | レシピカード一覧 |
-| `recipes-item` | `<li>` | レシピカード |
-| `recipes-create-button` | `<button>` | 登録ボタン |
-| `recipes-empty` | `<p>` | 0 件時の空状態メッセージ |
-| `recipes-form` | `<form>` | 登録・編集フォーム |
-| `recipes-name-input` | `<input>` | レシピ名入力 |
-| `recipes-description-input` | `<textarea>` | 概要入力 |
-| `recipes-image-url-input` | `<input>` | 画像 URL 入力 |
-| `recipes-source-url-input` | `<input>` | 参照元 URL 入力 |
-| `recipes-servings-input` | `<input>` | 何人前入力 |
-| `recipes-cooking-time-input` | `<input>` | 調理時間入力 |
-| `recipes-difficulty-select` | `<select>` | 難易度選択 |
-| `recipes-rating-select` | `<select>` | 評価選択 |
-| `recipes-cooked-count-input` | `<input>` | 作った回数入力 |
-| `recipes-last-cooked-input` | `<input>` | 最終調理日入力 |
-| `recipes-memo-input` | `<textarea>` | メモ入力 |
-| `recipes-ingredient-item` | `<div>` | 材料行 |
-| `recipes-ingredient-name-input` | `<input>` | 材料名入力 |
-| `recipes-ingredient-amount-input` | `<input>` | 材料量入力 |
-| `recipes-ingredient-add-button` | `<button>` | 材料追加ボタン |
-| `recipes-ingredient-remove-button` | `<button>` | 材料削除ボタン |
-| `recipes-step-item` | `<div>` | 手順行 |
-| `recipes-step-input` | `<textarea>` | 手順入力 |
-| `recipes-step-add-button` | `<button>` | 手順追加ボタン |
-| `recipes-step-remove-button` | `<button>` | 手順削除ボタン |
-| `recipes-submit-button` | `<button>` | フォーム送信ボタン |
-| `recipes-delete-button` | `<button>` | 削除ボタン |
-| `recipes-delete-dialog` | `<dialog>` | 削除確認ダイアログ |
-| `recipes-delete-confirm-button` | `<button>` | 削除確認ダイアログの確定ボタン |
-| `recipes-name-error` | `<p>` | レシピ名エラーメッセージ |
-| `recipes-ask-input` | `<input>` | AI 相談入力欄 |
-| `recipes-ask-button` | `<button>` | AI 相談送信ボタン |
-| `recipes-ask-answer` | `<div>` | AI 回答表示エリア |
+| testid                             | 要素種別     | 説明                           |
+| ---------------------------------- | ------------ | ------------------------------ |
+| `recipes-sort-select`              | `<select>`   | ソート選択                     |
+| `recipes-extract-input`            | `<textarea>` | AI 解析用テキスト貼り付け欄    |
+| `recipes-extract-button`           | `<button>`   | AI で解析ボタン                |
+| `recipes-list`                     | `<ul>`       | レシピカード一覧               |
+| `recipes-item`                     | `<li>`       | レシピカード                   |
+| `recipes-create-button`            | `<button>`   | 登録ボタン                     |
+| `recipes-empty`                    | `<p>`        | 0 件時の空状態メッセージ       |
+| `recipes-form`                     | `<form>`     | 登録・編集フォーム             |
+| `recipes-name-input`               | `<input>`    | レシピ名入力                   |
+| `recipes-description-input`        | `<textarea>` | 概要入力                       |
+| `recipes-image-url-input`          | `<input>`    | 画像 URL 入力                  |
+| `recipes-source-url-input`         | `<input>`    | 参照元 URL 入力                |
+| `recipes-servings-input`           | `<input>`    | 何人前入力                     |
+| `recipes-cooking-time-input`       | `<input>`    | 調理時間入力                   |
+| `recipes-difficulty-select`        | `<select>`   | 難易度選択                     |
+| `recipes-rating-select`            | `<select>`   | 評価選択                       |
+| `recipes-cooked-count-input`       | `<input>`    | 作った回数入力                 |
+| `recipes-last-cooked-input`        | `<input>`    | 最終調理日入力                 |
+| `recipes-memo-input`               | `<textarea>` | メモ入力                       |
+| `recipes-ingredient-item`          | `<div>`      | 材料行                         |
+| `recipes-ingredient-name-input`    | `<input>`    | 材料名入力                     |
+| `recipes-ingredient-amount-input`  | `<input>`    | 材料量入力                     |
+| `recipes-ingredient-add-button`    | `<button>`   | 材料追加ボタン                 |
+| `recipes-ingredient-remove-button` | `<button>`   | 材料削除ボタン                 |
+| `recipes-step-item`                | `<div>`      | 手順行                         |
+| `recipes-step-input`               | `<textarea>` | 手順入力                       |
+| `recipes-step-add-button`          | `<button>`   | 手順追加ボタン                 |
+| `recipes-step-remove-button`       | `<button>`   | 手順削除ボタン                 |
+| `recipes-submit-button`            | `<button>`   | フォーム送信ボタン             |
+| `recipes-delete-button`            | `<button>`   | 削除ボタン                     |
+| `recipes-delete-dialog`            | `<dialog>`   | 削除確認ダイアログ             |
+| `recipes-delete-confirm-button`    | `<button>`   | 削除確認ダイアログの確定ボタン |
+| `recipes-name-error`               | `<p>`        | レシピ名エラーメッセージ       |
+| `recipes-ask-input`                | `<input>`    | AI 相談入力欄                  |
+| `recipes-ask-button`               | `<button>`   | AI 相談送信ボタン              |
+| `recipes-ask-answer`               | `<div>`      | AI 回答表示エリア              |
 
 ## テスト戦略
 
-| AC | 種別 | 対象ファイル | 備考 |
-|----|------|------------|------|
-| AC-001 | Integration | `service.integration.test.ts` | 実 D1 で一覧取得を検証 |
-| AC-002 | Integration | `service.integration.test.ts` | 実 D1 でレシピ作成を検証 |
-| AC-003 | Integration | `service.integration.test.ts` | 実 D1 で ID 指定取得を検証 |
-| AC-004 | Integration | `service.integration.test.ts` | 実 D1 でレシピ更新を検証 |
-| AC-005 | Integration | `service.integration.test.ts` | 実 D1 でレシピ削除を検証 |
-| AC-006 | E2E | `e2e/recipes.e2e.ts` | Workers AI はブラウザ全体が必要 |
-| AC-011〜013 | E2E | `e2e/recipes.e2e.ts` | Workers AI 抽出はブラウザ全体が必要 |
-| AC-007 | Unit | `RecipeForm.svelte.test.ts` | 動的フォーム行の追加・削除検証 |
-| AC-008〜010 | Integration | `service.integration.test.ts` | 各ソート順を実 D1 で検証 |
-| AC-101〜113 | Unit | `schema.test.ts` | Zod バリデーション検証 |
-| AC-201〜203 | Unit | `schema.test.ts` | Zod 境界値検証 |
-| AC-204 | E2E | `e2e/recipes.e2e.ts` | 空状態はブラウザ全体が必要 |
-| AC-205〜206 | Unit | `schema.test.ts` | Zod 境界値検証 |
+| AC          | 種別        | 対象ファイル                  | 備考                                |
+| ----------- | ----------- | ----------------------------- | ----------------------------------- |
+| AC-001      | Integration | `service.integration.test.ts` | 実 D1 で一覧取得を検証              |
+| AC-002      | Integration | `service.integration.test.ts` | 実 D1 でレシピ作成を検証            |
+| AC-003      | Integration | `service.integration.test.ts` | 実 D1 で ID 指定取得を検証          |
+| AC-004      | Integration | `service.integration.test.ts` | 実 D1 でレシピ更新を検証            |
+| AC-005      | Integration | `service.integration.test.ts` | 実 D1 でレシピ削除を検証            |
+| AC-006      | E2E         | `e2e/recipes.e2e.ts`          | Workers AI はブラウザ全体が必要     |
+| AC-011〜013 | E2E         | `e2e/recipes.e2e.ts`          | Workers AI 抽出はブラウザ全体が必要 |
+| AC-007      | Unit        | `RecipeForm.svelte.test.ts`   | 動的フォーム行の追加・削除検証      |
+| AC-008〜010 | Integration | `service.integration.test.ts` | 各ソート順を実 D1 で検証            |
+| AC-101〜113 | Unit        | `schema.test.ts`              | Zod バリデーション検証              |
+| AC-201〜203 | Unit        | `schema.test.ts`              | Zod 境界値検証                      |
+| AC-204      | E2E         | `e2e/recipes.e2e.ts`          | 空状態はブラウザ全体が必要          |
+| AC-205〜206 | Unit        | `schema.test.ts`              | Zod 境界値検証                      |
 
 ## Non-Functional Requirements
 

@@ -1,3 +1,4 @@
+/// <reference types="@cloudflare/vitest-pool-workers/types" />
 /**
  * @file テスト: recipes サービス
  * @module src/routes/recipes/service.integration.test.ts
@@ -8,17 +9,11 @@
  * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-008, AC-009, AC-010, AC-107
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { AppError } from '$lib/server/errors';
-import {
-	getRecipes,
-	getRecipeById,
-	createRecipe,
-	updateRecipe,
-	deleteRecipe
-} from './service';
+import { getRecipes, getRecipeById, createRecipe, updateRecipe, deleteRecipe } from './service';
 
 function makeUserId() {
 	return crypto.randomUUID();
