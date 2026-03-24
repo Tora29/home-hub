@@ -13,6 +13,7 @@
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
 		"test:unit": "vitest",
+		"test:integration": "vitest --config vitest.integration.config.ts",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright test",
 		"db:generate": "drizzle-kit generate",
@@ -20,6 +21,7 @@
 		"db:studio": "drizzle-kit studio"
 	},
 	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.13.4",
 		"@cloudflare/workers-types": "^4.20260317.1",
 		"@eslint/compat": "^2.0.2",
 		"@eslint/js": "^9.39.2",

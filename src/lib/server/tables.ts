@@ -8,7 +8,7 @@
  *
  * @schemas
  * - user, session, account, verification — Better Auth 管理テーブル
- * - tag, dish, dishTag               — アプリ固有テーブル
+ * - recipe                              — アプリ固有テーブル
  */
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
@@ -62,4 +62,26 @@ export const verification = sqliteTable('Verification', {
 	expiresAt: integer('expiresAt', { mode: 'timestamp' }).notNull(),
 	createdAt: integer('createdAt', { mode: 'timestamp' }),
 	updatedAt: integer('updatedAt', { mode: 'timestamp' })
+});
+
+// ---- アプリ固有テーブル ----
+
+export const recipe = sqliteTable('Recipe', {
+	id: text('id').primaryKey(),
+	userId: text('userId').notNull(),
+	name: text('name').notNull(),
+	description: text('description'),
+	imageUrl: text('imageUrl'),
+	ingredients: text('ingredients'), // JSON: { name: string; amount?: string }[]
+	steps: text('steps'), // JSON: string[]
+	sourceUrl: text('sourceUrl'),
+	servings: integer('servings'),
+	cookingTimeMinutes: integer('cookingTimeMinutes'),
+	cookedCount: integer('cookedCount').notNull().default(0),
+	lastCookedAt: integer('lastCookedAt', { mode: 'timestamp_ms' }),
+	rating: text('rating'), // 'excellent' | 'good' | 'average' | 'poor'
+	difficulty: text('difficulty'), // 'easy' | 'medium' | 'hard'
+	memo: text('memo'),
+	createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull(),
+	updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull()
 });

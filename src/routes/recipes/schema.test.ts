@@ -18,7 +18,7 @@ import {
 } from './schema';
 
 describe('recipeCreateSchema', () => {
-	it('[SPEC: AC-001] 必須フィールド（name のみ）で parse できる', () => {
+	it('[SPEC: AC-002] 必須フィールド（name のみ）で parse できる', () => {
 		const result = recipeCreateSchema.safeParse({ name: 'カレー' });
 		expect(result.success).toBe(true);
 	});
