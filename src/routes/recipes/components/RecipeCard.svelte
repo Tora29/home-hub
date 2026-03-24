@@ -12,7 +12,6 @@
   - recipe: Recipe - 表示するレシピデータ
 -->
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { UtensilsCrossed } from '@lucide/svelte';
 
 	interface Recipe {
@@ -56,12 +55,10 @@
 	}
 </script>
 
-<article
-	onclick={() => void goto(`/recipes/${recipe.id}`)}
-	onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && void goto(`/recipes/${recipe.id}`)}
-	tabindex="0"
-	role="button"
-	class="cursor-pointer overflow-hidden rounded-3xl bg-bg-card shadow-md transition-shadow hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+<a
+	href="/recipes/{recipe.id}"
+	data-testid="recipes-item"
+	class="block overflow-hidden rounded-3xl bg-bg-card shadow-md transition-shadow hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
 >
 	<!-- Image -->
 	{#if recipe.imageUrl}
@@ -96,4 +93,4 @@
 			<span>{formatDate(recipe.lastCookedAt)}</span>
 		</div>
 	</div>
-</article>
+</a>

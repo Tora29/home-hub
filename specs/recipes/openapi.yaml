@@ -1,7 +1,7 @@
-openapi: "3.0.3"
+openapi: '3.0.3'
 info:
   title: Recipes API
-  version: "1.0.0"
+  version: '1.0.0'
   description: レシピ管理 API。一覧取得・登録・更新・削除・AI 献立相談を提供する。
 
 paths:
@@ -40,12 +40,12 @@ paths:
             - cookedCount_desc: よく作る順
             - rating_desc: 評価が高い順（excellent→good→average→poor→未設定）
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DishList"
+                $ref: '#/components/schemas/DishList'
 
     post:
       summary: レシピ登録
@@ -55,16 +55,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/DishCreate"
+              $ref: '#/components/schemas/DishCreate'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Dish"
-        "400":
-          $ref: "#/components/responses/ValidationError"
+                $ref: '#/components/schemas/Dish'
+        '400':
+          $ref: '#/components/responses/ValidationError'
 
   /recipes/{id}:
     parameters:
@@ -82,27 +82,27 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/DishUpdate"
+              $ref: '#/components/schemas/DishUpdate'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Dish"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: '#/components/schemas/Dish'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
     delete:
       summary: レシピ削除
       operationId: deleteRecipe
       responses:
-        "204":
+        '204':
           description: No Content
-        "404":
-          $ref: "#/components/responses/NotFound"
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /recipes/extract:
     post:
@@ -117,16 +117,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ExtractRequest"
+              $ref: '#/components/schemas/ExtractRequest'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ExtractResponse"
-        "400":
-          $ref: "#/components/responses/ValidationError"
+                $ref: '#/components/schemas/ExtractResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
 
   /recipes/ask:
     post:
@@ -140,16 +140,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AskRequest"
+              $ref: '#/components/schemas/AskRequest'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AskResponse"
-        "400":
-          $ref: "#/components/responses/ValidationError"
+                $ref: '#/components/schemas/AskResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
 
 components:
   schemas:
@@ -164,7 +164,7 @@ components:
           example: 鶏もも肉
         amount:
           type: string
-          description: 量・単位（例: 300g、1個）
+          description: '量・単位（例: 300g、1個）'
           example: 300g
 
     Rating:
@@ -226,7 +226,7 @@ components:
           type: array
           nullable: true
           items:
-            $ref: "#/components/schemas/Ingredient"
+            $ref: '#/components/schemas/Ingredient'
           description: 材料リスト
         steps:
           type: array
@@ -261,12 +261,12 @@ components:
         rating:
           nullable: true
           allOf:
-            - $ref: "#/components/schemas/Rating"
+            - $ref: '#/components/schemas/Rating'
           description: 評価
         difficulty:
           nullable: true
           allOf:
-            - $ref: "#/components/schemas/Difficulty"
+            - $ref: '#/components/schemas/Difficulty'
           description: 難易度
         memo:
           type: string
@@ -298,7 +298,7 @@ components:
         ingredients:
           type: array
           items:
-            $ref: "#/components/schemas/Ingredient"
+            $ref: '#/components/schemas/Ingredient'
         steps:
           type: array
           items:
@@ -312,9 +312,9 @@ components:
           type: integer
           minimum: 1
         rating:
-          $ref: "#/components/schemas/Rating"
+          $ref: '#/components/schemas/Rating'
         difficulty:
-          $ref: "#/components/schemas/Difficulty"
+          $ref: '#/components/schemas/Difficulty'
         memo:
           type: string
           maxLength: 1000
@@ -341,7 +341,7 @@ components:
           type: array
           nullable: true
           items:
-            $ref: "#/components/schemas/Ingredient"
+            $ref: '#/components/schemas/Ingredient'
         steps:
           type: array
           nullable: true
@@ -368,11 +368,11 @@ components:
         rating:
           nullable: true
           allOf:
-            - $ref: "#/components/schemas/Rating"
+            - $ref: '#/components/schemas/Rating'
         difficulty:
           nullable: true
           allOf:
-            - $ref: "#/components/schemas/Difficulty"
+            - $ref: '#/components/schemas/Difficulty'
         memo:
           type: string
           maxLength: 1000
@@ -389,7 +389,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/Dish"
+            $ref: '#/components/schemas/Dish'
         total:
           type: integer
           description: 条件に合う全件数
@@ -430,7 +430,7 @@ components:
           type: array
           nullable: true
           items:
-            $ref: "#/components/schemas/Ingredient"
+            $ref: '#/components/schemas/Ingredient'
         steps:
           type: array
           nullable: true
@@ -492,7 +492,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/AppError"
+            $ref: '#/components/schemas/AppError'
           example:
             code: VALIDATION_ERROR
             message: 入力値が正しくありません
@@ -505,7 +505,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/AppError"
+            $ref: '#/components/schemas/AppError'
           example:
             code: NOT_FOUND
             message: 該当データが見つかりません

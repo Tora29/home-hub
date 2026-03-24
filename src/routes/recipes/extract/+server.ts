@@ -60,7 +60,8 @@ The JSON must follow this exact structure:
 
 Return null for any field you cannot extract. Extract only recipe-related content, ignoring advertisements and navigation text.`;
 
-		const aiResponse = await platform!.env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+		// @ts-expect-error: llama-3.1-8b-instruct-fp8 is a valid CF Workers AI model not yet in type definitions
+		const aiResponse = await platform!.env.AI.run('@cf/meta/llama-3.1-8b-instruct-fp8', {
 			messages: [
 				{ role: 'system', content: systemPrompt },
 				{ role: 'user', content: result.data.text }

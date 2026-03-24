@@ -228,7 +228,9 @@ describe('askSchema', () => {
 
 describe('extractSchema', () => {
 	it('[SPEC: AC-011] 正しい text は parse できる', () => {
-		const result = extractSchema.safeParse({ text: 'カレーの作り方。材料：カレールー、じゃがいも' });
+		const result = extractSchema.safeParse({
+			text: 'カレーの作り方。材料：カレールー、じゃがいも'
+		});
 		expect(result.success).toBe(true);
 	});
 

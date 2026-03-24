@@ -57,9 +57,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 				const ingredients =
 					r.ingredients?.map((i) => `${i.name}${i.amount ? ` ${i.amount}` : ''}`).join('、') ??
 					'なし';
-				const lastCooked = r.lastCookedAt
-					? r.lastCookedAt.toLocaleDateString('ja-JP')
-					: '未調理';
+				const lastCooked = r.lastCookedAt ? r.lastCookedAt.toLocaleDateString('ja-JP') : '未調理';
 				return `- ${r.name}（難易度: ${r.difficulty ?? '不明'}）: 材料: ${ingredients}, 評価: ${r.rating ?? '未設定'}, 作った回数: ${r.cookedCount}回, 最終調理日: ${lastCooked}`;
 			})
 			.join('\n');
@@ -69,7 +67,8 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 登録済みレシピ一覧:
 ${recipeContext || 'レシピが登録されていません。'}`;
 
-		const aiResponse = await platform!.env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+		// @ts-expect-error: llama-3.1-8b-instruct-fp8 is a valid CF Workers AI model not yet in type definitions
+		const aiResponse = await platform!.env.AI.run('@cf/meta/llama-3.1-8b-instruct-fp8', {
 			messages: [
 				{ role: 'system', content: systemPrompt },
 				{ role: 'user', content: result.data.question }
