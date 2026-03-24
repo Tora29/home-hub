@@ -54,16 +54,33 @@ options:
 
 openapi.yaml のエンドポイント定義に基づき、infra-spec.md のディレクトリ構成に従って以下を生成:
 
-1. **スキーマ定義** — openapi.yaml の型定義 → バリデーションスキーマ（schemas rule 参照）
-2. **Service 層** — ビジネスロジック + DB 操作（error-handling rule 参照）
-3. **Controller / Routes** — HTTP ハンドラ（api-patterns rule 参照）
+1. **DB テーブル定義** — openapi.yaml のスキーマ → Drizzle テーブル定義を `src/lib/server/tables.ts` に追記
+2. **マイグレーション SQL** — `drizzle/migrations/` 配下の既存ファイルの連番で `{n}_{feature}.sql` を生成（integration test の Miniflare が参照するため必須）
+3. **スキーマ定義** — openapi.yaml の型定義 → バリデーションスキーマ（schemas rule 参照）
+4. **Service 層** — ビジネスロジック + DB 操作（error-handling rule 参照）
+5. **Controller / Routes** — HTTP ハンドラ（api-patterns rule 参照）
 
 生成するファイルの配置場所は infra-spec.md のディレクトリ構成に従う。
+
+#### DB テーブル定義の生成ルール
+
+- `src/lib/server/tables.ts` の末尾に追記する（既存テーブル定義は変更しない）
+- タイムスタンプカラムは `integer('...', { mode: 'timestamp' })` を使用する（既存テーブルに合わせる）
+- JSON 配列フィールド（ingredients, steps 等）は `text('...')` で保存し、service 層で parse/stringify する
+- 主キーは `text('id').primaryKey()`（UUID 文字列）を使用する
+
+#### マイグレーション SQL の生成ルール
+
+- `drizzle/migrations/` 配下の既存ファイルを確認し、次の連番を使う（例: `0001_init.sql` の次は `0002_{feature}.sql`）
+- SQLite の型に合わせる: `TEXT`, `INTEGER`, `REAL`, `BLOB`
+- Drizzle の `{ mode: 'timestamp' }` は SQLite では `INTEGER` カラムとして保存される
 
 ### Step 4: チェックリスト検証
 
 生成したコードが以下を満たしているか自己検証:
 
+- [ ] `tables.ts` にテーブル定義が追記されている（既存定義は変更していない）
+- [ ] マイグレーション SQL が正しい連番で生成されている
 - [ ] openapi.yaml の全エンドポイントが実装されている
 - [ ] リクエスト/レスポンス型が openapi.yaml と一致している
 - [ ] ステータスコードが openapi.yaml と一致している
