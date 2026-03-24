@@ -6,6 +6,19 @@
   全ページ共通のサイドバーナビゲーションコンポーネント。
   カテゴリ別の入れ子メニューを提供し、デスクトップ・モバイル両環境での開閉操作をサポートする。
 
+  【デスクトップ】
+  初期表示は開いた状態。開閉状態は localStorage に保存され、リロード後も維持される。
+  開閉はトグルボタンで操作し、アニメーション付きで切り替わる。
+  FOUC（初期表示のちらつき）を防ぐため、app.html の blocking script が描画前に
+  localStorage を読んで <html data-sidebar-open> をセットし、CSS がこれを参照して
+  mount 前の幅を制御する。mount 後は JS の inline style が CSS を上書きし、
+  以降のアニメーション制御を担う。
+
+  【モバイル】
+  初期表示は常に閉じた状態（状態は保存しない）。
+  ハンバーガーボタンで開き、オーバーレイまたはメニュー項目タップで閉じる。
+  開閉状態は mobileOpen ストア（$lib/stores/sidebar）で管理する。
+
   @spec specs/sidebar/spec.md
   @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007
 
@@ -22,6 +35,7 @@
 		PanelLeftOpen
 	} from '@lucide/svelte';
 	import type { Component } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { mobileOpen } from '$lib/stores/sidebar';
 
 	type NavItem = { testid: string; href: string; label: string };
@@ -47,11 +61,15 @@
 
 	const STORAGE_KEY = 'sidebar-open';
 
-	let sidebarOpen = $state(
-		typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) !== 'false' : true
-	);
+	let sidebarOpen = $state(true);
 	let isMobile = $state(false);
 	let openMap = $state<Record<string, boolean>>({ meal: true, expense: true });
+	let mounted = $state(false);
+	onMount(async () => {
+		sidebarOpen = localStorage.getItem(STORAGE_KEY) !== 'false';
+		await tick();
+		mounted = true;
+	});
 
 	$effect(() => {
 		const mql = window.matchMedia('(max-width: 767px)');
@@ -81,10 +99,10 @@
 		};
 	});
 
-	const currentPath = $derived(page.url.pathname);
+	const isOpen = $derived(isMobile ? $mobileOpen : sidebarOpen);
 
 	function isActive(href: string): boolean {
-		return currentPath === href;
+		return page.url.pathname === href;
 	}
 </script>
 
@@ -104,26 +122,20 @@
 	<nav
 		data-testid="sidebar"
 		aria-label="メインナビゲーション"
-		aria-hidden={isMobile ? !$mobileOpen : !sidebarOpen}
-		class="flex h-full flex-col overflow-hidden border-r border-separator bg-bg-secondary"
-		style:width={isMobile ? ($mobileOpen ? '14rem' : '0') : sidebarOpen ? '14rem' : '0'}
-		style:visibility={(isMobile ? $mobileOpen : sidebarOpen) ? 'visible' : 'hidden'}
+		aria-hidden={!isOpen}
+		class="flex h-full flex-col overflow-hidden border-r border-separator bg-bg-secondary md:w-56 max-md:w-0"
+		style:width={mounted ? (isOpen ? '14rem' : '0') : undefined}
+		style:visibility={isOpen ? 'visible' : 'hidden'}
 		style:min-width="0"
-		style:box-shadow={(isMobile ? $mobileOpen : sidebarOpen)
-			? '4px 0 16px rgba(0,0,0,0.12)'
+		style:box-shadow={isOpen ? '4px 0 16px rgba(0,0,0,0.12)' : 'none'}
+		style:transition={mounted
+			? 'width 300ms ease-in-out, box-shadow 300ms ease-in-out, visibility 300ms'
 			: 'none'}
-		style:transition="width 300ms ease-in-out, box-shadow 300ms ease-in-out, visibility 300ms"
 	>
 		<div
 			class="w-56 flex-1 space-y-1 overflow-y-auto px-3 py-4"
-			style:transform={isMobile
-				? $mobileOpen
-					? 'translateX(0)'
-					: 'translateX(-100%)'
-				: sidebarOpen
-					? 'translateX(0)'
-					: 'translateX(-100%)'}
-			style:transition="transform 300ms ease-in-out"
+			style:transform={isOpen ? 'translateX(0)' : 'translateX(-100%)'}
+			style:transition={mounted ? 'transform 300ms ease-in-out' : 'none'}
 		>
 			{#each NAV_CATEGORIES as category (category.id)}
 				{@const Icon = category.icon}
@@ -155,6 +167,7 @@
 										data-testid={item.testid}
 										href={item.href}
 										aria-current={isActive(item.href) ? 'page' : undefined}
+										onclick={() => isMobile && mobileOpen.set(false)}
 										class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-label transition-colors hover:bg-bg-grouped focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none {isActive(
 											item.href
 										)
@@ -188,3 +201,11 @@
 		</button>
 	</div>
 </aside>
+
+<style>
+	/* mount 前（style:width が未設定の間）、data-sidebar-open="false" のときデスクトップで閉じた状態を維持する。
+	   mount 後は JS の inline style:width が CSS より優先されるため、この規則はアニメーションに影響しない。 */
+	:global(html[data-sidebar-open='false'] [data-testid='sidebar']) {
+		width: 0;
+	}
+</style>
