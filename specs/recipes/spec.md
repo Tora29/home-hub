@@ -62,6 +62,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-112: AI 相談で question が 501 文字以上の場合、400 VALIDATION_ERROR が返る
 - AC-113: sort に定義外の値を指定した場合、400 VALIDATION_ERROR が返る
 - AC-114: AI 抽出で text が空の場合、400 VALIDATION_ERROR が返る
+- AC-115: AI 相談欄が空欄のまま送信した場合、「質問を入力してください」と表示される（フロント完結・サーバー非通信）
 
 ### 境界値
 
@@ -147,7 +148,8 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 #### AI 解析の仕組み
 
 - `POST /recipes/extract` に `{ text }` を送信
-- Workers AI（llama-3.1）が以下を JSON で返す:
+- Workers AI（llama-3.1-8b-instruct-fp8）が以下を JSON で返す:
+- **ローカル開発環境（`dev === true`）では Workers AI を呼ばず、固定のダミー JSON を返す**
   ```json
   {
   	"name": "...",
@@ -173,8 +175,9 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 - `POST /recipes/ask` に `{ question }` を送信
 - ユーザーの全レシピ（name・ingredients・lastCookedAt・rating・difficulty・cookedCount）をコンテキストにプロンプトへ埋め込む
-- `platform.env.AI` 経由で Workers AI（llama-3.1）に問い合わせる
+- `platform.env.AI` 経由で Workers AI（llama-3.1-8b-instruct-fp8）に問い合わせる
 - 回答を `recipes-ask-answer` に表示
+- **ローカル開発環境（`dev === true`）では Workers AI を呼ばず、ダミー文字列を返す**
 
 ## data-testid
 
@@ -219,21 +222,24 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 ## テスト戦略
 
-| AC          | 種別        | 対象ファイル                  | 備考                                |
-| ----------- | ----------- | ----------------------------- | ----------------------------------- |
-| AC-001      | Integration | `service.integration.test.ts` | 実 D1 で一覧取得を検証              |
-| AC-002      | Integration | `service.integration.test.ts` | 実 D1 でレシピ作成を検証            |
-| AC-003      | Integration | `service.integration.test.ts` | 実 D1 で ID 指定取得を検証          |
-| AC-004      | Integration | `service.integration.test.ts` | 実 D1 でレシピ更新を検証            |
-| AC-005      | Integration | `service.integration.test.ts` | 実 D1 でレシピ削除を検証            |
-| AC-006      | E2E         | `e2e/recipes.e2e.ts`          | Workers AI はブラウザ全体が必要     |
-| AC-011〜013 | E2E         | `e2e/recipes.e2e.ts`          | Workers AI 抽出はブラウザ全体が必要 |
-| AC-007      | Unit        | `RecipeForm.svelte.test.ts`   | 動的フォーム行の追加・削除検証      |
-| AC-008〜010 | Integration | `service.integration.test.ts` | 各ソート順を実 D1 で検証            |
-| AC-101〜113 | Unit        | `schema.test.ts`              | Zod バリデーション検証              |
-| AC-201〜203 | Unit        | `schema.test.ts`              | Zod 境界値検証                      |
-| AC-204      | E2E         | `e2e/recipes.e2e.ts`          | 空状態はブラウザ全体が必要          |
-| AC-205〜206 | Unit        | `schema.test.ts`              | Zod 境界値検証                      |
+| AC          | 種別        | 対象ファイル                  | 備考                                     |
+| ----------- | ----------- | ----------------------------- | ---------------------------------------- |
+| AC-001      | Integration | `service.integration.test.ts` | 実 D1 で一覧取得を検証                   |
+| AC-002      | Integration | `service.integration.test.ts` | 実 D1 でレシピ作成を検証                 |
+| AC-003      | Integration | `service.integration.test.ts` | 実 D1 で ID 指定取得を検証               |
+| AC-004      | Integration | `service.integration.test.ts` | 実 D1 でレシピ更新を検証                 |
+| AC-005      | Integration | `service.integration.test.ts` | 実 D1 でレシピ削除を検証                 |
+| AC-006      | Unit        | `ask/+server.test.ts`         | dev=true のダミー回答パスを検証          |
+| AC-006      | E2E         | `e2e/recipes.e2e.ts`          | 本番 Workers AI はブラウザ全体が必要     |
+| AC-011〜013 | Unit        | `extract/+server.test.ts`     | dev=true のダミー抽出パスを検証          |
+| AC-011〜013 | E2E         | `e2e/recipes.e2e.ts`          | 本番 Workers AI 抽出はブラウザ全体が必要 |
+| AC-007      | Unit        | `RecipeForm.svelte.test.ts`   | 動的フォーム行の追加・削除検証           |
+| AC-008〜010 | Integration | `service.integration.test.ts` | 各ソート順を実 D1 で検証                 |
+| AC-101〜114 | Unit        | `schema.test.ts`              | Zod バリデーション検証                   |
+| AC-115      | Unit        | `page.svelte.test.ts`         | 空欄送信時のフロントエラー表示           |
+| AC-201〜203 | Unit        | `schema.test.ts`              | Zod 境界値検証                           |
+| AC-204      | E2E         | `e2e/recipes.e2e.ts`          | 空状態はブラウザ全体が必要               |
+| AC-205〜206 | Unit        | `schema.test.ts`              | Zod 境界値検証                           |
 
 ## Non-Functional Requirements
 

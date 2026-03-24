@@ -14,6 +14,10 @@ try {
 
 export default defineConfig({
 	globalSetup: './e2e/global-setup.ts',
-	webServer: { command: 'npm run build && npm run preview', port: 4173 },
+	workers: 1,
+	webServer: {
+		command: 'npm run build && wrangler pages dev .svelte-kit/cloudflare --port 4173',
+		port: 4173
+	},
 	testMatch: '**/*.e2e.{ts,js}'
 });

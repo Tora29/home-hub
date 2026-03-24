@@ -42,7 +42,10 @@
 	}
 
 	async function handleAsk() {
-		if (!askQuestion.trim()) return;
+		if (!askQuestion.trim()) {
+			askError = '質問を入力してください';
+			return;
+		}
 		isAskLoading = true;
 		askAnswer = null;
 		askError = '';
@@ -73,28 +76,9 @@
 
 <div class="mx-auto max-w-6xl">
 	<!-- Header -->
-	<div class="mb-6 flex flex-wrap items-center gap-3">
+	<div class="mb-6 flex items-center gap-3">
 		<ChefHat size={28} class="text-accent" />
 		<h1 class="flex-1 text-2xl font-medium text-label">レシピ</h1>
-
-		<div class="relative">
-			<select
-				data-testid="recipes-sort-select"
-				value={currentSort}
-				onchange={handleSortChange}
-				class="appearance-none rounded-2xl border border-separator bg-bg py-2 pr-9 pl-4 text-sm text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-			>
-				<option value="createdAt_desc">登録順</option>
-				<option value="lastCookedAt_asc">しばらく作ってない順</option>
-				<option value="cookedCount_desc">よく作る順</option>
-				<option value="rating_desc">評価が高い順</option>
-			</select>
-			<ChevronDown
-				size={16}
-				class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-secondary"
-			/>
-		</div>
-
 		<button
 			data-testid="recipes-create-button"
 			onclick={() => (showCreateDialog = true)}
@@ -105,23 +89,8 @@
 		</button>
 	</div>
 
-	<!-- Recipe grid / empty state -->
-	{#if data.items.length === 0}
-		<p data-testid="recipes-empty" class="py-16 text-center text-secondary">
-			まだレシピがありません。「登録」ボタンから追加してみましょう！
-		</p>
-	{:else}
-		<ul data-testid="recipes-list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-			{#each data.items as recipe (recipe.id)}
-				<li data-testid="recipes-item">
-					<RecipeCard {recipe} />
-				</li>
-			{/each}
-		</ul>
-	{/if}
-
 	<!-- AI consultation widget -->
-	<div class="mt-8 rounded-3xl bg-bg-secondary p-6 shadow-sm">
+	<div class="mb-8 rounded-3xl bg-bg-secondary p-6 shadow-sm">
 		<div class="mb-3 flex items-center gap-2">
 			<MessageCircle size={20} class="text-accent" />
 			<h2 class="font-medium text-label">AI 献立相談</h2>
@@ -161,6 +130,42 @@
 			</div>
 		{/if}
 	</div>
+
+	<!-- Sort control -->
+	<div class="mb-4 flex justify-end">
+		<div class="relative">
+			<select
+				data-testid="recipes-sort-select"
+				value={currentSort}
+				onchange={handleSortChange}
+				class="appearance-none rounded-2xl border border-separator bg-bg py-2 pr-9 pl-4 text-sm text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+			>
+				<option value="createdAt_desc">登録順</option>
+				<option value="lastCookedAt_asc">しばらく作ってない順</option>
+				<option value="cookedCount_desc">よく作る順</option>
+				<option value="rating_desc">評価が高い順</option>
+			</select>
+			<ChevronDown
+				size={16}
+				class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-secondary"
+			/>
+		</div>
+	</div>
+
+	<!-- Recipe grid / empty state -->
+	{#if data.items.length === 0}
+		<p data-testid="recipes-empty" class="py-16 text-center text-secondary">
+			まだレシピがありません。「登録」ボタンから追加してみましょう！
+		</p>
+	{:else}
+		<ul data-testid="recipes-list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+			{#each data.items as recipe (recipe.id)}
+				<li>
+					<RecipeCard {recipe} />
+				</li>
+			{/each}
+		</ul>
+	{/if}
 </div>
 
 <!-- Create dialog -->
