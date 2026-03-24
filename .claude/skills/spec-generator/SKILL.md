@@ -181,6 +181,19 @@ services:
 
 生成した spec をユーザーに確認し、必要に応じて修正。
 
+### Step 5: 次のステップ案内
+
+spec の確認が完了したら、以下の SDD フローを案内する:
+
+```
+1. /scaffold-test-unit  → spec.md / openapi.yaml を元にユニット・インテグレーションテストを生成
+2. /scaffold-be         → openapi.yaml を元にバックエンド実装（+server.ts / service.ts / schema.ts）を生成
+3. /scaffold-fe         → spec.md を元にフロントエンド実装（+page.svelte / components）を生成
+4. /scaffold-test-e2e   → spec.md の AC を元に E2E テストを生成
+```
+
+> テストファーストで進める場合は `/scaffold-test-unit` から始めることを推奨する。
+
 ## 生成ルール
 
 ### Acceptance Criteria生成ルール
