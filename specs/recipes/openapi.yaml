@@ -1,0 +1,511 @@
+openapi: "3.0.3"
+info:
+  title: Recipes API
+  version: "1.0.0"
+  description: レシピ管理 API。一覧取得・登録・更新・削除・AI 献立相談を提供する。
+
+paths:
+  /recipes:
+    get:
+      summary: レシピ一覧取得
+      operationId: listRecipes
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum:
+              - createdAt_desc
+              - lastCookedAt_asc
+              - cookedCount_desc
+              - rating_desc
+            default: createdAt_desc
+          description: |
+            ソート順:
+            - createdAt_desc: 登録順（新しい順・デフォルト）
+            - lastCookedAt_asc: しばらく作ってない順（NULL 先頭）
+            - cookedCount_desc: よく作る順
+            - rating_desc: 評価が高い順（excellent→good→average→poor→未設定）
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DishList"
+
+    post:
+      summary: レシピ登録
+      operationId: createRecipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DishCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dish"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /recipes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+
+    put:
+      summary: レシピ更新
+      operationId: updateRecipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DishUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dish"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      summary: レシピ削除
+      operationId: deleteRecipe
+      responses:
+        "204":
+          description: No Content
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /recipes/extract:
+    post:
+      summary: AI レシピ抽出
+      operationId: extractRecipe
+      description: |
+        レシピサイトからコピーした生テキスト（広告・ナビゲーション等のノイズを含んでよい）を
+        Workers AI（llama-3.1）に渡し、構造化されたレシピデータを抽出して返す。
+        抽出できなかったフィールドは null。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtractRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /recipes/ask:
+    post:
+      summary: AI 献立相談
+      operationId: askRecipes
+      description: |
+        ユーザーの全レシピ（name・ingredients・lastCookedAt・rating・difficulty・cookedCount）を
+        コンテキストとして Workers AI（llama-3.1）に渡し、自然言語の質問に回答する。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AskRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AskResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+components:
+  schemas:
+    Ingredient:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: 材料名
+          example: 鶏もも肉
+        amount:
+          type: string
+          description: 量・単位（例: 300g、1個）
+          example: 300g
+
+    Rating:
+      type: string
+      enum:
+        - excellent
+        - good
+        - average
+        - poor
+      description: |
+        評価:
+        - excellent: 非常に美味しい
+        - good: 美味しい
+        - average: 普通
+        - poor: 微妙
+
+    Difficulty:
+      type: string
+      enum:
+        - easy
+        - medium
+        - hard
+      description: |
+        難易度:
+        - easy: 簡単
+        - medium: 普通
+        - hard: 難しい
+
+    Dish:
+      type: object
+      required:
+        - id
+        - userId
+        - name
+        - cookedCount
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: UUID
+        userId:
+          type: string
+          description: オーナーユーザー ID
+        name:
+          type: string
+          maxLength: 100
+          description: レシピ名
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: 概要
+        imageUrl:
+          type: string
+          nullable: true
+          description: 画像 URL（外部 URL）
+        ingredients:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/Ingredient"
+          description: 材料リスト
+        steps:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: 手順リスト
+        sourceUrl:
+          type: string
+          nullable: true
+          description: 参照元レシピ URL
+        servings:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: 何人前
+        cookingTimeMinutes:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: 調理時間（分）
+        cookedCount:
+          type: integer
+          minimum: 0
+          default: 0
+          description: 作った回数
+        lastCookedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 最終調理日時
+        rating:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Rating"
+          description: 評価
+        difficulty:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Difficulty"
+          description: 難易度
+        memo:
+          type: string
+          maxLength: 1000
+          nullable: true
+          description: 調理後の個人メモ
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DishCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: レシピ名（必須）
+        description:
+          type: string
+          maxLength: 500
+        imageUrl:
+          type: string
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ingredient"
+        steps:
+          type: array
+          items:
+            type: string
+        sourceUrl:
+          type: string
+        servings:
+          type: integer
+          minimum: 1
+        cookingTimeMinutes:
+          type: integer
+          minimum: 1
+        rating:
+          $ref: "#/components/schemas/Rating"
+        difficulty:
+          $ref: "#/components/schemas/Difficulty"
+        memo:
+          type: string
+          maxLength: 1000
+
+    DishUpdate:
+      type: object
+      required:
+        - name
+        - cookedCount
+      description: 全フィールド送信（PUT）。省略可能フィールドは null で明示的にクリアできる。
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        ingredients:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/Ingredient"
+        steps:
+          type: array
+          nullable: true
+          items:
+            type: string
+        sourceUrl:
+          type: string
+          nullable: true
+        servings:
+          type: integer
+          minimum: 1
+          nullable: true
+        cookingTimeMinutes:
+          type: integer
+          minimum: 1
+          nullable: true
+        cookedCount:
+          type: integer
+          minimum: 0
+        lastCookedAt:
+          type: string
+          format: date-time
+          nullable: true
+        rating:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Rating"
+        difficulty:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Difficulty"
+        memo:
+          type: string
+          maxLength: 1000
+          nullable: true
+
+    DishList:
+      type: object
+      required:
+        - items
+        - total
+        - page
+        - limit
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Dish"
+        total:
+          type: integer
+          description: 条件に合う全件数
+        page:
+          type: integer
+          description: 現在のページ（1 始まり）
+        limit:
+          type: integer
+          description: 1 ページあたりの件数
+
+    ExtractRequest:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          minLength: 1
+          description: レシピサイトからコピーした生テキスト（ノイズ込みで可）
+
+    ExtractResponse:
+      type: object
+      description: AI が抽出したレシピデータ。抽出できなかったフィールドは null。
+      properties:
+        name:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        servings:
+          type: integer
+          nullable: true
+        cookingTimeMinutes:
+          type: integer
+          nullable: true
+        ingredients:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/Ingredient"
+        steps:
+          type: array
+          nullable: true
+          items:
+            type: string
+
+    AskRequest:
+      type: object
+      required:
+        - question
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: 献立に関する自然言語の質問
+          example: 最近作ってないもので肉系が食べたいんだけどいいのある？
+
+    AskResponse:
+      type: object
+      required:
+        - answer
+      properties:
+        answer:
+          type: string
+          description: Workers AI による回答
+
+    AppError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - NOT_FOUND
+            - INTERNAL_SERVER_ERROR
+        message:
+          type: string
+        fields:
+          type: array
+          description: バリデーションエラー時のフィールドエラー一覧
+          items:
+            type: object
+            required:
+              - field
+              - message
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+  responses:
+    ValidationError:
+      description: バリデーションエラー（400）
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AppError"
+          example:
+            code: VALIDATION_ERROR
+            message: 入力値が正しくありません
+            fields:
+              - field: name
+                message: レシピ名は必須です
+
+    NotFound:
+      description: リソースが見つからない（404）
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AppError"
+          example:
+            code: NOT_FOUND
+            message: 該当データが見つかりません
