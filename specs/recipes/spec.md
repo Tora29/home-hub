@@ -41,6 +41,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-007: 材料・手順の「追加」ボタンで入力行が増え、「削除」ボタンで行を除去できる
 - AC-011: テキストエリアにレシピテキストを貼り付けて「AI で解析」ボタンを押すと、name・ingredients・steps・servings・cookingTimeMinutes が抽出されてフォームに自動入力される
 - AC-012: ノイズを含む（ナビゲーション・広告文言等）テキストを貼り付けた場合でも、レシピ情報のみが抽出される
+- AC-013: AI 解析タブで sourceUrl を入力して「AI で解析」を実行すると、手動入力タブの sourceUrl フィールドに値が引き継がれる
 - AC-008: ソートを「しばらく作ってない順」に切り替えると `lastCookedAt` の古い順（NULL が先頭）で並び替わる
 - AC-009: ソートを「よく作る順」に切り替えると `cookedCount` の多い順で並び替わる
 - AC-010: ソートを「評価が高い順」に切り替えると `excellent → good → average → poor → 未設定` の順で並び替わる
@@ -85,7 +86,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
   - よく作る順: `cookedCount_desc`
   - 評価が高い順: `rating_desc`（excellent=4, good=3, average=2, poor=1, NULL 末尾）
 - **登録ボタン**: 右上。クリックで登録フォームダイアログを開く
-- **AI 相談ウィジェット**: 画面下部または右下のフローティング入力欄。質問を送信すると回答を表示
+- **AI 相談ウィジェット**: 一覧グリッドの下部にインライン配置。質問を送信すると回答を表示
 - **空状態**: レシピが 0 件のとき `recipes-empty` を表示
 
 #### インタラクション
@@ -122,6 +123,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 登録フォームは **AI 解析タブ** と **手動入力タブ** の 2 タブ構成とする。
 
 **AI 解析タブ（デフォルト）**:
+- sourceUrl 入力欄（`recipes-source-url-input`、任意）: コピー元サイトの URL。解析後に手動入力タブへ引き継ぐ
 - テキストエリア（`recipes-extract-input`）: サイトから丸ごとコピペするための大きめの入力欄
 - 「AI で解析」ボタン（`recipes-extract-button`）: `POST /recipes/extract` を呼び出し、結果を手動入力タブのフォームに反映して手動入力タブへ切り替える
 - ローディング表示: 解析中はボタンを無効化しスピナーを表示
@@ -217,7 +219,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 | AC-004 | Integration | `service.integration.test.ts` | 実 D1 でレシピ更新を検証 |
 | AC-005 | Integration | `service.integration.test.ts` | 実 D1 でレシピ削除を検証 |
 | AC-006 | E2E | `e2e/recipes.e2e.ts` | Workers AI はブラウザ全体が必要 |
-| AC-011〜012 | E2E | `e2e/recipes.e2e.ts` | Workers AI 抽出はブラウザ全体が必要 |
+| AC-011〜013 | E2E | `e2e/recipes.e2e.ts` | Workers AI 抽出はブラウザ全体が必要 |
 | AC-007 | Unit | `RecipeForm.svelte.test.ts` | 動的フォーム行の追加・削除検証 |
 | AC-008〜010 | Integration | `service.integration.test.ts` | 各ソート順を実 D1 で検証 |
 | AC-101〜113 | Unit | `schema.test.ts` | Zod バリデーション検証 |

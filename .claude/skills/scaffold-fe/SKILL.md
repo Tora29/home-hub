@@ -11,7 +11,6 @@ spec.md を主入力として、フロントエンド実装コードを生成す
 
 - `specs/{feature}/spec.md` が存在すること
 - `specs/infra-spec.md` が存在すること（技術スタック・ディレクトリ構成の参照）
-- `.claude/references/ui-patterns.md` が存在すること
 - `.claude/references/design-system.md` が存在すること
 - `.claude/rules/` に schemas, data-testid, security が定義されていること
 - `/scaffold-test-unit` が実行済みであること（テストが存在すること）
@@ -47,7 +46,6 @@ options:
 
 | rule                                  | 参照するもの                                             |
 | ------------------------------------- | -------------------------------------------------------- |
-| `.claude/references/ui-patterns.md`   | コンポーネント分割、状態管理、命名規則、アクセシビリティ |
 | `.claude/references/design-system.md` | カラートークン、フォント、形状・レイアウト、アイコン規約 |
 | `.claude/rules/schemas.md`            | FE バリデーション方針、スキーマ配置                      |
 | `.claude/rules/data-testid.md`        | テスト用セレクタの命名規則                               |
@@ -59,7 +57,7 @@ options:
 spec.md の画面仕様・UI Requirements に基づき、infra-spec.md のディレクトリ構成に従って以下を生成:
 
 1. **ページコンポーネント** — spec.md の画面構成に対応するメインコンポーネント
-2. **部品コンポーネント** — ui-patterns rule の分割基準に従い、責務ごとに分割
+2. **部品コンポーネント** — spec.md の画面構成に基づき、責務ごとに分割
 3. **FE スキーマ** — schemas rule に従い、FE バリデーション用スキーマを定義
 4. **data-testid の付与** — data-testid rule の命名テーブルに従い、全インタラクティブ要素に付与
 
@@ -71,11 +69,11 @@ spec.md の画面仕様・UI Requirements に基づき、infra-spec.md のディ
 
 - [ ] spec.md の UI Requirements が全て実装されている
 - [ ] spec.md の AC に対応する UI フローが存在する
-- [ ] コンポーネント分割が ui-patterns rule に従っている
+- [ ] コンポーネント分割が spec.md の画面構成に従っている
 - [ ] FE バリデーションが schemas rule に従っている
 - [ ] 全インタラクティブ要素に data-testid が付与されている
 - [ ] data-testid の命名が data-testid rule のテーブルに従っている
-- [ ] アクセシビリティ要件が ui-patterns rule に従っている
+- [ ] アクセシビリティ要件が適切に実装されている
 - [ ] ディレクトリ構成が infra-spec.md に従っている
 - [ ] 全生成ファイルに file-headers rule に従ったヘッダーコメントが付与されている
 - [ ] **テストファイルを一切編集・削除していない**
@@ -98,7 +96,7 @@ FE 実装が完了しました。
 
 ### コンポーネント分割
 
-- ui-patterns rule の分割基準に従う
+- spec.md の画面構成・責務に基づき分割する
 - CRUD パターンの場合: List / Item / Form に分割を検討
 - 分割後も data-testid を維持
 

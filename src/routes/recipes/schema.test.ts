@@ -5,7 +5,7 @@
  *
  * @target ./schema.ts
  * @spec specs/recipes/spec.md
- * @covers AC-101, AC-102, AC-103, AC-104, AC-105, AC-106, AC-108, AC-109, AC-110, AC-111, AC-112, AC-113, AC-114, AC-201, AC-202, AC-203, AC-205, AC-206
+ * @covers AC-001, AC-002, AC-004, AC-006, AC-008, AC-009, AC-010, AC-011, AC-101, AC-102, AC-103, AC-104, AC-105, AC-106, AC-108, AC-109, AC-110, AC-111, AC-112, AC-113, AC-114, AC-201, AC-202, AC-203, AC-205, AC-206
  */
 
 import { describe, it, expect } from 'vitest';
