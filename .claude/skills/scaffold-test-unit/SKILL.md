@@ -1,7 +1,7 @@
 ---
 name: scaffold-test-unit
 description: openapi.yaml と AC を参照して API / Unit テストを生成する。
-allowed-tools: Read(specs/*), Grep, Glob, Write
+allowed-tools: Read(specs/*), Grep, Glob, Write, Bash(npm run:*)
 ---
 
 # Unit / API Test Scaffold
@@ -84,6 +84,8 @@ testing rule の命名規約に従う。各テストケースに AC 番号を紐
 
 ### Step 5: チェックリスト検証
 
+以下の項目を順番に確認する。**テスト実行は必ず Bash ツールで行うこと。**
+
 - [ ] 全ての AC にテストケースが存在する（`[SPEC: AC-XXX]` で紐付け済み）
 - [ ] openapi.yaml の全エンドポイントに対するテストが存在する（openapi.yaml がある場合のみ）
 - [ ] 正常系・異常系・境界値の各カテゴリをカバーしている
@@ -91,14 +93,14 @@ testing rule の命名規約に従う。各テストケースに AC 番号を紐
 - [ ] モック戦略が testing rule に従っている
 - [ ] テストファイルの配置が infra-spec.md のディレクトリ構成に従っている
 - [ ] 全生成ファイルに file-headers rule に従ったヘッダーコメントが付与されている
-- [ ] テストを実行して RED になることを確認した（実装前のため RED が正常）
+- [ ] **Bash ツールで `npm run test:unit -- --run` を実行し、生成したテストが RED になることを確認した**（実装前のため RED が正常。`Cannot find module` や型エラーで落ちることが期待される）
 
 ### Step 6: 次のステップ案内
 
 チェックリスト完了後、以下をユーザーに表示する:
 
 ```
-テスト生成が完了しました。
+テスト生成が完了しました。チェックリストを表示します。
 次のステップ: `/scaffold-be` を実行して BE 実装を生成してください。
 ```
 
@@ -110,6 +112,17 @@ testing rule の命名規約に従う。各テストケースに AC 番号を紐
 - **実装コードを読んではいけない**。openapi.yaml と spec.md のみを入力とする
 - 実装の内部構造に依存しない（ブラックボックステスト）
 - テストが仕様を検証する手段であり、実装に合わせて甘くしない
+
+#### 読んではいけないファイル（禁止リスト）
+
+以下は「コーディングパターンの確認」「既存実装の参照」を目的とした読み込みも含め、**一切読んではいけない**:
+
+- `src/routes/**` — 既存機能の実装・スキーマ・テスト（他 feature のものも含む）
+- `src/lib/**` — 共通ライブラリ実装
+- `vite.config.ts`, `wrangler.toml`, `package.json` — インフラ設定
+
+コーディングパターンが必要な場合は `.claude/rules/` の rules ファイルを参照すること。
+テスト記法は `testing.md`、スキーマ記法は `schemas.md`、ファイルヘッダーは `file-headers.md` が正とする。
 
 ### AC とテストの紐付け
 
