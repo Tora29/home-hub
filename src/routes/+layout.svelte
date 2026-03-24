@@ -29,7 +29,7 @@
 		<Header />
 		<div class="relative flex-1 overflow-hidden">
 			<Sidebar />
-			<main class="h-full overflow-y-auto p-6">
+			<main class="h-full overflow-x-hidden overflow-y-auto p-6">
 				{@render children()}
 			</main>
 		</div>

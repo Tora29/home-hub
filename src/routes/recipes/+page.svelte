@@ -102,20 +102,20 @@
 				bind:value={askQuestion}
 				placeholder="例: 最近作ってないもので肉系が食べたいんだけど..."
 				onkeydown={(e) => e.key === 'Enter' && !isAskLoading && void handleAsk()}
-				class="flex-1 rounded-2xl border border-separator bg-bg px-4 py-2 text-label placeholder:text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+				class="min-w-0 flex-1 rounded-2xl border border-separator bg-bg px-4 py-2 text-label placeholder:text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
 			/>
 			<button
 				data-testid="recipes-ask-button"
 				onclick={() => void handleAsk()}
 				disabled={isAskLoading}
-				class="flex items-center gap-2 rounded-2xl bg-accent px-4 py-2 font-medium text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-60"
+				class="flex shrink-0 items-center gap-2 rounded-2xl bg-accent px-4 py-2 font-medium text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-60"
 			>
 				{#if isAskLoading}
 					<LoaderCircle size={16} class="animate-spin" />
 				{:else}
 					<Send size={16} />
 				{/if}
-				{isAskLoading ? '相談中...' : '送信'}
+				<span class="hidden sm:inline">{isAskLoading ? '相談中...' : '送信'}</span>
 			</button>
 		</div>
 		{#if askError}
