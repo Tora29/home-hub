@@ -19,6 +19,8 @@
 	import { Eye, EyeOff } from '@lucide/svelte';
 	import { authClient } from '$lib/auth-client';
 	import { loginSchema } from './schema';
+	import Input from '$lib/components/Input.svelte';
+	import Button from '$lib/components/Button.svelte';
 
 	let email = $state('');
 	let password = $state('');
@@ -84,13 +86,14 @@
 
 			<div class="flex flex-col gap-1">
 				<label for="login-email" class="text-sm font-medium text-label">メールアドレス</label>
-				<input
+				<Input
 					id="login-email"
 					type="email"
 					data-testid="login-email-input"
 					bind:value={email}
 					autocomplete="email"
-					class="rounded-2xl border border-separator bg-bg px-4 py-3 text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+					size="lg"
+					class="w-full"
 				/>
 				{#if errors.email}
 					<p data-testid="login-email-error" class="text-xs text-destructive">{errors.email}</p>
@@ -100,13 +103,14 @@
 			<div class="flex flex-col gap-1">
 				<label for="login-password" class="text-sm font-medium text-label">パスワード</label>
 				<div class="relative">
-					<input
+					<Input
 						id="login-password"
 						type={showPassword ? 'text' : 'password'}
 						data-testid="login-password-input"
 						bind:value={password}
 						autocomplete="current-password"
-						class="w-full rounded-2xl border border-separator bg-bg px-4 py-3 pr-12 text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+						size="lg"
+						class="w-full pr-12"
 					/>
 					<button
 						type="button"
@@ -129,15 +133,17 @@
 				{/if}
 			</div>
 
-			<button
+			<Button
 				type="submit"
 				data-testid="login-submit-button"
 				disabled={isLoading}
 				aria-busy={isLoading}
-				class="w-full rounded-2xl bg-accent px-6 py-3 font-medium text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-60"
+				variant="primary"
+				size="lg"
+				class="w-full justify-center"
 			>
 				{isLoading ? 'ログイン中...' : 'ログイン'}
-			</button>
+			</Button>
 		</form>
 	</div>
 </div>

@@ -30,6 +30,7 @@
 		Users
 	} from '@lucide/svelte';
 	import RecipeForm from '../components/RecipeForm.svelte';
+	import Button from '$lib/components/Button.svelte';
 
 	let { data } = $props();
 
@@ -110,23 +111,25 @@
 	<div class="mb-4 flex items-start gap-4">
 		<h1 class="flex-1 text-2xl font-medium text-label">{data.recipe.name}</h1>
 		<div class="flex gap-2">
-			<button
+			<Button
 				onclick={() => (showEditDialog = true)}
 				aria-label="編集"
-				class="flex items-center gap-2 rounded-2xl border border-separator px-4 py-2 text-sm font-medium text-secondary transition-colors hover:text-label"
+				variant="secondary"
+				size="md"
 			>
 				<Pencil size={16} />
 				編集
-			</button>
-			<button
+			</Button>
+			<Button
 				data-testid="recipes-delete-button"
 				onclick={openDeleteDialog}
 				aria-label="削除"
-				class="flex items-center gap-2 rounded-2xl bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive transition-opacity hover:opacity-80"
+				variant="ghost-destructive"
+				size="md"
 			>
 				<Trash2 size={16} />
 				削除
-			</button>
+			</Button>
 		</div>
 	</div>
 
@@ -274,21 +277,18 @@
 		「{data.recipe.name}」を削除しますか？この操作は元に戻せません。
 	</p>
 	<div class="flex justify-end gap-3">
-		<button
-			type="button"
-			onclick={() => deleteDialogEl?.close()}
-			class="rounded-2xl border border-separator px-5 py-2.5 text-sm font-medium text-secondary transition-colors hover:text-label"
-		>
+		<Button type="button" onclick={() => deleteDialogEl?.close()} variant="secondary" size="md">
 			キャンセル
-		</button>
-		<button
+		</Button>
+		<Button
 			type="button"
 			data-testid="recipes-delete-confirm-button"
 			onclick={() => void handleDelete()}
 			disabled={isDeleting}
-			class="rounded-2xl bg-destructive px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+			variant="destructive"
+			size="md"
 		>
 			{isDeleting ? '削除中...' : '削除する'}
-		</button>
+		</Button>
 	</div>
 </dialog>

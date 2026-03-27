@@ -82,14 +82,17 @@ Return null for any field you cannot extract. Extract only recipe-related conten
 			});
 			rawText = aiResponse.response ?? '{}';
 		}
-		const cleaned = rawText
+		// LLM が JSON の前後に説明文を付加するケースに対応するため、
+		// コードブロックを除去した後、正規表現で JSON オブジェクト部分を抽出する
+		const stripped = rawText
 			.replace(/```json\n?/g, '')
 			.replace(/```\n?/g, '')
 			.trim();
 
 		let extracted: Record<string, unknown>;
 		try {
-			extracted = JSON.parse(cleaned);
+			const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+			extracted = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
 		} catch {
 			extracted = {};
 		}

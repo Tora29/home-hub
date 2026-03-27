@@ -22,9 +22,12 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { ChefHat, ChevronDown, LoaderCircle, MessageCircle, Plus, Send } from '@lucide/svelte';
+	import { ChefHat, LoaderCircle, MessageCircle, Plus, Send } from '@lucide/svelte';
 	import RecipeCard from './components/RecipeCard.svelte';
 	import RecipeForm from './components/RecipeForm.svelte';
+	import Input from '$lib/components/Input.svelte';
+	import Button from '$lib/components/Button.svelte';
+	import Select from '$lib/components/Select.svelte';
 
 	let { data } = $props();
 
@@ -79,14 +82,15 @@
 	<div class="mb-6 flex items-center gap-3">
 		<ChefHat size={28} class="text-accent" />
 		<h1 class="flex-1 text-2xl font-medium text-label">レシピ</h1>
-		<button
+		<Button
 			data-testid="recipes-create-button"
 			onclick={() => (showCreateDialog = true)}
-			class="flex items-center gap-2 rounded-2xl bg-accent px-4 py-2 font-medium text-white shadow-sm transition-opacity hover:opacity-90"
+			variant="primary"
+			size="md"
 		>
 			<Plus size={18} />
 			登録
-		</button>
+		</Button>
 	</div>
 
 	<!-- AI consultation widget -->
@@ -96,19 +100,22 @@
 			<h2 class="font-medium text-label">AI 献立相談</h2>
 		</div>
 		<div class="flex gap-2">
-			<input
+			<Input
 				data-testid="recipes-ask-input"
 				type="text"
 				bind:value={askQuestion}
 				placeholder="例: 最近作ってないもので肉系が食べたいんだけど..."
 				onkeydown={(e) => e.key === 'Enter' && !isAskLoading && void handleAsk()}
-				class="min-w-0 flex-1 rounded-2xl border border-separator bg-bg px-4 py-2 text-label placeholder:text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+				size="md"
+				class="min-w-0 flex-1"
 			/>
-			<button
+			<Button
 				data-testid="recipes-ask-button"
 				onclick={() => void handleAsk()}
 				disabled={isAskLoading}
-				class="flex shrink-0 items-center gap-2 rounded-2xl bg-accent px-4 py-2 font-medium text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-60"
+				variant="primary"
+				size="md"
+				class="shrink-0"
 			>
 				{#if isAskLoading}
 					<LoaderCircle size={16} class="animate-spin" />
@@ -116,7 +123,7 @@
 					<Send size={16} />
 				{/if}
 				<span class="hidden sm:inline">{isAskLoading ? '相談中...' : '送信'}</span>
-			</button>
+			</Button>
 		</div>
 		{#if askError}
 			<p class="mt-2 text-sm text-destructive">{askError}</p>
@@ -133,23 +140,17 @@
 
 	<!-- Sort control -->
 	<div class="mb-4 flex justify-end">
-		<div class="relative">
-			<select
-				data-testid="recipes-sort-select"
-				value={currentSort}
-				onchange={handleSortChange}
-				class="appearance-none rounded-2xl border border-separator bg-bg py-2 pr-9 pl-4 text-sm text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-			>
-				<option value="createdAt_desc">登録順</option>
-				<option value="lastCookedAt_asc">しばらく作ってない順</option>
-				<option value="cookedCount_desc">よく作る順</option>
-				<option value="rating_desc">評価が高い順</option>
-			</select>
-			<ChevronDown
-				size={16}
-				class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-secondary"
-			/>
-		</div>
+		<Select
+			data-testid="recipes-sort-select"
+			value={currentSort}
+			onchange={handleSortChange}
+			size="md"
+		>
+			<option value="createdAt_desc">登録順</option>
+			<option value="lastCookedAt_asc">しばらく作ってない順</option>
+			<option value="cookedCount_desc">よく作る順</option>
+			<option value="rating_desc">評価が高い順</option>
+		</Select>
 	</div>
 
 	<!-- Recipe grid / empty state -->

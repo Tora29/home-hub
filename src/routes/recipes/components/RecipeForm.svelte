@@ -20,6 +20,10 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { LoaderCircle, Plus, Trash2, X } from '@lucide/svelte';
+	import Input from '$lib/components/Input.svelte';
+	import Textarea from '$lib/components/Textarea.svelte';
+	import Select from '$lib/components/Select.svelte';
+	import Button from '$lib/components/Button.svelte';
 
 	interface Ingredient {
 		name: string;
@@ -229,11 +233,6 @@
 			isSubmitting = false;
 		}
 	}
-
-	const INPUT_CLASS =
-		'rounded-2xl border border-separator bg-bg px-4 py-3 text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-accent';
-	const INPUT_SM_CLASS =
-		'rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-label placeholder:text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent';
 </script>
 
 <div class="flex flex-col">
@@ -284,28 +283,32 @@
 			</p>
 			<div class="mb-3 flex flex-col gap-1">
 				<label for="ai-source-url" class="text-sm font-medium text-label">参照元 URL（任意）</label>
-				<input
+				<Input
 					id="ai-source-url"
 					type="url"
 					data-testid="recipes-source-url-input"
 					bind:value={sourceUrl}
 					placeholder="https://..."
-					class="rounded-2xl border border-separator bg-bg px-4 py-3 text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+					size="lg"
+					class="w-full"
 				/>
 			</div>
-			<textarea
+			<Textarea
 				data-testid="recipes-extract-input"
 				bind:value={extractText}
 				placeholder="サイトからコピーしたテキストをここに貼り付け（広告・ナビゲーションが含まれていても大丈夫です）"
 				rows={10}
-				class="w-full resize-none rounded-2xl border border-separator bg-bg px-4 py-3 text-sm text-label placeholder:text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-			></textarea>
-			<button
+				size="md"
+				class="w-full"
+			/>
+			<Button
 				data-testid="recipes-extract-button"
 				type="button"
 				onclick={() => void handleExtract()}
 				disabled={isExtracting || !extractText.trim()}
-				class="mt-3 flex items-center gap-2 rounded-2xl bg-accent px-6 py-3 font-medium text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-60"
+				variant="primary"
+				size="lg"
+				class="mt-3"
 			>
 				{#if isExtracting}
 					<LoaderCircle size={16} class="animate-spin" />
@@ -313,7 +316,7 @@
 				{:else}
 					AI で解析
 				{/if}
-			</button>
+			</Button>
 		</div>
 	{/if}
 
@@ -333,13 +336,14 @@
 				<label for="recipe-name" class="text-sm font-medium text-label">
 					レシピ名 <span class="text-destructive" aria-hidden="true">*</span>
 				</label>
-				<input
+				<Input
 					id="recipe-name"
 					type="text"
 					data-testid="recipes-name-input"
 					bind:value={name}
 					maxlength={100}
-					class={INPUT_CLASS}
+					size="lg"
+					class="w-full"
 				/>
 				{#if nameError}
 					<p data-testid="recipes-name-error" class="text-xs text-destructive">{nameError}</p>
@@ -349,40 +353,43 @@
 			<!-- Description -->
 			<div class="flex flex-col gap-1">
 				<label for="recipe-description" class="text-sm font-medium text-label">概要</label>
-				<textarea
+				<Textarea
 					id="recipe-description"
 					data-testid="recipes-description-input"
 					bind:value={description}
 					maxlength={500}
 					rows={3}
-					class="resize-none rounded-2xl border border-separator bg-bg px-4 py-3 text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-				></textarea>
+					size="lg"
+					class="w-full"
+				/>
 			</div>
 
 			<!-- Servings + CookingTime -->
 			<div class="grid grid-cols-2 gap-4">
 				<div class="flex flex-col gap-1">
 					<label for="recipe-servings" class="text-sm font-medium text-label">何人前</label>
-					<input
+					<Input
 						id="recipe-servings"
 						type="number"
 						data-testid="recipes-servings-input"
 						bind:value={servingsStr}
 						min="1"
-						class={INPUT_CLASS}
+						size="lg"
+						class="w-full"
 					/>
 				</div>
 				<div class="flex flex-col gap-1">
 					<label for="recipe-cooking-time" class="text-sm font-medium text-label">
 						調理時間（分）
 					</label>
-					<input
+					<Input
 						id="recipe-cooking-time"
 						type="number"
 						data-testid="recipes-cooking-time-input"
 						bind:value={cookingTimeStr}
 						min="1"
-						class={INPUT_CLASS}
+						size="lg"
+						class="w-full"
 					/>
 				</div>
 			</div>
@@ -391,32 +398,34 @@
 			<div class="grid grid-cols-2 gap-4">
 				<div class="flex flex-col gap-1">
 					<label for="recipe-difficulty" class="text-sm font-medium text-label">難易度</label>
-					<select
+					<Select
 						id="recipe-difficulty"
 						data-testid="recipes-difficulty-select"
 						bind:value={difficulty}
-						class={INPUT_CLASS}
+						size="lg"
+						class="w-full"
 					>
 						<option value="">未設定</option>
 						<option value="easy">簡単</option>
 						<option value="medium">普通</option>
 						<option value="hard">難しい</option>
-					</select>
+					</Select>
 				</div>
 				<div class="flex flex-col gap-1">
 					<label for="recipe-rating" class="text-sm font-medium text-label">評価</label>
-					<select
+					<Select
 						id="recipe-rating"
 						data-testid="recipes-rating-select"
 						bind:value={rating}
-						class={INPUT_CLASS}
+						size="lg"
+						class="w-full"
 					>
 						<option value="">未設定</option>
 						<option value="excellent">非常に美味しい</option>
 						<option value="good">美味しい</option>
 						<option value="average">普通</option>
 						<option value="poor">微妙</option>
-					</select>
+					</Select>
 				</div>
 			</div>
 
@@ -427,25 +436,27 @@
 						<label for="recipe-cooked-count" class="text-sm font-medium text-label">
 							作った回数
 						</label>
-						<input
+						<Input
 							id="recipe-cooked-count"
 							type="number"
 							data-testid="recipes-cooked-count-input"
 							bind:value={cookedCountStr}
 							min="0"
-							class={INPUT_CLASS}
+							size="lg"
+							class="w-full"
 						/>
 					</div>
 					<div class="flex flex-col gap-1">
 						<label for="recipe-last-cooked" class="text-sm font-medium text-label">
 							最終調理日
 						</label>
-						<input
+						<Input
 							id="recipe-last-cooked"
 							type="datetime-local"
 							data-testid="recipes-last-cooked-input"
 							bind:value={lastCookedAtStr}
-							class={INPUT_CLASS}
+							size="lg"
+							class="w-full"
 						/>
 					</div>
 				</div>
@@ -467,19 +478,21 @@
 				</div>
 				{#each ingredients as _ingredient, i (i)}
 					<div data-testid="recipes-ingredient-item" class="flex items-center gap-2">
-						<input
+						<Input
 							type="text"
 							data-testid="recipes-ingredient-name-input"
 							bind:value={ingredients[i].name}
 							placeholder="材料名"
-							class={INPUT_SM_CLASS + ' flex-1'}
+							size="md"
+							class="flex-1"
 						/>
-						<input
+						<Input
 							type="text"
 							data-testid="recipes-ingredient-amount-input"
 							bind:value={ingredients[i].amount}
 							placeholder="量（例: 300g）"
-							class={INPUT_SM_CLASS + ' w-32'}
+							size="md"
+							class="w-32"
 						/>
 						<button
 							type="button"
@@ -515,13 +528,14 @@
 						>
 							{i + 1}
 						</span>
-						<textarea
+						<Textarea
 							data-testid="recipes-step-input"
 							bind:value={steps[i]}
 							placeholder="手順を入力..."
 							rows={2}
-							class="flex-1 resize-none rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-label placeholder:text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-						></textarea>
+							size="md"
+							class="flex-1"
+						/>
 						<button
 							type="button"
 							data-testid="recipes-step-remove-button"
@@ -538,57 +552,55 @@
 			<!-- Image URL -->
 			<div class="flex flex-col gap-1">
 				<label for="recipe-image-url" class="text-sm font-medium text-label">画像 URL</label>
-				<input
+				<Input
 					id="recipe-image-url"
 					type="url"
 					data-testid="recipes-image-url-input"
 					bind:value={imageUrl}
 					placeholder="https://..."
-					class={INPUT_CLASS}
+					size="lg"
+					class="w-full"
 				/>
 			</div>
 
 			<!-- Source URL -->
 			<div class="flex flex-col gap-1">
 				<label for="recipe-source-url" class="text-sm font-medium text-label">参照元 URL</label>
-				<input
+				<Input
 					id="recipe-source-url"
 					type="url"
 					data-testid="recipes-source-url-input"
 					bind:value={sourceUrl}
 					placeholder="https://..."
-					class={INPUT_CLASS}
+					size="lg"
+					class="w-full"
 				/>
 			</div>
 
 			<!-- Memo -->
 			<div class="flex flex-col gap-1">
 				<label for="recipe-memo" class="text-sm font-medium text-label">メモ</label>
-				<textarea
+				<Textarea
 					id="recipe-memo"
 					data-testid="recipes-memo-input"
 					bind:value={memo}
 					maxlength={1000}
 					rows={3}
 					placeholder="調理後の感想や工夫したことなど"
-					class="resize-none rounded-2xl border border-separator bg-bg px-4 py-3 text-label placeholder:text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-				></textarea>
+					size="lg"
+					class="w-full"
+				/>
 			</div>
 
 			<!-- Action buttons -->
 			<div class="flex justify-end gap-3 pt-2">
-				<button
-					type="button"
-					onclick={onCancel}
-					class="rounded-2xl border border-separator px-6 py-3 text-sm font-medium text-secondary transition-colors hover:text-label"
-				>
-					キャンセル
-				</button>
-				<button
+				<Button type="button" onclick={onCancel} variant="secondary" size="lg">キャンセル</Button>
+				<Button
 					type="submit"
 					data-testid="recipes-submit-button"
 					disabled={isSubmitting}
-					class="flex items-center gap-2 rounded-2xl bg-accent px-6 py-3 font-medium text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-60"
+					variant="primary"
+					size="lg"
 				>
 					{#if isSubmitting}
 						<LoaderCircle size={16} class="animate-spin" />
@@ -596,7 +608,7 @@
 					{:else}
 						保存
 					{/if}
-				</button>
+				</Button>
 			</div>
 		</form>
 	{/if}

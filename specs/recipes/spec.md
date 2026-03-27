@@ -222,24 +222,32 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 ## テスト戦略
 
-| AC          | 種別        | 対象ファイル                  | 備考                                     |
-| ----------- | ----------- | ----------------------------- | ---------------------------------------- |
-| AC-001      | Integration | `service.integration.test.ts` | 実 D1 で一覧取得を検証                   |
-| AC-002      | Integration | `service.integration.test.ts` | 実 D1 でレシピ作成を検証                 |
-| AC-003      | Integration | `service.integration.test.ts` | 実 D1 で ID 指定取得を検証               |
-| AC-004      | Integration | `service.integration.test.ts` | 実 D1 でレシピ更新を検証                 |
-| AC-005      | Integration | `service.integration.test.ts` | 実 D1 でレシピ削除を検証                 |
-| AC-006      | Unit        | `ask/+server.test.ts`         | dev=true のダミー回答パスを検証          |
-| AC-006      | E2E         | `e2e/recipes.e2e.ts`          | 本番 Workers AI はブラウザ全体が必要     |
-| AC-011〜013 | Unit        | `extract/+server.test.ts`     | dev=true のダミー抽出パスを検証          |
-| AC-011〜013 | E2E         | `e2e/recipes.e2e.ts`          | 本番 Workers AI 抽出はブラウザ全体が必要 |
-| AC-007      | Unit        | `RecipeForm.svelte.test.ts`   | 動的フォーム行の追加・削除検証           |
-| AC-008〜010 | Integration | `service.integration.test.ts` | 各ソート順を実 D1 で検証                 |
-| AC-101〜114 | Unit        | `schema.test.ts`              | Zod バリデーション検証                   |
-| AC-115      | Unit        | `page.svelte.test.ts`         | 空欄送信時のフロントエラー表示           |
-| AC-201〜203 | Unit        | `schema.test.ts`              | Zod 境界値検証                           |
-| AC-204      | E2E         | `e2e/recipes.e2e.ts`          | 空状態はブラウザ全体が必要               |
-| AC-205〜206 | Unit        | `schema.test.ts`              | Zod 境界値検証                           |
+| AC          | 種別        | 対象ファイル                           | 備考                                                                        |
+| ----------- | ----------- | -------------------------------------- | --------------------------------------------------------------------------- |
+| AC-001      | Integration | `page.server.integration.test.ts`      | load 関数の不正クエリ時デフォルト値フォールバックを検証                     |
+| AC-001      | Integration | `service.integration.test.ts`          | 実 D1 で一覧取得を検証                                                      |
+| AC-002      | Integration | `service.integration.test.ts`          | 実 D1 でレシピ作成を検証                                                    |
+| AC-003      | Integration | `service.integration.test.ts`          | 実 D1 で ID 指定取得を検証                                                  |
+| AC-003      | Integration | `[id]/page.server.integration.test.ts` | load 関数の AppError(404) → SvelteKit error(404) 変換を検証                 |
+| AC-004      | Integration | `service.integration.test.ts`          | 実 D1 でレシピ更新を検証                                                    |
+| AC-005      | Integration | `service.integration.test.ts`          | 実 D1 でレシピ削除を検証                                                    |
+| AC-006      | Unit        | `ask/+server.test.ts`                  | dev=true のダミー回答パスを検証                                             |
+| AC-006      | E2E         | `e2e/recipes.e2e.ts`                   | 本番 Workers AI はブラウザ全体が必要                                        |
+| AC-011〜013 | Unit        | `extract/+server.test.ts`              | dev=true のダミー抽出パスを検証                                             |
+| AC-011〜013 | E2E         | `e2e/recipes.e2e.ts`                   | 本番 Workers AI 抽出はブラウザ全体が必要                                    |
+| AC-001      | Unit        | `RecipeCard.svelte.test.ts`            | imageUrl なし時のプレースホルダー表示を検証                                 |
+| AC-007      | Unit        | `RecipeForm.svelte.test.ts`            | 動的フォーム行の追加・削除検証                                              |
+| AC-206      | Unit        | `RecipeCard.svelte.test.ts`            | cookedCount=0 のとき「0 回」と表示されることを検証                          |
+| AC-008〜010 | Integration | `service.integration.test.ts`          | 各ソート順を実 D1 で検証                                                    |
+| AC-101〜110 | Unit        | `+server.test.ts`                      | POST ハンドラが VALIDATION_ERROR 形式の 400 を返すことを検証                |
+| AC-113      | Unit        | `+server.test.ts`                      | GET ハンドラが不正 sort に対し VALIDATION_ERROR 形式の 400 を返すことを検証 |
+| AC-101〜110 | Unit        | `[id]/+server.test.ts`                 | PUT ハンドラが VALIDATION_ERROR 形式の 400 を返すことを検証                 |
+| AC-107      | Unit        | `[id]/+server.test.ts`                 | PUT/DELETE ハンドラが NOT_FOUND 形式の 404 を返すことを検証                 |
+| AC-101〜114 | Unit        | `schema.test.ts`                       | Zod バリデーション検証                                                      |
+| AC-115      | Unit        | `page.svelte.test.ts`                  | 空欄送信時のフロントエラー表示                                              |
+| AC-201〜203 | Unit        | `schema.test.ts`                       | Zod 境界値検証                                                              |
+| AC-204      | E2E         | `e2e/recipes.e2e.ts`                   | 空状態はブラウザ全体が必要                                                  |
+| AC-205〜206 | Unit        | `schema.test.ts`                       | Zod 境界値検証                                                              |
 
 ## Non-Functional Requirements
 

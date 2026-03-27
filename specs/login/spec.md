@@ -93,6 +93,21 @@ export type Login = z.infer<typeof loginSchema>;
 | `login-password-error`  | `<p>`      | パスワードフィールドエラー     |
 | `login-auth-error`      | `<p>`      | 認証失敗エラー（フォーム全体） |
 
+## テスト戦略
+
+| AC          | 種別 | 対象ファイル          | 備考                                                                     |
+| ----------- | ---- | --------------------- | ------------------------------------------------------------------------ |
+| AC-001      | Unit | `page.svelte.test.ts` | 認証成功後の `/` 遷移を検証                                              |
+| AC-001      | E2E  | `e2e/login.e2e.ts`    | 実 Better Auth を通じたログインフローを検証                              |
+| AC-002      | Unit | `page.svelte.test.ts` | パスワード表示切替の `type` 属性変化を検証                               |
+| AC-002      | E2E  | `e2e/login.e2e.ts`    | ブラウザ上でのアイコン切替動作を検証                                     |
+| AC-003      | E2E  | `e2e/login.e2e.ts`    | 未認証アクセス時の `/login` リダイレクトを検証（hooks.server.ts の動作） |
+| AC-101〜103 | Unit | `schema.test.ts`      | Zod バリデーション検証                                                   |
+| AC-101〜103 | E2E  | `e2e/login.e2e.ts`    | ブラウザ上でのエラーメッセージ表示を検証                                 |
+| AC-104      | Unit | `page.svelte.test.ts` | 認証失敗時のフォーム全体エラー表示を検証                                 |
+| AC-104      | E2E  | `e2e/login.e2e.ts`    | 実 Better Auth に対する認証失敗を検証                                    |
+| AC-201〜203 | Unit | `schema.test.ts`      | Zod 境界値検証                                                           |
+
 ## Non-Functional Requirements
 
 ### Performance
