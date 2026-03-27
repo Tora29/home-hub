@@ -55,14 +55,19 @@ The JSON must follow this exact structure:
   "description": "brief description or null",
   "servings": number or null,
   "cookingTimeMinutes": number or null,
-  "ingredients": [{"name": "ingredient name", "amount": "amount and unit"}] or null,
+  "ingredients": [{"name": "ingredient name", "amount": "amount and unit or empty string"}],
   "steps": ["step 1", "step 2", ...] or null
 }
 
-Return null for any field you cannot extract. Extract only recipe-related content, ignoring advertisements and navigation text.`;
+Rules:
+- "name": Extract the recipe title if present. If not explicitly stated, infer it from the ingredients and steps (e.g. "ほうれん草の白和え"). Do NOT return null for name — always make your best guess.
+- "servings": Look for patterns like "【2人前】" "2人分" "serves 2" and extract the number only.
+- "ingredients": Ingredients may be listed with the name on one line and the amount on the next line. Pair them correctly. Ignore section headers like "☆調味料". If no amount is given, use empty string.
+- "steps": Extract numbered cooking steps only. Ignore tips, notes, video labels, and advertisements.
+- Return null only for fields you truly cannot determine.`;
 
 		let rawText: string;
-		if (dev) {
+		if (dev && !platform?.env?.USE_REAL_AI) {
 			rawText = JSON.stringify({
 				name: 'ダミーレシピ（ローカル開発用）',
 				description: '本番環境では Workers AI が実際のテキストから抽出します。',
@@ -72,14 +77,22 @@ Return null for any field you cannot extract. Extract only recipe-related conten
 				steps: ['手順1（ダミー）', '手順2（ダミー）']
 			});
 		} else {
+			if (!platform?.env?.AI) {
+				console.error('[recipes/extract] AI binding is not available. Check Cloudflare Pages AI binding configuration.');
+				return json(
+					{ code: 'INTERNAL_SERVER_ERROR', message: 'AI 機能が利用できません。管理者にお問い合わせください。' },
+					{ status: 500 }
+				);
+			}
 			type AiRunner = { run: (model: string, opts: unknown) => Promise<{ response?: string }> };
-			const ai = platform!.env.AI as unknown as AiRunner;
+			const ai = platform.env.AI as unknown as AiRunner;
 			const aiResponse = await ai.run('@cf/meta/llama-3.1-8b-instruct-fp8', {
 				messages: [
 					{ role: 'system', content: systemPrompt },
 					{ role: 'user', content: result.data.text }
 				]
 			});
+			console.log('[recipes/extract] AI raw response:', aiResponse.response?.slice(0, 200));
 			rawText = aiResponse.response ?? '{}';
 		}
 		// LLM が JSON の前後に説明文を付加するケースに対応するため、

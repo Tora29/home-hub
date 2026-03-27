@@ -73,6 +73,7 @@
 	// AI extract state
 	let extractText = $state('');
 	let isExtracting = $state(false);
+	let extractError = $state('');
 
 	// Form fields - untrack props to intentionally capture only the initial value
 	let name = $state(untrack(() => recipe?.name ?? ''));
@@ -116,13 +117,19 @@
 	async function handleExtract() {
 		if (!extractText.trim()) return;
 		isExtracting = true;
+		extractError = '';
 		try {
 			const res = await fetch('/recipes/extract', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ text: extractText })
 			});
-			if (!res.ok) return;
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({})) as { message?: string };
+				extractError = err.message ?? 'AI 解析に失敗しました。手動で入力してください。';
+				activeTab = 'manual';
+				return;
+			}
 			const data = (await res.json()) as {
 				name?: string | null;
 				description?: string | null;
@@ -322,6 +329,11 @@
 
 	<!-- Manual Tab -->
 	{#if activeTab === 'manual' || mode === 'edit'}
+		{#if extractError}
+			<p class="mx-6 mt-4 rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
+				{extractError}
+			</p>
+		{/if}
 		<form
 			data-testid="recipes-form"
 			novalidate
