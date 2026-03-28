@@ -34,3 +34,6 @@ playwright-report/
 
 # plan
 plan.md
+
+# Claude user memory (private)
+.claude/user/

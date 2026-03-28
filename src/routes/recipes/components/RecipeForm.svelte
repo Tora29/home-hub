@@ -125,7 +125,7 @@
 				body: JSON.stringify({ text: extractText })
 			});
 			if (!res.ok) {
-				const err = await res.json().catch(() => ({})) as { message?: string };
+				const err = (await res.json().catch(() => ({}))) as { message?: string };
 				extractError = err.message ?? 'AI 解析に失敗しました。手動で入力してください。';
 				activeTab = 'manual';
 				return;

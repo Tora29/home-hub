@@ -78,9 +78,14 @@ Rules:
 			});
 		} else {
 			if (!platform?.env?.AI) {
-				console.error('[recipes/extract] AI binding is not available. Check Cloudflare Pages AI binding configuration.');
+				console.error(
+					'[recipes/extract] AI binding is not available. Check Cloudflare Pages AI binding configuration.'
+				);
 				return json(
-					{ code: 'INTERNAL_SERVER_ERROR', message: 'AI 機能が利用できません。管理者にお問い合わせください。' },
+					{
+						code: 'INTERNAL_SERVER_ERROR',
+						message: 'AI 機能が利用できません。管理者にお問い合わせください。'
+					},
 					{ status: 500 }
 				);
 			}
