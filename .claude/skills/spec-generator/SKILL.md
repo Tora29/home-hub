@@ -148,6 +148,35 @@ options:
 2. `specs/{feature}/openapi.yaml` に出力
 3. spec.md 内から openapi.yaml を参照するリンクを追加
 
+#### tags の付与ルール（必須）
+
+生成する openapi.yaml には必ず `tags` を定義し、各 operation に付与する。
+
+- トップレベルに `tags:` セクションを定義する
+- エンドポイントのグループ（リソース種別）ごとに tag を作成する
+- 命名: kebab-case で feature 名または resource 名を使う（例: `expense`, `expense-categories`, `recipes`）
+- 各 operation には `tags: [{tag_name}]` を付与する
+
+```yaml
+tags:
+  - name: tasks
+    description: タスク管理
+  - name: task-comments
+    description: タスクコメント
+
+paths:
+  /tasks:
+    get:
+      tags: [tasks]
+      summary: タスク一覧取得
+  /task-comments:
+    post:
+      tags: [task-comments]
+      summary: コメント投稿
+```
+
+tags がないと Swagger UI で全エンドポイントが `default` グループに表示されてしまうため必須。
+
 API 要件がない場合はこのステップをスキップする。
 
 生成後、以下の docker-compose.yml を `docker compose up` で起動すると Swagger UI で確認できることをユーザーに伝える:

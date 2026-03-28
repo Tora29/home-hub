@@ -4,6 +4,6 @@ services:
     ports:
       - '8080:8080'
     environment:
-      SWAGGER_JSON: ${SWAGGER_JSON}
+      SWAGGER_JSON: /specs/openapi.yaml
     volumes:
       - ./specs:/specs:ro
