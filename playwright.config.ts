@@ -15,6 +15,7 @@ try {
 export default defineConfig({
 	globalSetup: './e2e/global-setup.ts',
 	workers: 1,
+	retries: process.env.CI ? 2 : 0,
 	webServer: {
 		command: 'npm run build && wrangler pages dev .svelte-kit/cloudflare --port 4173',
 		port: 4173
