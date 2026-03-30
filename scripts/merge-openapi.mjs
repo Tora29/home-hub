@@ -80,7 +80,9 @@ for (const specPath of featureSpecs) {
 				const existing = JSON.stringify(merged.components[section][key]);
 				const incoming = JSON.stringify(value);
 				if (existing !== incoming) {
-					console.warn(`  [WARN] Duplicate components.${section}.${key} with different content — keeping first.`);
+					console.warn(
+						`  [WARN] Duplicate components.${section}.${key} with different content — keeping first.`
+					);
 				}
 			} else {
 				merged.components[section][key] = value;

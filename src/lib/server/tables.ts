@@ -9,6 +9,8 @@
  * @schemas
  * - user, session, account, verification — Better Auth 管理テーブル
  * - recipe                              — アプリ固有テーブル
+ * - expenseCategory                     — 支出カテゴリテーブル
+ * - expense                             — 支出テーブル
  */
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
@@ -65,6 +67,24 @@ export const verification = sqliteTable('Verification', {
 });
 
 // ---- アプリ固有テーブル ----
+
+export const expenseCategory = sqliteTable('ExpenseCategory', {
+	id: text('id').primaryKey(),
+	userId: text('userId').notNull(),
+	name: text('name').notNull(),
+	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
+});
+
+export const expense = sqliteTable('Expense', {
+	id: text('id').primaryKey(),
+	userId: text('userId').notNull(),
+	amount: integer('amount').notNull(),
+	categoryId: text('categoryId')
+		.notNull()
+		.references(() => expenseCategory.id),
+	approvedAt: integer('approvedAt', { mode: 'timestamp' }),
+	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
+});
 
 export const recipe = sqliteTable('Recipe', {
 	id: text('id').primaryKey(),

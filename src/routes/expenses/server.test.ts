@@ -54,7 +54,7 @@ describe('GET /expense', () => {
 			url: makeGetUrl(),
 			locals: mockLocals,
 			platform: mockPlatform
-		} as any);
+		} as Parameters<typeof GET>[0]);
 
 		expect(response.status).toBe(200);
 		const body = await response.json();
@@ -71,7 +71,7 @@ describe('GET /expense', () => {
 			url: makeGetUrl({ month: '2026-01' }),
 			locals: mockLocals,
 			platform: mockPlatform
-		} as any);
+		} as Parameters<typeof GET>[0]);
 
 		expect(response.status).toBe(200);
 	});
@@ -83,7 +83,7 @@ describe('POST /expense', () => {
 			request: makePostRequest({ categoryId: 'cat-1' }),
 			locals: mockLocals,
 			platform: mockPlatform
-		} as any);
+		} as Parameters<typeof GET>[0]);
 
 		expect(response.status).toBe(400);
 		const body = await response.json();
@@ -97,7 +97,7 @@ describe('POST /expense', () => {
 			request: makePostRequest({ amount: 0, categoryId: 'cat-1' }),
 			locals: mockLocals,
 			platform: mockPlatform
-		} as any);
+		} as Parameters<typeof GET>[0]);
 
 		expect(response.status).toBe(400);
 		const body = await response.json();
@@ -113,7 +113,7 @@ describe('POST /expense', () => {
 			request: makePostRequest({ amount: 10000000, categoryId: 'cat-1' }),
 			locals: mockLocals,
 			platform: mockPlatform
-		} as any);
+		} as Parameters<typeof GET>[0]);
 
 		expect(response.status).toBe(400);
 		const body = await response.json();
@@ -129,7 +129,7 @@ describe('POST /expense', () => {
 			request: makePostRequest({ amount: '千円', categoryId: 'cat-1' }),
 			locals: mockLocals,
 			platform: mockPlatform
-		} as any);
+		} as Parameters<typeof GET>[0]);
 
 		expect(response.status).toBe(400);
 		const body = await response.json();
@@ -141,7 +141,7 @@ describe('POST /expense', () => {
 			request: makePostRequest({ amount: 100.5, categoryId: 'cat-1' }),
 			locals: mockLocals,
 			platform: mockPlatform
-		} as any);
+		} as Parameters<typeof GET>[0]);
 
 		expect(response.status).toBe(400);
 		const body = await response.json();
@@ -153,7 +153,7 @@ describe('POST /expense', () => {
 			request: makePostRequest({ amount: 1000 }),
 			locals: mockLocals,
 			platform: mockPlatform
-		} as any);
+		} as Parameters<typeof GET>[0]);
 
 		expect(response.status).toBe(400);
 		const body = await response.json();
@@ -166,7 +166,7 @@ describe('POST /expense', () => {
 			request: makePostRequest({ amount: 1000, categoryId: '' }),
 			locals: mockLocals,
 			platform: mockPlatform
-		} as any);
+		} as Parameters<typeof GET>[0]);
 
 		expect(response.status).toBe(400);
 		const body = await response.json();
@@ -181,8 +181,13 @@ describe('POST /expense', () => {
 			amount: 1000,
 			categoryId: 'cat-1',
 			approvedAt: null,
-			createdAt: '2026-03-28T00:00:00.000Z',
-			category: { id: 'cat-1', userId: 'user-1', name: '食費', createdAt: '2026-03-01T00:00:00.000Z' }
+			createdAt: new Date('2026-03-28T00:00:00.000Z'),
+			category: {
+				id: 'cat-1',
+				userId: 'user-1',
+				name: '食費',
+				createdAt: new Date('2026-03-01T00:00:00.000Z')
+			}
 		};
 		vi.mocked(service.createExpense).mockResolvedValueOnce(mockCreated);
 
@@ -190,7 +195,7 @@ describe('POST /expense', () => {
 			request: makePostRequest({ amount: 1000, categoryId: 'cat-1' }),
 			locals: mockLocals,
 			platform: mockPlatform
-		} as any);
+		} as Parameters<typeof GET>[0]);
 
 		expect(response.status).toBe(201);
 		const body = await response.json();

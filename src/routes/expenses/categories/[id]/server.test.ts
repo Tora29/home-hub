@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type * as ErrorsModule from '$lib/server/errors';
 
 vi.mock('$lib/server/db', () => ({
 	createDb: vi.fn().mockReturnValue({})
@@ -20,7 +21,7 @@ vi.mock('../service', () => ({
 }));
 
 vi.mock('$lib/server/errors', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('$lib/server/errors')>();
+	const actual = await importOriginal<typeof ErrorsModule>();
 	return actual;
 });
 
@@ -57,7 +58,7 @@ describe('PUT /expense/categories/[id]', () => {
 				id: CATEGORY_ID,
 				userId: 'user-1',
 				name: '外食費',
-				createdAt: '2026-03-01T00:00:00.000Z'
+				createdAt: new Date('2026-03-01T00:00:00.000Z')
 			};
 			vi.mocked(service.updateCategory).mockResolvedValueOnce(mockUpdated);
 
@@ -66,7 +67,7 @@ describe('PUT /expense/categories/[id]', () => {
 				params: { id: CATEGORY_ID },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(200);
 			const body = await response.json();
@@ -81,7 +82,7 @@ describe('PUT /expense/categories/[id]', () => {
 				params: { id: CATEGORY_ID },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(400);
 			const body = await response.json();
@@ -96,12 +97,15 @@ describe('PUT /expense/categories/[id]', () => {
 				params: { id: CATEGORY_ID },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(400);
 			const body = await response.json();
 			expect(body.code).toBe('VALIDATION_ERROR');
-			expect(body.fields).toContainEqual({ field: 'name', message: '50文字以内で入力してください' });
+			expect(body.fields).toContainEqual({
+				field: 'name',
+				message: '50文字以内で入力してください'
+			});
 		});
 
 		it('[SPEC: AC-109] 存在しないカテゴリIDの場合、404 NOT_FOUND を返す', async () => {
@@ -114,7 +118,7 @@ describe('PUT /expense/categories/[id]', () => {
 				params: { id: 'non-existent-id' },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(404);
 			const body = await response.json();
@@ -134,7 +138,7 @@ describe('DELETE /expense/categories/[id]', () => {
 				params: { id: CATEGORY_ID },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(204);
 		});
@@ -151,7 +155,7 @@ describe('DELETE /expense/categories/[id]', () => {
 				params: { id: 'non-existent-id' },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(404);
 			const body = await response.json();
@@ -169,7 +173,7 @@ describe('DELETE /expense/categories/[id]', () => {
 				params: { id: CATEGORY_ID },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(409);
 			const body = await response.json();

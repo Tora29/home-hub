@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type * as ErrorsModule from '$lib/server/errors';
 
 vi.mock('$lib/server/db', () => ({
 	createDb: vi.fn().mockReturnValue({})
@@ -20,7 +21,7 @@ vi.mock('../service', () => ({
 }));
 
 vi.mock('$lib/server/errors', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('$lib/server/errors')>();
+	const actual = await importOriginal<typeof ErrorsModule>();
 	return actual;
 });
 
@@ -58,9 +59,14 @@ describe('PUT /expense/[id]', () => {
 				userId: 'user-1',
 				amount: 1000,
 				categoryId: 'cat-1',
-				approvedAt: '2026-03-28T00:00:00.000Z',
-				createdAt: '2026-03-01T00:00:00.000Z',
-				category: { id: 'cat-1', userId: 'user-1', name: '食費', createdAt: '2026-03-01T00:00:00.000Z' }
+				approvedAt: new Date('2026-03-28T00:00:00.000Z'),
+				createdAt: new Date('2026-03-01T00:00:00.000Z'),
+				category: {
+					id: 'cat-1',
+					userId: 'user-1',
+					name: '食費',
+					createdAt: new Date('2026-03-01T00:00:00.000Z')
+				}
 			};
 			vi.mocked(service.updateExpense).mockResolvedValueOnce(mockUpdated);
 
@@ -69,7 +75,7 @@ describe('PUT /expense/[id]', () => {
 				params: { id: EXPENSE_ID },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(200);
 			const body = await response.json();
@@ -83,8 +89,13 @@ describe('PUT /expense/[id]', () => {
 				amount: 1000,
 				categoryId: 'cat-1',
 				approvedAt: null,
-				createdAt: '2026-03-01T00:00:00.000Z',
-				category: { id: 'cat-1', userId: 'user-1', name: '食費', createdAt: '2026-03-01T00:00:00.000Z' }
+				createdAt: new Date('2026-03-01T00:00:00.000Z'),
+				category: {
+					id: 'cat-1',
+					userId: 'user-1',
+					name: '食費',
+					createdAt: new Date('2026-03-01T00:00:00.000Z')
+				}
 			};
 			vi.mocked(service.updateExpense).mockResolvedValueOnce(mockUpdated);
 
@@ -93,7 +104,7 @@ describe('PUT /expense/[id]', () => {
 				params: { id: EXPENSE_ID },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(200);
 		});
@@ -106,7 +117,7 @@ describe('PUT /expense/[id]', () => {
 				params: { id: EXPENSE_ID },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(400);
 			const body = await response.json();
@@ -120,7 +131,7 @@ describe('PUT /expense/[id]', () => {
 				params: { id: EXPENSE_ID },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(400);
 			const body = await response.json();
@@ -137,7 +148,7 @@ describe('PUT /expense/[id]', () => {
 				params: { id: EXPENSE_ID },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(400);
 			const body = await response.json();
@@ -154,7 +165,7 @@ describe('PUT /expense/[id]', () => {
 				params: { id: EXPENSE_ID },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(400);
 			const body = await response.json();
@@ -167,7 +178,7 @@ describe('PUT /expense/[id]', () => {
 				params: { id: EXPENSE_ID },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(400);
 			const body = await response.json();
@@ -185,7 +196,7 @@ describe('PUT /expense/[id]', () => {
 				params: { id: 'non-existent-id' },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof PUT>[0]);
 
 			expect(response.status).toBe(404);
 			const body = await response.json();
@@ -204,7 +215,7 @@ describe('DELETE /expense/[id]', () => {
 			params: { id: EXPENSE_ID },
 			locals: mockLocals,
 			platform: mockPlatform
-		} as any);
+		} as Parameters<typeof PUT>[0]);
 
 		expect(response.status).toBe(204);
 	});
@@ -219,7 +230,7 @@ describe('DELETE /expense/[id]', () => {
 			params: { id: 'non-existent-id' },
 			locals: mockLocals,
 			platform: mockPlatform
-		} as any);
+		} as Parameters<typeof PUT>[0]);
 
 		expect(response.status).toBe(404);
 		const body = await response.json();

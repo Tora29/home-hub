@@ -27,7 +27,8 @@ export default defineConfig(
 						'playwright.config.ts',
 						'vitest.integration.config.ts',
 						'*.config.js',
-						'e2e/*.ts'
+						'e2e/*.ts',
+						'scripts/*.mjs'
 					],
 					maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 15
 				}

@@ -23,16 +23,16 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 > 型定義・スキーマ・ステータスコード・エラーレスポンスは openapi.yaml が Single Source of Truth。
 
-| メソッド | パス                       | 説明                           |
-| -------- | -------------------------- | ------------------------------ |
-| GET      | `/expense`                 | 支出一覧取得（月フィルタ付き） |
-| POST     | `/expense`                 | 支出登録                       |
+| メソッド | パス                       | 説明                                 |
+| -------- | -------------------------- | ------------------------------------ |
+| GET      | `/expense`                 | 支出一覧取得（月フィルタ付き）       |
+| POST     | `/expense`                 | 支出登録                             |
 | PUT      | `/expense/[id]`            | 支出更新（金額・カテゴリ・承認状態） |
-| DELETE   | `/expense/[id]`            | 支出削除                       |
-| GET      | `/expense/categories`      | カテゴリ一覧取得               |
-| POST     | `/expense/categories`      | カテゴリ登録                   |
-| PUT      | `/expense/categories/[id]` | カテゴリ更新                   |
-| DELETE   | `/expense/categories/[id]` | カテゴリ削除                   |
+| DELETE   | `/expense/[id]`            | 支出削除                             |
+| GET      | `/expense/categories`      | カテゴリ一覧取得                     |
+| POST     | `/expense/categories`      | カテゴリ登録                         |
+| PUT      | `/expense/categories/[id]` | カテゴリ更新                         |
+| DELETE   | `/expense/categories/[id]` | カテゴリ削除                         |
 
 ## Acceptance Criteria
 
@@ -51,6 +51,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-011: カテゴリを編集すると、一覧に表示されているカテゴリ名が更新される
 - AC-012: カテゴリに紐付く支出が 0 件の場合、カテゴリを削除できる
 - AC-013: 一覧画面に選択中の月の支出合計金額（承認済み・未承認の全件）がカンマ区切りで表示される
+
 ### 異常系
 
 - AC-101: 金額が未入力の場合、400 VALIDATION_ERROR「金額は必須です」が返る
@@ -143,53 +144,53 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 ## data-testid
 
-| testid                                   | 要素種別   | 説明                             |
-| ---------------------------------------- | ---------- | -------------------------------- |
-| `expense-list`                           | `<ul>`     | 支出一覧                         |
-| `expense-item`                           | `<li>`     | 支出行                           |
-| `expense-create-button`                  | `<button>` | 支出登録ボタン                   |
-| `expense-edit-button`                    | `<button>` | 支出編集ボタン                   |
-| `expense-form`                           | `<form>`   | 登録・編集フォーム               |
-| `expense-amount-input`                   | `<input>`  | 金額入力欄                       |
-| `expense-category-select`               | `<select>` | カテゴリ選択セレクト             |
-| `expense-submit-button`                  | `<button>` | 確定ボタン                       |
-| `expense-amount-error`                   | `<p>`      | 金額エラーメッセージ             |
-| `expense-category-error`                 | `<p>`      | カテゴリエラーメッセージ         |
-| `expense-approve-button`                 | `<button>` | 確認済みボタン（未承認行のみ）   |
+| testid                                   | 要素種別   | 説明                                 |
+| ---------------------------------------- | ---------- | ------------------------------------ |
+| `expense-list`                           | `<ul>`     | 支出一覧                             |
+| `expense-item`                           | `<li>`     | 支出行                               |
+| `expense-create-button`                  | `<button>` | 支出登録ボタン                       |
+| `expense-edit-button`                    | `<button>` | 支出編集ボタン                       |
+| `expense-form`                           | `<form>`   | 登録・編集フォーム                   |
+| `expense-amount-input`                   | `<input>`  | 金額入力欄                           |
+| `expense-category-select`                | `<select>` | カテゴリ選択セレクト                 |
+| `expense-submit-button`                  | `<button>` | 確定ボタン                           |
+| `expense-amount-error`                   | `<p>`      | 金額エラーメッセージ                 |
+| `expense-category-error`                 | `<p>`      | カテゴリエラーメッセージ             |
+| `expense-approve-button`                 | `<button>` | 確認済みボタン（未承認行のみ）       |
 | `expense-unapprove-button`               | `<button>` | 未承認に戻すボタン（承認済み行のみ） |
-| `expense-delete-button`                  | `<button>` | 支出削除ボタン                   |
-| `expense-delete-dialog`                  | `<dialog>` | 支出削除確認ダイアログ           |
-| `expense-delete-confirm-button`          | `<button>` | 支出削除の確定ボタン             |
-| `expense-empty`                          | `<p>`      | 空状態メッセージ                 |
-| `expense-month-select`                   | `<select>` | 月切り替えセレクト               |
-| `expense-total`                          | `<p>`      | 月間合計金額表示                 |
-| `expense-pending-alert`                  | `<div>`    | ダッシュボードの未承認警告バナー |
-| `expense-category-list`                  | `<ul>`     | カテゴリ一覧                     |
-| `expense-category-item`                  | `<li>`     | カテゴリ行                       |
-| `expense-category-name-input`            | `<input>`  | カテゴリ名入力欄                 |
-| `expense-category-add-button`            | `<button>` | カテゴリ追加ボタン               |
-| `expense-category-edit-button`           | `<button>` | カテゴリ編集ボタン               |
-| `expense-category-delete-button`         | `<button>` | カテゴリ削除ボタン               |
-| `expense-category-delete-dialog`         | `<dialog>` | カテゴリ削除確認ダイアログ       |
-| `expense-category-delete-confirm-button` | `<button>` | カテゴリ削除の確定ボタン         |
-| `expense-category-name-error`            | `<p>`      | カテゴリ名エラーメッセージ       |
+| `expense-delete-button`                  | `<button>` | 支出削除ボタン                       |
+| `expense-delete-dialog`                  | `<dialog>` | 支出削除確認ダイアログ               |
+| `expense-delete-confirm-button`          | `<button>` | 支出削除の確定ボタン                 |
+| `expense-empty`                          | `<p>`      | 空状態メッセージ                     |
+| `expense-month-select`                   | `<select>` | 月切り替えセレクト                   |
+| `expense-total`                          | `<p>`      | 月間合計金額表示                     |
+| `expense-pending-alert`                  | `<div>`    | ダッシュボードの未承認警告バナー     |
+| `expense-category-list`                  | `<ul>`     | カテゴリ一覧                         |
+| `expense-category-item`                  | `<li>`     | カテゴリ行                           |
+| `expense-category-name-input`            | `<input>`  | カテゴリ名入力欄                     |
+| `expense-category-add-button`            | `<button>` | カテゴリ追加ボタン                   |
+| `expense-category-edit-button`           | `<button>` | カテゴリ編集ボタン                   |
+| `expense-category-delete-button`         | `<button>` | カテゴリ削除ボタン                   |
+| `expense-category-delete-dialog`         | `<dialog>` | カテゴリ削除確認ダイアログ           |
+| `expense-category-delete-confirm-button` | `<button>` | カテゴリ削除の確定ボタン             |
+| `expense-category-name-error`            | `<p>`      | カテゴリ名エラーメッセージ           |
 
 ## テスト戦略
 
-| AC             | 種別        | 対象ファイル                                              | 備考                                                      |
-| -------------- | ----------- | --------------------------------------------------------- | --------------------------------------------------------- |
-| AC-001〜002    | Integration | `page.server.integration.test.ts`                         | load 関数の月フィルタ動作を実 D1 で検証                   |
-| AC-001〜007    | Integration | `service.integration.test.ts`                             | 支出 CRUD・承認操作を実 D1 で検証                         |
-| AC-008〜009    | Integration | `page.server.integration.test.ts`（`/` 側）               | 全期間の未承認件数取得を実 D1 で検証                      |
-| AC-010〜012    | Integration | `categories/service.integration.test.ts`                  | カテゴリ CRUD を実 D1 で検証                              |
-| AC-013         | Integration | `service.integration.test.ts`                             | 月間合計算出（全件）を実 D1 で検証                        |
-| AC-101〜109    | Unit        | `schema.test.ts`, `categories/schema.test.ts`             | Zod バリデーション検証                                    |
+| AC             | 種別        | 対象ファイル                                              | 備考                                                        |
+| -------------- | ----------- | --------------------------------------------------------- | ----------------------------------------------------------- |
+| AC-001〜002    | Integration | `page.server.integration.test.ts`                         | load 関数の月フィルタ動作を実 D1 で検証                     |
+| AC-001〜007    | Integration | `service.integration.test.ts`                             | 支出 CRUD・承認操作を実 D1 で検証                           |
+| AC-008〜009    | Integration | `page.server.integration.test.ts`（`/` 側）               | 全期間の未承認件数取得を実 D1 で検証                        |
+| AC-010〜012    | Integration | `categories/service.integration.test.ts`                  | カテゴリ CRUD を実 D1 で検証                                |
+| AC-013         | Integration | `service.integration.test.ts`                             | 月間合計算出（全件）を実 D1 で検証                          |
+| AC-101〜109    | Unit        | `schema.test.ts`, `categories/schema.test.ts`             | Zod バリデーション検証                                      |
 | AC-101〜109    | Unit        | `+server.test.ts`, `categories/+server.test.ts`           | API ハンドラが VALIDATION_ERROR 形式の 400 を返すことを検証 |
-| AC-106, AC-109 | Unit        | `[id]/+server.test.ts`, `categories/[id]/+server.test.ts` | NOT_FOUND 形式の 404 を検証                               |
-| AC-110         | Unit        | `categories/[id]/+server.test.ts`                         | CONFLICT 形式の 409 を検証                                |
-| AC-111〜112    | Unit        | `page.svelte.test.ts`                                     | フロントのインラインバリデーション表示を検証              |
-| AC-201〜203    | Unit        | `schema.test.ts`, `categories/schema.test.ts`             | Zod 境界値検証                                            |
-| AC-204〜205    | E2E         | `e2e/expense.e2e.ts`                                      | 空状態・合計¥0 表示はブラウザ全体が必要                   |
+| AC-106, AC-109 | Unit        | `[id]/+server.test.ts`, `categories/[id]/+server.test.ts` | NOT_FOUND 形式の 404 を検証                                 |
+| AC-110         | Unit        | `categories/[id]/+server.test.ts`                         | CONFLICT 形式の 409 を検証                                  |
+| AC-111〜112    | Unit        | `page.svelte.test.ts`                                     | フロントのインラインバリデーション表示を検証                |
+| AC-201〜203    | Unit        | `schema.test.ts`, `categories/schema.test.ts`             | Zod 境界値検証                                              |
+| AC-204〜205    | E2E         | `e2e/expense.e2e.ts`                                      | 空状態・合計¥0 表示はブラウザ全体が必要                     |
 
 ## Non-Functional Requirements
 

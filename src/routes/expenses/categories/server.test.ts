@@ -40,7 +40,14 @@ beforeEach(() => {
 describe('GET /expense/categories', () => {
 	it('[SPEC: AC-010] カテゴリ一覧を取得できる', async () => {
 		const mockResponse = {
-			items: [{ id: 'cat-1', userId: 'user-1', name: '食費', createdAt: '2026-03-01T00:00:00.000Z' }],
+			items: [
+				{
+					id: 'cat-1',
+					userId: 'user-1',
+					name: '食費',
+					createdAt: new Date('2026-03-01T00:00:00.000Z')
+				}
+			],
 			total: 1,
 			page: 1,
 			limit: 20
@@ -50,7 +57,7 @@ describe('GET /expense/categories', () => {
 		const response = await GET({
 			locals: mockLocals,
 			platform: mockPlatform
-		} as any);
+		} as Parameters<typeof GET>[0]);
 
 		expect(response.status).toBe(200);
 		const body = await response.json();
@@ -67,7 +74,7 @@ describe('POST /expense/categories', () => {
 				id: 'cat-new',
 				userId: 'user-1',
 				name: '交通費',
-				createdAt: '2026-03-28T00:00:00.000Z'
+				createdAt: new Date('2026-03-28T00:00:00.000Z')
 			};
 			vi.mocked(service.createCategory).mockResolvedValueOnce(mockCreated);
 
@@ -75,7 +82,7 @@ describe('POST /expense/categories', () => {
 				request: makePostRequest({ name: '交通費' }),
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof GET>[0]);
 
 			expect(response.status).toBe(201);
 			const body = await response.json();
@@ -89,7 +96,7 @@ describe('POST /expense/categories', () => {
 				request: makePostRequest({ name: '' }),
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof GET>[0]);
 
 			expect(response.status).toBe(400);
 			const body = await response.json();
@@ -103,7 +110,7 @@ describe('POST /expense/categories', () => {
 				request: makePostRequest({}),
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof GET>[0]);
 
 			expect(response.status).toBe(400);
 			const body = await response.json();
@@ -115,12 +122,15 @@ describe('POST /expense/categories', () => {
 				request: makePostRequest({ name: 'あ'.repeat(51) }),
 				locals: mockLocals,
 				platform: mockPlatform
-			} as any);
+			} as Parameters<typeof GET>[0]);
 
 			expect(response.status).toBe(400);
 			const body = await response.json();
 			expect(body.code).toBe('VALIDATION_ERROR');
-			expect(body.fields).toContainEqual({ field: 'name', message: '50文字以内で入力してください' });
+			expect(body.fields).toContainEqual({
+				field: 'name',
+				message: '50文字以内で入力してください'
+			});
 		});
 	});
 });
