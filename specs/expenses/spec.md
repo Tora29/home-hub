@@ -25,20 +25,20 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 | メソッド | パス                       | 説明                                 |
 | -------- | -------------------------- | ------------------------------------ |
-| GET      | `/expense`                 | 支出一覧取得（月フィルタ付き）       |
-| POST     | `/expense`                 | 支出登録                             |
-| PUT      | `/expense/[id]`            | 支出更新（金額・カテゴリ・承認状態） |
-| DELETE   | `/expense/[id]`            | 支出削除                             |
-| GET      | `/expense/categories`      | カテゴリ一覧取得                     |
-| POST     | `/expense/categories`      | カテゴリ登録                         |
-| PUT      | `/expense/categories/[id]` | カテゴリ更新                         |
-| DELETE   | `/expense/categories/[id]` | カテゴリ削除                         |
+| GET      | `/expenses`                 | 支出一覧取得（月フィルタ付き）       |
+| POST     | `/expenses`                 | 支出登録                             |
+| PUT      | `/expenses/[id]`            | 支出更新（金額・カテゴリ・承認状態） |
+| DELETE   | `/expenses/[id]`            | 支出削除                             |
+| GET      | `/expenses/categories`      | カテゴリ一覧取得                     |
+| POST     | `/expenses/categories`      | カテゴリ登録                         |
+| PUT      | `/expenses/categories/[id]` | カテゴリ更新                         |
+| DELETE   | `/expenses/categories/[id]` | カテゴリ削除                         |
 
 ## Acceptance Criteria
 
 ### 正常系
 
-- AC-001: `/expense` にアクセスすると、当月の支出一覧が登録日時の新しい順で表示される
+- AC-001: `/expenses` にアクセスすると、当月の支出一覧が登録日時の新しい順で表示される
 - AC-002: 月切り替えセレクトで別の月を選択すると、対象月の支出一覧が表示される
 - AC-003: 金額とカテゴリを入力して「確定」ボタンを押すと 201 が返り、一覧の先頭に支出が追加される（登録日は自動セット）
 - AC-004: 未承認の支出の「確認済み」ボタンを押すと 200 が返り、承認状態が「確認済み」に更新される
@@ -47,7 +47,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-007: 支出の削除ボタンをクリックし確認ダイアログで確定すると 204 が返り、一覧から消える
 - AC-008: **全期間**の未承認支出が 1 件以上ある場合、ダッシュボード（`/`）に件数付きの警告バナーが表示される
 - AC-009: 全支出が承認済みになる（または支出が 0 件になる）と、ダッシュボードの警告バナーが消える
-- AC-010: `/expense/categories` でカテゴリを追加すると、支出登録・編集フォームのカテゴリセレクトに反映される
+- AC-010: `/expenses/categories` でカテゴリを追加すると、支出登録・編集フォームのカテゴリセレクトに反映される
 - AC-011: カテゴリを編集すると、一覧に表示されているカテゴリ名が更新される
 - AC-012: カテゴリに紐付く支出が 0 件の場合、カテゴリを削除できる
 - AC-013: 一覧画面に選択中の月の支出合計金額（承認済み・未承認の全件）がカンマ区切りで表示される
@@ -77,12 +77,12 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 ## UI Requirements
 
-### 一覧画面（`/expense`）
+### 一覧画面（`/expenses`）
 
 #### 画面構成
 
 - **月切り替えセレクト** (`expense-month-select`): 表示する月を選択。デフォルトは当月（`YYYY-MM` 形式）。選択肢は当月を含む過去 13 か月分
-- **カテゴリ管理リンク**: カテゴリ管理ページ（`/expense/categories`）へのリンク
+- **カテゴリ管理リンク**: カテゴリ管理ページ（`/expenses/categories`）へのリンク
 - **支出登録ボタン** (`expense-create-button`): 右上。クリックで登録フォームダイアログを開く
 - **月間合計** (`expense-total`): 対象月の支出合計金額（全件・承認状態問わず）をカンマ区切りで表示（例: `¥12,300`）
 - **支出一覧** (`expense-list`): 各行に金額・カテゴリ名・登録日・承認状態バッジ・操作ボタン
@@ -95,12 +95,12 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 #### インタラクション
 
-- 月切り替え → `?month=YYYY-MM` を URL に反映し `GET /expense?month=YYYY-MM` を再取得
+- 月切り替え → `?month=YYYY-MM` を URL に反映し `GET /expenses?month=YYYY-MM` を再取得
 - 登録ボタンクリック → 登録フォームダイアログを表示
 - 編集ボタンクリック → 編集フォームダイアログを表示（現在の金額・カテゴリを初期値にセット）
-- 「確認済み」ボタンクリック → `PUT /expense/[id]` で `approved: true` に更新 → 一覧を更新
-- 「未承認に戻す」ボタンクリック → `PUT /expense/[id]` で `approved: false` に更新 → 一覧を更新
-- 削除ボタンクリック → `expense-delete-dialog` を表示し確定で `DELETE /expense/[id]` を呼ぶ
+- 「確認済み」ボタンクリック → `PUT /expenses/[id]` で `approved: true` に更新 → 一覧を更新
+- 「未承認に戻す」ボタンクリック → `PUT /expenses/[id]` で `approved: false` に更新 → 一覧を更新
+- 削除ボタンクリック → `expense-delete-dialog` を表示し確定で `DELETE /expenses/[id]` を呼ぶ
 
 #### バリデーション表示
 
@@ -120,10 +120,10 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 #### インタラクション
 
-- 登録時: `POST /expense` を呼ぶ（201 返却後、一覧に追加）
-- 編集時: `PUT /expense/[id]` を呼ぶ（200 返却後、一覧を更新）
+- 登録時: `POST /expenses` を呼ぶ（201 返却後、一覧に追加）
+- 編集時: `PUT /expenses/[id]` を呼ぶ（200 返却後、一覧を更新）
 
-### カテゴリ管理画面（`/expense/categories`）
+### カテゴリ管理画面（`/expenses/categories`）
 
 #### 画面構成
 
@@ -132,14 +132,14 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 #### インタラクション
 
-- 追加ボタンクリック → `POST /expense/categories` を呼び一覧を更新
-- 編集ボタンクリック → インライン編集モードに切り替え、確定で `PUT /expense/categories/[id]` を呼ぶ
-- 削除ボタンクリック → `expense-category-delete-dialog` を表示し確定で `DELETE /expense/categories/[id]` を呼ぶ
+- 追加ボタンクリック → `POST /expenses/categories` を呼び一覧を更新
+- 編集ボタンクリック → インライン編集モードに切り替え、確定で `PUT /expenses/categories/[id]` を呼ぶ
+- 削除ボタンクリック → `expense-category-delete-dialog` を表示し確定で `DELETE /expenses/categories/[id]` を呼ぶ
 
 ### ダッシュボード警告バナー（`/`）
 
 - **全期間**の未承認支出が 1 件以上ある場合、`expense-pending-alert` バナーを表示
-- バナーのテキスト例: `「未確認の支出が X 件あります」`（`/expense` へのリンク付き）
+- バナーのテキスト例: `「未確認の支出が X 件あります」`（`/expenses` へのリンク付き）
 - ダッシュボードの SSR load 関数で全期間の未承認件数を取得して表示判定する
 
 ## data-testid
@@ -188,7 +188,8 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 | AC-101〜109    | Unit        | `+server.test.ts`, `categories/+server.test.ts`           | API ハンドラが VALIDATION_ERROR 形式の 400 を返すことを検証 |
 | AC-106, AC-109 | Unit        | `[id]/+server.test.ts`, `categories/[id]/+server.test.ts` | NOT_FOUND 形式の 404 を検証                                 |
 | AC-110         | Unit        | `categories/[id]/+server.test.ts`                         | CONFLICT 形式の 409 を検証                                  |
-| AC-111〜112    | Unit        | `page.svelte.test.ts`                                     | フロントのインラインバリデーション表示を検証                |
+| AC-111〜112    | Unit        | `page.svelte.test.ts`                                     | フロントのインラインバリデーション表示を検証（ページ統合）  |
+| AC-111〜112    | Unit        | `components/ExpenseForm.svelte.test.ts`                   | ExpenseForm コンポーネント直接のバリデーション検証          |
 | AC-201〜203    | Unit        | `schema.test.ts`, `categories/schema.test.ts`             | Zod 境界値検証                                              |
 | AC-204〜205    | E2E         | `e2e/expense.e2e.ts`                                      | 空状態・合計¥0 表示はブラウザ全体が必要                     |
 

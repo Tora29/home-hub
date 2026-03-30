@@ -193,6 +193,45 @@ services:
       - ./specs/{feature_name}:/specs:ro
 ```
 
+### Step 3.6: テスト戦略テーブル生成
+
+spec.md の「テスト戦略」セクションを生成する際、以下のルールに従って**全テストファイルを網羅する**。
+
+#### 必ず含める行
+
+| 対象                       | テスト種別  | ファイル                          |
+| -------------------------- | ----------- | --------------------------------- |
+| Zod スキーマ               | Unit        | `schema.test.ts`                  |
+| API ハンドラ（POST）       | Unit        | `server.test.ts`                  |
+| API ハンドラ（PUT/DELETE） | Unit        | `[id]/server.test.ts`             |
+| サービス層                 | Integration | `service.integration.test.ts`     |
+| load 関数                  | Integration | `page.server.integration.test.ts` |
+| ページコンポーネント       | Unit        | `page.svelte.test.ts`             |
+| E2E フロー                 | E2E         | `e2e/{feature}.e2e.ts`            |
+
+#### FE コンポーネントテストの追加ルール
+
+UI Requirements に**独立したコンポーネント**（フォーム・カード・ダイアログ等）が登場し、かつ対応する AC（特に FE バリデーション AC や操作 AC）が存在する場合、以下の行を追加する:
+
+```
+| AC-XXX〜YYY | Unit | components/{ComponentName}.svelte.test.ts | {コンポーネントの責務}の検証 |
+```
+
+**判定基準**: 以下のいずれかを満たすコンポーネントはテスト対象とする
+
+- FE バリデーション（フォームの入力チェック）を持つ
+- 独立した状態（`$state`）と操作を持つ
+- 複数の画面・ダイアログから再利用される
+
+**例**:
+
+```
+| AC-111〜112 | Unit | components/ExpenseForm.svelte.test.ts | FE バリデーション（金額・カテゴリ）の検証 |
+| AC-003      | Unit | components/RecipeCard.svelte.test.ts  | カードクリックの動作検証 |
+```
+
+この行を追加することで、scaffold-test-unit が「期待ファイルリスト」にコンポーネントテストを含め、scaffold-fe 実行前に RED テストとして生成できる。
+
 ### Step 3.7: AC 品質チェック
 
 生成した AC が以下の品質基準を満たすか自己チェックし、満たさない場合は修正してから Step 4 に進む:

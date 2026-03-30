@@ -133,13 +133,16 @@ npm run test:unit
 # Unit テスト（単発実行）
 npm run test:unit -- --run
 
+# Integration テスト（単発実行）
+npm run test:integration -- --run
+
 # カバレッジ計測
 npm run test:unit -- --run --coverage
 
 # E2E テスト
 npm run test:e2e
 
-# 全テスト（CI 用）
+# 全テスト（CI 用）: unit + integration + e2e
 npm run test
 ```
 

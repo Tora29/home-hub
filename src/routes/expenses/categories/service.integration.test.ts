@@ -1,0 +1,182 @@
+/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/**
+ * @file テスト: expenses カテゴリ サービス
+ * @module src/routes/expenses/categories/service.integration.test.ts
+ * @testType integration
+ *
+ * @target ./service.ts
+ * @spec specs/expenses/spec.md
+ * @covers AC-010, AC-011, AC-012
+ */
+
+import { describe, it, expect } from 'vitest';
+import { env } from 'cloudflare:test';
+import { createDb } from '$lib/server/db';
+import { AppError } from '$lib/server/errors';
+import { getCategories, createCategory, updateCategory, deleteCategory } from './service';
+import { createExpense } from '../service';
+
+function makeUserId() {
+	return crypto.randomUUID();
+}
+
+describe('createCategory', () => {
+	it('[SPEC: AC-010] カテゴリを登録できる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		const created = await createCategory(db, userId, { name: '食費' });
+
+		expect(created.id).toBeTruthy();
+		expect(created.name).toBe('食費');
+		expect(created.userId).toBe(userId);
+		expect(created.createdAt).toBeTruthy();
+	});
+
+	it('[SPEC: AC-010] 登録したカテゴリが一覧に表示される', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		await createCategory(db, userId, { name: '食費' });
+		await createCategory(db, userId, { name: '交通費' });
+		await createCategory(db, userId, { name: '光熱費' });
+
+		const result = await getCategories(db, userId);
+
+		expect(result.items).toHaveLength(3);
+		expect(result.total).toBe(3);
+		const names = result.items.map((c) => c.name);
+		expect(names).toContain('食費');
+		expect(names).toContain('交通費');
+		expect(names).toContain('光熱費');
+	});
+});
+
+describe('getCategories', () => {
+	it('[SPEC: AC-010] 自分のカテゴリのみ取得できる（他ユーザーのカテゴリは含まれない）', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+		const otherUserId = makeUserId();
+
+		await createCategory(db, userId, { name: '自分のカテゴリ' });
+		await createCategory(db, otherUserId, { name: '他人のカテゴリ' });
+
+		const result = await getCategories(db, userId);
+
+		expect(result.items).toHaveLength(1);
+		expect(result.items[0].name).toBe('自分のカテゴリ');
+		expect(result.items[0].userId).toBe(userId);
+	});
+});
+
+describe('updateCategory', () => {
+	it('[SPEC: AC-011] カテゴリ名を更新できる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		const created = await createCategory(db, userId, { name: '食費' });
+		const updated = await updateCategory(db, userId, created.id, { name: '外食費' });
+
+		expect(updated.id).toBe(created.id);
+		expect(updated.name).toBe('外食費');
+		expect(updated.userId).toBe(userId);
+	});
+
+	it('[SPEC: AC-011] 更新後のカテゴリ名が一覧に反映される', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		const created = await createCategory(db, userId, { name: '食費' });
+		await updateCategory(db, userId, created.id, { name: '外食費' });
+
+		const result = await getCategories(db, userId);
+
+		expect(result.items).toHaveLength(1);
+		expect(result.items[0].name).toBe('外食費');
+	});
+
+	it('[SPEC: AC-011] 存在しないカテゴリ ID を指定した場合は NOT_FOUND エラーになる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		await expect(
+			updateCategory(db, userId, crypto.randomUUID(), { name: '新しい名前' })
+		).rejects.toThrow(AppError);
+
+		try {
+			await updateCategory(db, userId, crypto.randomUUID(), { name: '新しい名前' });
+		} catch (e) {
+			expect(e).toBeInstanceOf(AppError);
+			expect((e as AppError).status).toBe(404);
+			expect((e as AppError).code).toBe('NOT_FOUND');
+		}
+	});
+
+	it('[SPEC: AC-011] 他ユーザーのカテゴリを更新しようとした場合は NOT_FOUND エラーになる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+		const otherUserId = makeUserId();
+
+		const otherCategory = await createCategory(db, otherUserId, { name: '食費' });
+
+		await expect(updateCategory(db, userId, otherCategory.id, { name: '変更後' })).rejects.toThrow(
+			AppError
+		);
+	});
+});
+
+describe('deleteCategory', () => {
+	it('[SPEC: AC-012] 支出が 0 件のカテゴリを削除できる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		const created = await createCategory(db, userId, { name: '食費' });
+		await deleteCategory(db, userId, created.id);
+
+		const result = await getCategories(db, userId);
+		expect(result.items.find((c) => c.id === created.id)).toBeUndefined();
+	});
+
+	it('[SPEC: AC-012] 存在しないカテゴリ ID を指定した場合は NOT_FOUND エラーになる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		await expect(deleteCategory(db, userId, crypto.randomUUID())).rejects.toThrow(AppError);
+
+		try {
+			await deleteCategory(db, userId, crypto.randomUUID());
+		} catch (e) {
+			expect(e).toBeInstanceOf(AppError);
+			expect((e as AppError).status).toBe(404);
+			expect((e as AppError).code).toBe('NOT_FOUND');
+		}
+	});
+
+	it('[SPEC: AC-012] 他ユーザーのカテゴリを削除しようとした場合は NOT_FOUND エラーになる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+		const otherUserId = makeUserId();
+
+		const otherCategory = await createCategory(db, otherUserId, { name: '食費' });
+
+		await expect(deleteCategory(db, userId, otherCategory.id)).rejects.toThrow(AppError);
+	});
+
+	it('[SPEC: AC-012] 支出に紐付くカテゴリは削除できず CONFLICT エラーになる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		const category = await createCategory(db, userId, { name: '食費' });
+		await createExpense(db, userId, { amount: 1000, categoryId: category.id });
+
+		await expect(deleteCategory(db, userId, category.id)).rejects.toThrow(AppError);
+
+		try {
+			await deleteCategory(db, userId, category.id);
+		} catch (e) {
+			expect(e).toBeInstanceOf(AppError);
+			expect((e as AppError).status).toBe(409);
+			expect((e as AppError).code).toBe('CONFLICT');
+		}
+	});
+});

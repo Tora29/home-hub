@@ -11,7 +11,7 @@ tags:
     description: 支出カテゴリ管理
 
 paths:
-  /expense:
+  /expenses:
     get:
       tags: [expense]
       summary: 支出一覧取得
@@ -82,7 +82,7 @@ paths:
         '400':
           $ref: '#/components/responses/ValidationError'
 
-  /expense/{id}:
+  /expenses/{id}:
     put:
       tags: [expense]
       summary: 支出更新
@@ -118,7 +118,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /expense/categories:
+  /expenses/categories:
     get:
       tags: [expense-categories]
       summary: カテゴリ一覧取得
@@ -161,7 +161,7 @@ paths:
         '400':
           $ref: '#/components/responses/ValidationError'
 
-  /expense/categories/{id}:
+  /expenses/categories/{id}:
     put:
       tags: [expense-categories]
       summary: カテゴリ更新

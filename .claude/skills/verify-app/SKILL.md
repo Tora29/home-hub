@@ -31,19 +31,13 @@ npm run lint
 
 Prettier と ESLint の両方を検査する。フォーマットエラーがある場合は `npm run format` で自動修正してから再確認する。
 
-### 3. ユニットテスト実行
+### 3. 全テスト実行
 
 ```bash
-npm run test:unit -- --run
+npm run test
 ```
 
-Vitest によるユニット・インテグレーションテストを単発実行する。
-
-- Zod スキーマ Unit テスト（`schema.test.ts`）
-- API ハンドラ Unit テスト（`+server.test.ts`）
-- サービス層 Integration テスト（`service.integration.test.ts`）: Cloudflare D1 バインディングを使用
-
-失敗したテストは `/test-and-fix` で修正する。
+Unit・Integration・E2E の全テストを実行する。失敗したテストは `/test-and-fix` で修正する。
 
 ### 4. ビルド
 
@@ -52,14 +46,6 @@ npm run build
 ```
 
 `adapter-cloudflare` による本番ビルドが成功することを確認する。
-
-### 5. E2E テスト（必要に応じて）
-
-```bash
-npm run test:e2e
-```
-
-Playwright による E2E テスト。`vite preview`（port 4173）が対象。テストが存在する場合のみ実行する。
 
 ## エラー発生時
 
