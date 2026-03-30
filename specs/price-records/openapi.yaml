@@ -1,0 +1,534 @@
+openapi: 3.0.3
+info:
+  title: PriceRecord API
+  description: 食品価格記録 API
+  version: 1.0.0
+
+tags:
+  - name: price-records
+    description: 食品価格記録管理
+  - name: price-record-supermarkets
+    description: スーパーマスタ管理
+  - name: price-record-categories
+    description: 食品カテゴリマスタ管理
+
+paths:
+  /price-records:
+    get:
+      tags: [price-records]
+      summary: 価格記録一覧取得
+      description: 品目名で部分一致検索・ページネーション付きで価格記録一覧を返す。登録日時の新しい順。
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 品目名での部分一致フィルタ。省略時は全件
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: 価格記録一覧
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, limit]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PriceRecordWithRelations'
+                  total:
+                    type: integer
+                    description: フィルタ条件に合う全件数
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+
+    post:
+      tags: [price-records]
+      summary: 価格記録登録
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceRecordCreate'
+      responses:
+        '201':
+          description: 登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceRecordWithRelations'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /price-records/{id}:
+    put:
+      tags: [price-records]
+      summary: 価格記録更新
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceRecordUpdate'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceRecordWithRelations'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [price-records]
+      summary: 価格記録削除
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: 削除成功
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /price-records/supermarkets:
+    get:
+      tags: [price-record-supermarkets]
+      summary: スーパー一覧取得
+      responses:
+        '200':
+          description: スーパー一覧
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, limit]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Supermarket'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+
+    post:
+      tags: [price-record-supermarkets]
+      summary: スーパー登録
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupermarketCreate'
+      responses:
+        '201':
+          description: 登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supermarket'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /price-records/supermarkets/{id}:
+    put:
+      tags: [price-record-supermarkets]
+      summary: スーパー更新
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupermarketUpdate'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supermarket'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [price-record-supermarkets]
+      summary: スーパー削除
+      description: スーパーに紐付く価格記録が 1 件以上ある場合は 409 を返す。
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: 削除成功
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /price-records/categories:
+    get:
+      tags: [price-record-categories]
+      summary: カテゴリ一覧取得
+      responses:
+        '200':
+          description: カテゴリ一覧
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, limit]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PriceRecordCategory'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+
+    post:
+      tags: [price-record-categories]
+      summary: カテゴリ登録
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceRecordCategoryCreate'
+      responses:
+        '201':
+          description: 登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceRecordCategory'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /price-records/categories/{id}:
+    put:
+      tags: [price-record-categories]
+      summary: カテゴリ更新
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceRecordCategoryUpdate'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceRecordCategory'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [price-record-categories]
+      summary: カテゴリ削除
+      description: カテゴリに紐付く価格記録が 1 件以上ある場合は 409 を返す。
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: 削除成功
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: リソース ID
+
+  schemas:
+    PriceRecord:
+      type: object
+      required: [id, userId, supermarketId, categoryId, itemName, price, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          description: 価格記録 ID
+        userId:
+          type: string
+          description: 登録ユーザー ID
+        supermarketId:
+          type: string
+          description: スーパー ID
+        categoryId:
+          type: string
+          description: カテゴリ ID
+        itemName:
+          type: string
+          maxLength: 100
+          description: 品目名（最大100文字）
+        price:
+          type: integer
+          minimum: 1
+          maximum: 9999999
+          description: 金額（円）。1以上9,999,999以下の整数
+        notes:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: 備考（最大500文字）。省略可
+        createdAt:
+          type: string
+          format: date-time
+          description: 登録日時（自動セット）
+        updatedAt:
+          type: string
+          format: date-time
+          description: 更新日時（自動セット）
+
+    PriceRecordWithRelations:
+      allOf:
+        - $ref: '#/components/schemas/PriceRecord'
+        - type: object
+          required: [supermarket, category]
+          properties:
+            supermarket:
+              type: object
+              required: [id, name]
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                  description: スーパー名
+            category:
+              type: object
+              required: [id, name]
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                  description: カテゴリ名
+
+    PriceRecordCreate:
+      type: object
+      required: [supermarketId, categoryId, itemName, price]
+      properties:
+        supermarketId:
+          type: string
+          minLength: 1
+          description: スーパー ID
+        categoryId:
+          type: string
+          minLength: 1
+          description: カテゴリ ID
+        itemName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 品目名。1文字以上100文字以内
+        price:
+          type: integer
+          minimum: 1
+          maximum: 9999999
+          description: 金額（円）。1以上9,999,999以下の整数
+        notes:
+          type: string
+          maxLength: 500
+          description: 備考。省略可。500文字以内
+
+    PriceRecordUpdate:
+      type: object
+      required: [supermarketId, categoryId, itemName, price]
+      properties:
+        supermarketId:
+          type: string
+          minLength: 1
+          description: スーパー ID
+        categoryId:
+          type: string
+          minLength: 1
+          description: カテゴリ ID
+        itemName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 品目名。1文字以上100文字以内
+        price:
+          type: integer
+          minimum: 1
+          maximum: 9999999
+          description: 金額（円）。1以上9,999,999以下の整数
+        notes:
+          type: string
+          maxLength: 500
+          description: 備考。省略可。500文字以内
+
+    Supermarket:
+      type: object
+      required: [id, userId, name, createdAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+          description: スーパー名
+        createdAt:
+          type: string
+          format: date-time
+
+    SupermarketCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: スーパー名。1文字以上50文字以内
+
+    SupermarketUpdate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: スーパー名。1文字以上50文字以内
+
+    PriceRecordCategory:
+      type: object
+      required: [id, userId, name, createdAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+          description: カテゴリ名
+        createdAt:
+          type: string
+          format: date-time
+
+    PriceRecordCategoryCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: カテゴリ名。1文字以上50文字以内
+
+    PriceRecordCategoryUpdate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: カテゴリ名。1文字以上50文字以内
+
+  responses:
+    ValidationError:
+      description: バリデーションエラー
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message]
+            properties:
+              code:
+                type: string
+                example: VALIDATION_ERROR
+              message:
+                type: string
+                example: 入力値が正しくありません
+              fields:
+                type: array
+                items:
+                  type: object
+                  required: [field, message]
+                  properties:
+                    field:
+                      type: string
+                      example: itemName
+                    message:
+                      type: string
+                      example: 品目名は必須です
+
+    Conflict:
+      description: 競合エラー（使用中のリソースは削除不可）
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message]
+            properties:
+              code:
+                type: string
+                example: CONFLICT
+              message:
+                type: string
+                example: このスーパーは使用中のため削除できません
+
+    NotFound:
+      description: リソースが見つからない
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message]
+            properties:
+              code:
+                type: string
+                example: NOT_FOUND
+              message:
+                type: string
+                example: 該当データが見つかりません
