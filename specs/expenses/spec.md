@@ -29,6 +29,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 | POST     | `/expenses`                 | 支出登録                             |
 | PUT      | `/expenses/[id]`            | 支出更新（金額・カテゴリ・承認状態） |
 | DELETE   | `/expenses/[id]`            | 支出削除                             |
+| POST     | `/expenses/[id]/finalize`   | 支出確定（確認済み → 確定済み）      |
 | GET      | `/expenses/categories`      | カテゴリ一覧取得                     |
 | POST     | `/expenses/categories`      | カテゴリ登録                         |
 | PUT      | `/expenses/categories/[id]` | カテゴリ更新                         |
@@ -42,7 +43,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-002: 月切り替えセレクトで別の月を選択すると、対象月の支出一覧が表示される
 - AC-003: 金額とカテゴリを入力して「確定」ボタンを押すと 201 が返り、一覧の先頭に支出が追加される（登録日は自動セット）
 - AC-004: 未承認の支出の「確認済み」ボタンを押すと 200 が返り、承認状態が「確認済み」に更新される
-- AC-005: 確認済みの支出の「未承認に戻す」ボタンを押すと 200 が返り、承認状態が「未承認」に戻る
+- AC-005: 確認済み（未確定）の支出の「未承認に戻す」ボタンを押すと 200 が返り、承認状態が「未承認」に戻る
 - AC-006: 支出の編集ボタンをクリックすると編集フォームダイアログが開き、金額・カテゴリを変更して送信すると 200 が返り一覧が更新される
 - AC-007: 支出の削除ボタンをクリックし確認ダイアログで確定すると 204 が返り、一覧から消える
 - AC-008: **全期間**の未承認支出が 1 件以上ある場合、ダッシュボード（`/`）に件数付きの警告バナーが表示される
@@ -51,6 +52,8 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-011: カテゴリを編集すると、一覧に表示されているカテゴリ名が更新される
 - AC-012: カテゴリに紐付く支出が 0 件の場合、カテゴリを削除できる
 - AC-013: 一覧画面に選択中の月の支出合計金額（承認済み・未承認の全件）がカンマ区切りで表示される
+- AC-014: 確認済み（未確定）の支出の「確定」ボタンを押すと 200 が返り、承認状態が「確定済み」に更新される（以降変更不可）
+- AC-015: 確定済みの支出行には編集・削除・未承認に戻すボタンが表示されない
 
 ### 異常系
 
@@ -66,6 +69,8 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-110: カテゴリに紐付く支出が 1 件以上ある場合、カテゴリは削除できず 409 CONFLICT「このカテゴリは使用中のため削除できません」が返る
 - AC-111: フロント側で金額が空のまま「確定」を押すと「金額は必須です」とインライン表示される（サーバー非通信）
 - AC-112: フロント側でカテゴリが未選択のまま「確定」を押すと「カテゴリは必須です」とインライン表示される（サーバー非通信）
+- AC-113: 確定済みの支出に対して PUT/DELETE を試みた場合、409 CONFLICT「確定済みの支出は変更できません」が返る
+- AC-114: 未承認の支出に対して `POST /expenses/[id]/finalize` を試みた場合、409 CONFLICT「確認済みにしてから確定してください」が返る
 
 ### 境界値
 
@@ -86,11 +91,12 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - **支出登録ボタン** (`expense-create-button`): 右上。クリックで登録フォームダイアログを開く
 - **月間合計** (`expense-total`): 対象月の支出合計金額（全件・承認状態問わず）をカンマ区切りで表示（例: `¥12,300`）
 - **支出一覧** (`expense-list`): 各行に金額・カテゴリ名・登録日・承認状態バッジ・操作ボタン
-  - **承認状態バッジ**: 「未承認」（赤系）/ 「確認済み」（緑系）
+  - **承認状態バッジ**: 「未承認」（赤系）/ 「確認済み」（黄系）/ 「確定済み」（緑系）
   - **確認済みボタン** (`expense-approve-button`): 未承認の行のみ表示
-  - **未承認に戻すボタン** (`expense-unapprove-button`): 確認済みの行のみ表示
-  - **編集ボタン** (`expense-edit-button`): 全行に表示
-  - **削除ボタン** (`expense-delete-button`): 全行に表示
+  - **未承認に戻すボタン** (`expense-unapprove-button`): 確認済み（未確定）の行のみ表示
+  - **確定ボタン** (`expense-finalize-button`): 確認済み（未確定）の行のみ表示
+  - **編集ボタン** (`expense-edit-button`): 未承認・確認済み（未確定）の行のみ表示
+  - **削除ボタン** (`expense-delete-button`): 未承認・確認済み（未確定）の行のみ表示
 - **空状態** (`expense-empty`): 支出が 0 件のとき表示
 
 #### インタラクション
@@ -100,6 +106,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - 編集ボタンクリック → 編集フォームダイアログを表示（現在の金額・カテゴリを初期値にセット）
 - 「確認済み」ボタンクリック → `PUT /expenses/[id]` で `approved: true` に更新 → 一覧を更新
 - 「未承認に戻す」ボタンクリック → `PUT /expenses/[id]` で `approved: false` に更新 → 一覧を更新
+- 「確定」ボタンクリック → `POST /expenses/[id]/finalize` を呼ぶ → 一覧を更新（確定後は操作ボタン非表示）
 - 削除ボタンクリック → `expense-delete-dialog` を表示し確定で `DELETE /expenses/[id]` を呼ぶ
 
 #### バリデーション表示
@@ -156,8 +163,9 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 | `expense-submit-button`                  | `<button>` | 確定ボタン                           |
 | `expense-amount-error`                   | `<p>`      | 金額エラーメッセージ                 |
 | `expense-category-error`                 | `<p>`      | カテゴリエラーメッセージ             |
-| `expense-approve-button`                 | `<button>` | 確認済みボタン（未承認行のみ）       |
-| `expense-unapprove-button`               | `<button>` | 未承認に戻すボタン（承認済み行のみ） |
+| `expense-approve-button`                 | `<button>` | 確認済みボタン（未承認行のみ）                   |
+| `expense-unapprove-button`               | `<button>` | 未承認に戻すボタン（確認済み・未確定行のみ）     |
+| `expense-finalize-button`                | `<button>` | 確定ボタン（確認済み・未確定行のみ）             |
 | `expense-delete-button`                  | `<button>` | 支出削除ボタン                       |
 | `expense-delete-dialog`                  | `<dialog>` | 支出削除確認ダイアログ               |
 | `expense-delete-confirm-button`          | `<button>` | 支出削除の確定ボタン                 |
@@ -181,6 +189,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 | -------------- | ----------- | --------------------------------------------------------- | ----------------------------------------------------------- |
 | AC-001〜002    | Integration | `page.server.integration.test.ts`                         | load 関数の月フィルタ動作を実 D1 で検証                     |
 | AC-001〜007    | Integration | `service.integration.test.ts`                             | 支出 CRUD・承認操作を実 D1 で検証                           |
+| AC-014〜015    | Integration | `service.integration.test.ts`                             | 確定操作・確定後ロックを実 D1 で検証                        |
 | AC-008〜009    | Integration | `page.server.integration.test.ts`（`/` 側）               | 全期間の未承認件数取得を実 D1 で検証                        |
 | AC-010〜012    | Integration | `categories/service.integration.test.ts`                  | カテゴリ CRUD を実 D1 で検証                                |
 | AC-013         | Integration | `service.integration.test.ts`                             | 月間合計算出（全件）を実 D1 で検証                          |
@@ -188,6 +197,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 | AC-101〜109    | Unit        | `+server.test.ts`, `categories/+server.test.ts`           | API ハンドラが VALIDATION_ERROR 形式の 400 を返すことを検証 |
 | AC-106, AC-109 | Unit        | `[id]/+server.test.ts`, `categories/[id]/+server.test.ts` | NOT_FOUND 形式の 404 を検証                                 |
 | AC-110         | Unit        | `categories/[id]/+server.test.ts`                         | CONFLICT 形式の 409 を検証                                  |
+| AC-113〜114    | Unit        | `[id]/+server.test.ts`, `[id]/finalize/+server.test.ts`   | 確定済みロック・未承認確定の 409 を検証                     |
 | AC-111〜112    | Unit        | `page.svelte.test.ts`                                     | フロントのインラインバリデーション表示を検証（ページ統合）  |
 | AC-111〜112    | Unit        | `components/ExpenseForm.svelte.test.ts`                   | ExpenseForm コンポーネント直接のバリデーション検証          |
 | AC-201〜203    | Unit        | `schema.test.ts`, `categories/schema.test.ts`             | Zod 境界値検証                                              |
