@@ -52,7 +52,23 @@ options:
 | `.claude/rules/security.md`           | XSS 対策、入力検証                                       |
 | `.claude/rules/file-headers.md`       | ファイルヘッダーコメントのテンプレートと記述ルール       |
 
-### Step 3: コード生成
+### Step 3: 既存ファイルの確認
+
+Glob で対象 feature のファイル存在を確認し、生成戦略を決定する:
+
+```
+Glob('src/routes/{feature}/**/*.ts')
+Glob('src/routes/{feature}/**/*.svelte')
+```
+
+| 結果 | 戦略 |
+|---|---|
+| 空（新規） | Read しない。Step 4 で Write により全量生成する |
+| あり（更新） | 対象 feature のファイルのみ Read して現状を把握する。Step 4 で Edit により差分のみ更新する |
+
+**他 feature のファイルは新規・更新を問わず一切 Read しない。**
+
+### Step 4: コード生成
 
 spec.md の画面仕様・UI Requirements に基づき、infra-spec.md のディレクトリ構成に従って以下を生成:
 
