@@ -83,6 +83,7 @@ export const expense = sqliteTable('Expense', {
 		.notNull()
 		.references(() => expenseCategory.id),
 	approvedAt: integer('approvedAt', { mode: 'timestamp' }),
+	finalizedAt: integer('finalizedAt', { mode: 'timestamp' }),
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
 });
 

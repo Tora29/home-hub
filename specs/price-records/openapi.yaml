@@ -498,10 +498,10 @@ components:
                   properties:
                     field:
                       type: string
-                      example: itemName
+                      example: field_name
                     message:
                       type: string
-                      example: 品目名は必須です
+                      example: フィールドは必須です
 
     Conflict:
       description: 競合エラー（使用中のリソースは削除不可）
@@ -516,7 +516,7 @@ components:
                 example: CONFLICT
               message:
                 type: string
-                example: このスーパーは使用中のため削除できません
+                example: このリソースは使用中のため削除できません
 
     NotFound:
       description: リソースが見つからない

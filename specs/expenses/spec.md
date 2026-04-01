@@ -52,7 +52,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-011: カテゴリを編集すると、一覧に表示されているカテゴリ名が更新される
 - AC-012: カテゴリに紐付く支出が 0 件の場合、カテゴリを削除できる
 - AC-013: 一覧画面に選択中の月の支出合計金額（承認済み・未承認の全件）がカンマ区切りで表示される
-- AC-014: 確認済み（未確定）の支出の「確定」ボタンを押すと 200 が返り、承認状態が「確定済み」に更新される（以降変更不可）
+- AC-014: 確認済み（未確定）の支出を 1 件以上選択して「確定する（N件）」ボタンを押し、確認モーダルで確定すると、選択した支出がまとめて確定済みに更新される（以降変更不可）
 - AC-015: 確定済みの支出行には編集・削除・未承認に戻すボタンが表示されない
 
 ### 異常系
@@ -88,13 +88,14 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 - **月切り替えセレクト** (`expense-month-select`): 表示する月を選択。デフォルトは当月（`YYYY-MM` 形式）。選択肢は当月を含む過去 13 か月分
 - **カテゴリ管理リンク**: カテゴリ管理ページ（`/expenses/categories`）へのリンク
+- **まとめて確定ボタン** (`expense-bulk-finalize-button`): 確定対象が 1 件以上選択されているときのみ登録ボタン左に表示。`「確定する（N件）」` と件数を表示
 - **支出登録ボタン** (`expense-create-button`): 右上。クリックで登録フォームダイアログを開く
 - **月間合計** (`expense-total`): 対象月の支出合計金額（全件・承認状態問わず）をカンマ区切りで表示（例: `¥12,300`）
 - **支出一覧** (`expense-list`): 各行に金額・カテゴリ名・登録日・承認状態バッジ・操作ボタン
   - **承認状態バッジ**: 「未承認」（赤系）/ 「確認済み」（黄系）/ 「確定済み」（緑系）
   - **確認済みボタン** (`expense-approve-button`): 未承認の行のみ表示
   - **未承認に戻すボタン** (`expense-unapprove-button`): 確認済み（未確定）の行のみ表示
-  - **確定ボタン** (`expense-finalize-button`): 確認済み（未確定）の行のみ表示
+  - **確定選択ボタン** (`expense-finalize-button`): 確認済み（未確定）の行のみ表示。クリックで確定対象に追加/解除するトグル。選択中は強調表示
   - **編集ボタン** (`expense-edit-button`): 未承認・確認済み（未確定）の行のみ表示
   - **削除ボタン** (`expense-delete-button`): 未承認・確認済み（未確定）の行のみ表示
 - **空状態** (`expense-empty`): 支出が 0 件のとき表示
@@ -106,7 +107,9 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - 編集ボタンクリック → 編集フォームダイアログを表示（現在の金額・カテゴリを初期値にセット）
 - 「確認済み」ボタンクリック → `PUT /expenses/[id]` で `approved: true` に更新 → 一覧を更新
 - 「未承認に戻す」ボタンクリック → `PUT /expenses/[id]` で `approved: false` に更新 → 一覧を更新
-- 「確定」ボタンクリック → `POST /expenses/[id]/finalize` を呼ぶ → 一覧を更新（確定後は操作ボタン非表示）
+- 「確定」ボタンクリック（行）→ 確定対象に追加/解除（トグル）。1 件以上選択で `expense-bulk-finalize-button` が出現
+- 「確定する（N件）」ボタンクリック → `expense-finalize-dialog` を表示
+- `expense-finalize-dialog` で確定 → 選択中の全支出に `POST /expenses/[id]/finalize` を並列送信 → 一覧を更新
 - 削除ボタンクリック → `expense-delete-dialog` を表示し確定で `DELETE /expenses/[id]` を呼ぶ
 
 #### バリデーション表示
@@ -151,37 +154,40 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 ## data-testid
 
-| testid                                   | 要素種別   | 説明                                 |
-| ---------------------------------------- | ---------- | ------------------------------------ |
-| `expense-list`                           | `<ul>`     | 支出一覧                             |
-| `expense-item`                           | `<li>`     | 支出行                               |
-| `expense-create-button`                  | `<button>` | 支出登録ボタン                       |
-| `expense-edit-button`                    | `<button>` | 支出編集ボタン                       |
-| `expense-form`                           | `<form>`   | 登録・編集フォーム                   |
-| `expense-amount-input`                   | `<input>`  | 金額入力欄                           |
-| `expense-category-select`                | `<select>` | カテゴリ選択セレクト                 |
-| `expense-submit-button`                  | `<button>` | 確定ボタン                           |
-| `expense-amount-error`                   | `<p>`      | 金額エラーメッセージ                 |
-| `expense-category-error`                 | `<p>`      | カテゴリエラーメッセージ             |
-| `expense-approve-button`                 | `<button>` | 確認済みボタン（未承認行のみ）                   |
-| `expense-unapprove-button`               | `<button>` | 未承認に戻すボタン（確認済み・未確定行のみ）     |
-| `expense-finalize-button`                | `<button>` | 確定ボタン（確認済み・未確定行のみ）             |
-| `expense-delete-button`                  | `<button>` | 支出削除ボタン                       |
-| `expense-delete-dialog`                  | `<dialog>` | 支出削除確認ダイアログ               |
-| `expense-delete-confirm-button`          | `<button>` | 支出削除の確定ボタン                 |
-| `expense-empty`                          | `<p>`      | 空状態メッセージ                     |
-| `expense-month-select`                   | `<select>` | 月切り替えセレクト                   |
-| `expense-total`                          | `<p>`      | 月間合計金額表示                     |
-| `expense-pending-alert`                  | `<div>`    | ダッシュボードの未承認警告バナー     |
-| `expense-category-list`                  | `<ul>`     | カテゴリ一覧                         |
-| `expense-category-item`                  | `<li>`     | カテゴリ行                           |
-| `expense-category-name-input`            | `<input>`  | カテゴリ名入力欄                     |
-| `expense-category-add-button`            | `<button>` | カテゴリ追加ボタン                   |
-| `expense-category-edit-button`           | `<button>` | カテゴリ編集ボタン                   |
-| `expense-category-delete-button`         | `<button>` | カテゴリ削除ボタン                   |
-| `expense-category-delete-dialog`         | `<dialog>` | カテゴリ削除確認ダイアログ           |
-| `expense-category-delete-confirm-button` | `<button>` | カテゴリ削除の確定ボタン             |
-| `expense-category-name-error`            | `<p>`      | カテゴリ名エラーメッセージ           |
+| testid                                   | 要素種別   | 説明                                         |
+| ---------------------------------------- | ---------- | -------------------------------------------- |
+| `expense-list`                           | `<ul>`     | 支出一覧                                     |
+| `expense-item`                           | `<li>`     | 支出行                                       |
+| `expense-create-button`                  | `<button>` | 支出登録ボタン                               |
+| `expense-edit-button`                    | `<button>` | 支出編集ボタン                               |
+| `expense-form`                           | `<form>`   | 登録・編集フォーム                           |
+| `expense-amount-input`                   | `<input>`  | 金額入力欄                                   |
+| `expense-category-select`                | `<select>` | カテゴリ選択セレクト                         |
+| `expense-submit-button`                  | `<button>` | 確定ボタン                                   |
+| `expense-amount-error`                   | `<p>`      | 金額エラーメッセージ                         |
+| `expense-category-error`                 | `<p>`      | カテゴリエラーメッセージ                     |
+| `expense-approve-button`                 | `<button>` | 確認済みボタン（未承認行のみ）                           |
+| `expense-unapprove-button`               | `<button>` | 未承認に戻すボタン（確認済み・未確定行のみ）             |
+| `expense-finalize-button`                | `<button>` | 確定選択トグルボタン（確認済み・未確定行のみ）           |
+| `expense-bulk-finalize-button`           | `<button>` | まとめて確定ボタン（確定対象 1 件以上のときヘッダーに出現）|
+| `expense-finalize-dialog`                | `<dialog>` | 支出まとめて確定の確認ダイアログ                         |
+| `expense-finalize-confirm-button`        | `<button>` | 支出確定の確定ボタン                                     |
+| `expense-delete-button`                  | `<button>` | 支出削除ボタン                                           |
+| `expense-delete-dialog`                  | `<dialog>` | 支出削除確認ダイアログ                                   |
+| `expense-delete-confirm-button`          | `<button>` | 支出削除の確定ボタン                                     |
+| `expense-empty`                          | `<p>`      | 空状態メッセージ                             |
+| `expense-month-select`                   | `<select>` | 月切り替えセレクト                           |
+| `expense-total`                          | `<p>`      | 月間合計金額表示                             |
+| `expense-pending-alert`                  | `<div>`    | ダッシュボードの未承認警告バナー             |
+| `expense-category-list`                  | `<ul>`     | カテゴリ一覧                                 |
+| `expense-category-item`                  | `<li>`     | カテゴリ行                                   |
+| `expense-category-name-input`            | `<input>`  | カテゴリ名入力欄                             |
+| `expense-category-add-button`            | `<button>` | カテゴリ追加ボタン                           |
+| `expense-category-edit-button`           | `<button>` | カテゴリ編集ボタン                           |
+| `expense-category-delete-button`         | `<button>` | カテゴリ削除ボタン                           |
+| `expense-category-delete-dialog`         | `<dialog>` | カテゴリ削除確認ダイアログ                   |
+| `expense-category-delete-confirm-button` | `<button>` | カテゴリ削除の確定ボタン                     |
+| `expense-category-name-error`            | `<p>`      | カテゴリ名エラーメッセージ                   |
 
 ## テスト戦略
 

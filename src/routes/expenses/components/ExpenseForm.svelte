@@ -32,6 +32,7 @@
 		amount: number;
 		categoryId: string;
 		approvedAt: Date | null;
+		finalizedAt: Date | null;
 		createdAt: Date;
 		category: Category;
 	};

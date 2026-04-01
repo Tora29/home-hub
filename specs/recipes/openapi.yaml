@@ -500,24 +500,43 @@ components:
 
   responses:
     ValidationError:
-      description: バリデーションエラー（400）
+      description: バリデーションエラー
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/AppError'
-          example:
-            code: VALIDATION_ERROR
-            message: 入力値が正しくありません
-            fields:
-              - field: name
-                message: レシピ名は必須です
+            type: object
+            required: [code, message]
+            properties:
+              code:
+                type: string
+                example: VALIDATION_ERROR
+              message:
+                type: string
+                example: 入力値が正しくありません
+              fields:
+                type: array
+                items:
+                  type: object
+                  required: [field, message]
+                  properties:
+                    field:
+                      type: string
+                      example: field_name
+                    message:
+                      type: string
+                      example: フィールドは必須です
 
     NotFound:
-      description: リソースが見つからない（404）
+      description: リソースが見つからない
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/AppError'
-          example:
-            code: NOT_FOUND
-            message: 該当データが見つかりません
+            type: object
+            required: [code, message]
+            properties:
+              code:
+                type: string
+                example: NOT_FOUND
+              message:
+                type: string
+                example: 該当データが見つかりません

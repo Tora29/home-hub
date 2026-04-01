@@ -7,7 +7,7 @@
  * 支出機能のビジネスロジックと DB 操作を担う。
  *
  * @spec specs/expenses/spec.md
- * @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-013
+ * @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-013, AC-014, AC-015
  *
  * @entity Expense
  *
@@ -16,6 +16,7 @@
  * - createExpense        - 新規作成
  * - updateExpense        - 更新（承認フラグ含む）
  * - deleteExpense        - 削除
+ * - finalizeExpense      - 確定（確認済み → 確定済み）
  * - getUnapprovedCount   - 全期間の未承認件数取得（ダッシュボード用）
  *
  * @test ./service.integration.test.ts
@@ -42,6 +43,7 @@ type ExpenseWithCategory = {
 	amount: number;
 	categoryId: string;
 	approvedAt: Date | null;
+	finalizedAt: Date | null;
 	createdAt: Date;
 	category: Category;
 };
@@ -92,6 +94,7 @@ export async function getExpenses(
 			amount: expense.amount,
 			categoryId: expense.categoryId,
 			approvedAt: expense.approvedAt,
+			finalizedAt: expense.finalizedAt,
 			createdAt: expense.createdAt,
 			category: {
 				id: expenseCategory.id,
@@ -144,6 +147,7 @@ export async function createExpense(
 			amount: expense.amount,
 			categoryId: expense.categoryId,
 			approvedAt: expense.approvedAt,
+			finalizedAt: expense.finalizedAt,
 			createdAt: expense.createdAt,
 			category: {
 				id: expenseCategory.id,
@@ -163,8 +167,9 @@ export async function createExpense(
 
 /**
  * 支出を更新する。approved が true の場合は approvedAt に現在日時をセット、false の場合は null にする。
- * @ac AC-004, AC-005, AC-006
+ * @ac AC-004, AC-005, AC-006, AC-113
  * @throws {NOT_FOUND} - 該当支出が存在しない場合、または他ユーザーの支出の場合
+ * @throws {CONFLICT} - 確定済みの支出の場合
  */
 export async function updateExpense(
 	db: Db,
@@ -178,6 +183,7 @@ export async function updateExpense(
 		.where(and(eq(expense.id, id), eq(expense.userId, userId)))
 		.get();
 	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
+	if (existing.finalizedAt) throw new AppError('CONFLICT', 409, '確定済みの支出は変更できません');
 
 	const now = new Date();
 	const approvedAt = data.approved ? now : null;
@@ -198,6 +204,7 @@ export async function updateExpense(
 			amount: expense.amount,
 			categoryId: expense.categoryId,
 			approvedAt: expense.approvedAt,
+			finalizedAt: expense.finalizedAt,
 			createdAt: expense.createdAt,
 			category: {
 				id: expenseCategory.id,
@@ -217,8 +224,9 @@ export async function updateExpense(
 
 /**
  * 支出を削除する。
- * @ac AC-007
+ * @ac AC-007, AC-113
  * @throws {NOT_FOUND} - 該当支出が存在しない場合、または他ユーザーの支出の場合
+ * @throws {CONFLICT} - 確定済みの支出の場合
  */
 export async function deleteExpense(db: Db, userId: string, id: string): Promise<void> {
 	const existing = await db
@@ -227,8 +235,61 @@ export async function deleteExpense(db: Db, userId: string, id: string): Promise
 		.where(and(eq(expense.id, id), eq(expense.userId, userId)))
 		.get();
 	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
+	if (existing.finalizedAt) throw new AppError('CONFLICT', 409, '確定済みの支出は変更できません');
 
 	await db.delete(expense).where(and(eq(expense.id, id), eq(expense.userId, userId)));
+}
+
+/**
+ * 確認済みの支出を確定する（確定後は変更不可）。
+ * @ac AC-014
+ * @throws {NOT_FOUND} - 該当支出が存在しない場合、または他ユーザーの支出の場合
+ * @throws {CONFLICT} - すでに確定済みの場合、または未承認の場合
+ */
+export async function finalizeExpense(
+	db: Db,
+	userId: string,
+	id: string
+): Promise<ExpenseWithCategory> {
+	const existing = await db
+		.select()
+		.from(expense)
+		.where(and(eq(expense.id, id), eq(expense.userId, userId)))
+		.get();
+	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
+	if (existing.finalizedAt) throw new AppError('CONFLICT', 409, '確定済みの支出は変更できません');
+	if (!existing.approvedAt)
+		throw new AppError('CONFLICT', 409, '確認済みにしてから確定してください');
+
+	const now = new Date();
+	await db
+		.update(expense)
+		.set({ finalizedAt: now })
+		.where(and(eq(expense.id, id), eq(expense.userId, userId)));
+
+	const row = await db
+		.select({
+			id: expense.id,
+			userId: expense.userId,
+			amount: expense.amount,
+			categoryId: expense.categoryId,
+			approvedAt: expense.approvedAt,
+			finalizedAt: expense.finalizedAt,
+			createdAt: expense.createdAt,
+			category: {
+				id: expenseCategory.id,
+				userId: expenseCategory.userId,
+				name: expenseCategory.name,
+				createdAt: expenseCategory.createdAt
+			}
+		})
+		.from(expense)
+		.innerJoin(expenseCategory, eq(expense.categoryId, expenseCategory.id))
+		.where(eq(expense.id, id))
+		.get();
+
+	if (!row) throw new AppError('INTERNAL_SERVER_ERROR', 500, 'サーバーエラーが発生しました');
+	return row as ExpenseWithCategory;
 }
 
 /**

@@ -181,6 +181,7 @@ describe('POST /expense', () => {
 			amount: 1000,
 			categoryId: 'cat-1',
 			approvedAt: null,
+			finalizedAt: null,
 			createdAt: new Date('2026-03-28T00:00:00.000Z'),
 			category: {
 				id: 'cat-1',

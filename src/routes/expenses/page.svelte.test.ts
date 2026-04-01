@@ -5,7 +5,7 @@
  *
  * @target ./+page.svelte
  * @spec specs/expenses/spec.md
- * @covers AC-111, AC-112
+ * @covers AC-111, AC-112, AC-015
  */
 
 import { describe, it, expect, afterEach, vi } from 'vitest';
@@ -17,15 +17,76 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
+const mockCategory = { id: 'cat-1', userId: 'user-1', name: '食費', createdAt: new Date() };
+
 const mockData = {
 	expenses: { items: [], total: 0, page: 1, limit: 20, monthTotal: 0 },
 	categories: {
-		items: [{ id: 'cat-1', userId: 'user-1', name: '食費', createdAt: new Date() }],
+		items: [mockCategory],
 		total: 1,
 		page: 1,
 		limit: 20
 	}
 };
+
+const finalizedExpense = {
+	id: 'exp-1',
+	userId: 'user-1',
+	amount: 3000,
+	categoryId: 'cat-1',
+	approvedAt: new Date('2026-03-01T10:00:00Z'),
+	finalizedAt: new Date('2026-03-02T10:00:00Z'),
+	createdAt: new Date('2026-03-01T09:00:00Z'),
+	category: mockCategory
+};
+
+const mockDataWithFinalized = {
+	expenses: {
+		items: [finalizedExpense],
+		total: 1,
+		page: 1,
+		limit: 20,
+		monthTotal: 3000
+	},
+	categories: { items: [mockCategory], total: 1, page: 1, limit: 20 }
+};
+
+describe('+page.svelte - 確定済み支出の表示制御', () => {
+	it('[SPEC: AC-015] 確定済みの支出行には編集ボタンが表示されない', async () => {
+		render(Page, { data: mockDataWithFinalized });
+
+		await expect.element(page.getByTestId('expense-item')).toBeVisible();
+		await expect.element(page.getByTestId('expense-edit-button')).not.toBeInTheDocument();
+	});
+
+	it('[SPEC: AC-015] 確定済みの支出行には削除ボタンが表示されない', async () => {
+		render(Page, { data: mockDataWithFinalized });
+
+		await expect.element(page.getByTestId('expense-item')).toBeVisible();
+		await expect.element(page.getByTestId('expense-delete-button')).not.toBeInTheDocument();
+	});
+
+	it('[SPEC: AC-015] 確定済みの支出行には未承認に戻すボタンが表示されない', async () => {
+		render(Page, { data: mockDataWithFinalized });
+
+		await expect.element(page.getByTestId('expense-item')).toBeVisible();
+		await expect.element(page.getByTestId('expense-unapprove-button')).not.toBeInTheDocument();
+	});
+
+	it('[SPEC: AC-015] 確定済みの支出行には確認済みボタンも表示されない', async () => {
+		render(Page, { data: mockDataWithFinalized });
+
+		await expect.element(page.getByTestId('expense-item')).toBeVisible();
+		await expect.element(page.getByTestId('expense-approve-button')).not.toBeInTheDocument();
+	});
+
+	it('[SPEC: AC-015] 確定済みの支出行には確定ボタンも表示されない', async () => {
+		render(Page, { data: mockDataWithFinalized });
+
+		await expect.element(page.getByTestId('expense-item')).toBeVisible();
+		await expect.element(page.getByTestId('expense-finalize-button')).not.toBeInTheDocument();
+	});
+});
 
 describe('+page.svelte - フロントバリデーション', () => {
 	it('[SPEC: AC-111] 金額が空のまま確定ボタンを押すと「金額は必須です」がインライン表示される', async () => {

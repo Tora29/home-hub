@@ -7,14 +7,14 @@
  * 支出の更新・削除エンドポイント。
  *
  * @spec specs/expenses/spec.md
- * @acceptance AC-004, AC-005, AC-006, AC-007, AC-101, AC-102, AC-103, AC-104, AC-105, AC-106
+ * @acceptance AC-004, AC-005, AC-006, AC-007, AC-101, AC-102, AC-103, AC-104, AC-105, AC-106, AC-113
  *
  * @endpoints
  * - PUT /expenses/[id] → 200 ExpenseWithCategory - 更新（金額・カテゴリ・承認状態）
  *   @body expenseUpdateSchema
- *   @errors 400(VALIDATION_ERROR), 404(NOT_FOUND)
+ *   @errors 400(VALIDATION_ERROR), 404(NOT_FOUND), 409(CONFLICT)
  * - DELETE /expenses/[id] → 204 - 削除
- *   @errors 404(NOT_FOUND)
+ *   @errors 404(NOT_FOUND), 409(CONFLICT)
  *
  * @service ../service.ts
  * @schema ../schema.ts
@@ -28,10 +28,11 @@ import { deleteExpense, updateExpense } from '../service';
 
 /**
  * 支出を更新する。expenseUpdateSchema で入力値を検証後、service に委譲する。
- * @ac AC-004, AC-005, AC-006, AC-101, AC-102, AC-103, AC-104, AC-105, AC-106
+ * @ac AC-004, AC-005, AC-006, AC-101, AC-102, AC-103, AC-104, AC-105, AC-106, AC-113
  * @body expenseUpdateSchema
  * @throws VALIDATION_ERROR - 入力値が不正な場合
  * @throws NOT_FOUND - 該当支出が存在しない場合
+ * @throws CONFLICT - 確定済みの支出の場合
  */
 export const PUT: RequestHandler = async ({ request, params, locals, platform }) => {
 	const body = await request.json();
@@ -68,8 +69,9 @@ export const PUT: RequestHandler = async ({ request, params, locals, platform })
 
 /**
  * 支出を削除する。
- * @ac AC-007, AC-106
+ * @ac AC-007, AC-106, AC-113
  * @throws NOT_FOUND - 該当支出が存在しない場合
+ * @throws CONFLICT - 確定済みの支出の場合
  */
 export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 	try {

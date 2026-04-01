@@ -6,14 +6,20 @@
  *
  * @target ./service.ts
  * @spec specs/expenses/spec.md
- * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-013
+ * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009, AC-013
  */
 
 import { describe, it, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { AppError } from '$lib/server/errors';
-import { getExpenses, createExpense, updateExpense, deleteExpense } from './service';
+import {
+	getExpenses,
+	createExpense,
+	updateExpense,
+	deleteExpense,
+	getUnapprovedCount
+} from './service';
 import { createCategory } from './categories/service';
 
 function makeUserId() {
@@ -322,5 +328,65 @@ describe('deleteExpense', () => {
 		});
 
 		await expect(deleteExpense(db, userId, otherExpense.id)).rejects.toThrow(AppError);
+	});
+});
+
+describe('getUnapprovedCount', () => {
+	it('[SPEC: AC-008] 未承認の支出が 1 件以上ある場合、件数が返る', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		const category = await createCategory(db, userId, { name: '食費' });
+		await createExpense(db, userId, { amount: 1000, categoryId: category.id });
+		await createExpense(db, userId, { amount: 2000, categoryId: category.id });
+
+		const count = await getUnapprovedCount(db, userId);
+		expect(count).toBe(2);
+	});
+
+	it('[SPEC: AC-008] 自分の未承認支出のみカウントされる（他ユーザーの支出は含まれない）', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+		const otherUserId = makeUserId();
+
+		const myCategory = await createCategory(db, userId, { name: '食費' });
+		const otherCategory = await createCategory(db, otherUserId, { name: '食費' });
+
+		await createExpense(db, userId, { amount: 1000, categoryId: myCategory.id });
+		await createExpense(db, otherUserId, { amount: 2000, categoryId: otherCategory.id });
+
+		const count = await getUnapprovedCount(db, userId);
+		expect(count).toBe(1);
+	});
+
+	it('[SPEC: AC-009] 全支出が承認済みの場合、0 が返る', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		const category = await createCategory(db, userId, { name: '食費' });
+		const expense1 = await createExpense(db, userId, { amount: 1000, categoryId: category.id });
+		const expense2 = await createExpense(db, userId, { amount: 2000, categoryId: category.id });
+
+		await updateExpense(db, userId, expense1.id, {
+			amount: 1000,
+			categoryId: category.id,
+			approved: true
+		});
+		await updateExpense(db, userId, expense2.id, {
+			amount: 2000,
+			categoryId: category.id,
+			approved: true
+		});
+
+		const count = await getUnapprovedCount(db, userId);
+		expect(count).toBe(0);
+	});
+
+	it('[SPEC: AC-009] 支出が 0 件の場合、0 が返る', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		const count = await getUnapprovedCount(db, userId);
+		expect(count).toBe(0);
 	});
 });

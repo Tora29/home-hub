@@ -5,7 +5,7 @@
  *
  * @target ./+server.ts
  * @spec specs/expenses/spec.md
- * @covers AC-101, AC-102, AC-103, AC-104, AC-105, AC-106
+ * @covers AC-101, AC-102, AC-103, AC-104, AC-105, AC-106, AC-113
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -60,6 +60,7 @@ describe('PUT /expense/[id]', () => {
 				amount: 1000,
 				categoryId: 'cat-1',
 				approvedAt: new Date('2026-03-28T00:00:00.000Z'),
+				finalizedAt: null,
 				createdAt: new Date('2026-03-01T00:00:00.000Z'),
 				category: {
 					id: 'cat-1',
@@ -89,6 +90,7 @@ describe('PUT /expense/[id]', () => {
 				amount: 1000,
 				categoryId: 'cat-1',
 				approvedAt: null,
+				finalizedAt: null,
 				createdAt: new Date('2026-03-01T00:00:00.000Z'),
 				category: {
 					id: 'cat-1',
@@ -203,6 +205,24 @@ describe('PUT /expense/[id]', () => {
 			expect(body.code).toBe('NOT_FOUND');
 			expect(body.message).toBe('該当データが見つかりません');
 		});
+
+		it('[SPEC: AC-113] 確定済みの支出を更新しようとした場合、409 CONFLICT を返す', async () => {
+			vi.mocked(service.updateExpense).mockRejectedValueOnce(
+				new AppError('CONFLICT', 409, '確定済みの支出は変更できません')
+			);
+
+			const response = await PUT({
+				request: makePutRequest({ amount: 1000, categoryId: 'cat-1', approved: false }),
+				params: { id: 'finalized-id' },
+				locals: mockLocals,
+				platform: mockPlatform
+			} as Parameters<typeof PUT>[0]);
+
+			expect(response.status).toBe(409);
+			const body = await response.json();
+			expect(body.code).toBe('CONFLICT');
+			expect(body.message).toBe('確定済みの支出は変更できません');
+		});
 	});
 });
 
@@ -236,5 +256,23 @@ describe('DELETE /expense/[id]', () => {
 		const body = await response.json();
 		expect(body.code).toBe('NOT_FOUND');
 		expect(body.message).toBe('該当データが見つかりません');
+	});
+
+	it('[SPEC: AC-113] 確定済みの支出を削除しようとした場合、409 CONFLICT を返す', async () => {
+		vi.mocked(service.deleteExpense).mockRejectedValueOnce(
+			new AppError('CONFLICT', 409, '確定済みの支出は変更できません')
+		);
+
+		const response = await DELETE({
+			request: makeDeleteRequest(),
+			params: { id: 'finalized-id' },
+			locals: mockLocals,
+			platform: mockPlatform
+		} as Parameters<typeof PUT>[0]);
+
+		expect(response.status).toBe(409);
+		const body = await response.json();
+		expect(body.code).toBe('CONFLICT');
+		expect(body.message).toBe('確定済みの支出は変更できません');
 	});
 });

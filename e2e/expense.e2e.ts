@@ -5,13 +5,14 @@
  *
  * @spec specs/expenses/spec.md
  * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009,
- *         AC-010, AC-011, AC-012, AC-013, AC-111, AC-112, AC-204, AC-205
+ *         AC-010, AC-011, AC-012, AC-013, AC-014, AC-015, AC-111, AC-112, AC-204, AC-205
  *
  * @scenarios
  * - 支出一覧の初期表示（当月フィルタ・登録日時降順）
  * - 月切り替えセレクトによる表示月変更
  * - 支出の新規登録フロー（正常系）
  * - 支出の承認操作（確認済み・未承認に戻す）
+ * - 支出の確定操作（確定済みへの更新・確定後のボタン非表示）
  * - 支出の編集フロー
  * - 支出の削除フロー
  * - ダッシュボードの未承認警告バナー表示・非表示
@@ -81,7 +82,12 @@ async function getCurrentMonthExpenseIds(page: Page): Promise<string[]> {
 async function clearCurrentMonthExpenses(page: Page): Promise<void> {
 	const ids = await getCurrentMonthExpenseIds(page);
 	for (const id of ids) {
-		await deleteExpense(page, id);
+		// 確定済み支出は削除不可（409 CONFLICT）のため無視する
+		try {
+			await deleteExpense(page, id);
+		} catch {
+			// ignore
+		}
 	}
 }
 
@@ -436,25 +442,40 @@ test.describe('支出一覧 - 月間合計金額', () => {
 
 	test.beforeEach(async ({ page }) => {
 		await login(page);
-		await clearCurrentMonthExpenses(page);
 		categoryId = await createCategory(page, 'E2E合計テスト');
-		expense1Id = await createExpense(page, 3000, categoryId);
-		expense2Id = await createExpense(page, 2000, categoryId);
 	});
 
 	test.afterEach(async ({ page }) => {
-		await deleteExpense(page, expense1Id);
-		await deleteExpense(page, expense2Id);
+		try {
+			await deleteExpense(page, expense1Id);
+		} catch {
+			// ignore
+		}
+		try {
+			await deleteExpense(page, expense2Id);
+		} catch {
+			// ignore
+		}
 		await deleteCategory(page, categoryId);
 	});
 
 	test('[SPEC: AC-013] 月間合計金額が承認状態問わず全件の合計でカンマ区切りで表示される', async ({
 		page
 	}) => {
+		// ベースライン合計を取得（確定済みなど削除不可の支出が残っている可能性がある）
 		await page.goto('/expenses');
+		const baselineText = await page.getByTestId('expense-total').textContent();
+		const baseline = parseInt((baselineText ?? '¥0').replace(/[¥,]/g, ''), 10);
 
-		// 3000 + 2000 = 5000
-		await expect(page.getByTestId('expense-total')).toHaveText('¥5,000');
+		// 2件の支出を作成（3000 + 2000 = 5000）
+		expense1Id = await createExpense(page, 3000, categoryId);
+		expense2Id = await createExpense(page, 2000, categoryId);
+
+		await page.reload();
+
+		const expectedTotal = baseline + 5000;
+		const formatted = `¥${expectedTotal.toLocaleString('ja-JP')}`;
+		await expect(page.getByTestId('expense-total')).toHaveText(formatted);
 	});
 });
 
@@ -629,6 +650,74 @@ test.describe('カテゴリ管理 - 削除', () => {
 });
 
 // ============================================================
+// 支出確定
+// ============================================================
+
+test.describe('支出 - 確定操作', () => {
+	let categoryId: string;
+	let expenseId: string;
+
+	test.beforeEach(async ({ page }) => {
+		await login(page);
+		categoryId = await createCategory(page, 'E2E確定テスト');
+		expenseId = await createExpense(page, 4500, categoryId);
+		// 確認済みにしてから確定できる状態にする
+		await page.request.put(`/expenses/${expenseId}`, {
+			data: { amount: 4500, categoryId, approved: true }
+		});
+	});
+
+	test.afterEach(async ({ page }) => {
+		// 確定済み支出は DELETE できないため try/catch で無視する
+		try {
+			await deleteExpense(page, expenseId);
+		} catch {
+			// 確定済みの場合は削除不可
+		}
+		await deleteCategory(page, categoryId);
+	});
+
+	test('[SPEC: AC-014] 確認済みの支出の「確定」ボタンを押すと承認状態が「確定済み」に更新される', async ({
+		page
+	}) => {
+		await page.goto('/expenses');
+
+		// 確認済みの支出行を取得
+		const item = page.getByTestId('expense-item').filter({ hasText: '確認済み' }).first();
+		await expect(item).toBeVisible();
+		await expect(item.getByTestId('expense-finalize-button')).toBeVisible();
+
+		// 確定ボタンをクリック
+		await item.getByTestId('expense-finalize-button').click();
+
+		// 承認状態が「確定済み」に更新される
+		const updatedItem = page.getByTestId('expense-item').filter({ hasText: '¥4,500' }).first();
+		await expect(updatedItem).toContainText('確定済み');
+		await expect(updatedItem.getByTestId('expense-finalize-button')).not.toBeVisible();
+	});
+
+	test('[SPEC: AC-015] 確定済みの支出行には編集・削除・未承認に戻す・確定ボタンが表示されない', async ({
+		page
+	}) => {
+		// 支出を確定する
+		await page.request.post(`/expenses/${expenseId}/finalize`);
+
+		await page.goto('/expenses');
+
+		// 確定済みの支出行を取得
+		const item = page.getByTestId('expense-item').filter({ hasText: '確定済み' }).first();
+		await expect(item).toBeVisible();
+
+		// 操作ボタンが表示されない
+		await expect(item.getByTestId('expense-edit-button')).not.toBeVisible();
+		await expect(item.getByTestId('expense-delete-button')).not.toBeVisible();
+		await expect(item.getByTestId('expense-unapprove-button')).not.toBeVisible();
+		await expect(item.getByTestId('expense-finalize-button')).not.toBeVisible();
+		await expect(item.getByTestId('expense-approve-button')).not.toBeVisible();
+	});
+});
+
+// ============================================================
 // 一覧画面 - 空状態
 // ============================================================
 
@@ -640,20 +729,16 @@ test.describe('支出一覧画面 - 空状態', () => {
 	test('[SPEC: AC-204] 支出が0件の場合、空状態メッセージ（expense-empty）が表示される', async ({
 		page
 	}) => {
-		// 当月の支出をすべて削除
-		await clearCurrentMonthExpenses(page);
-
-		await page.goto('/expenses');
+		// データが存在しない過去月を指定して空状態を確認
+		await page.goto('/expenses?month=1970-01');
 
 		await expect(page.getByTestId('expense-empty')).toBeVisible();
 		await expect(page.getByTestId('expense-list')).not.toBeVisible();
 	});
 
 	test('[SPEC: AC-205] 支出が0件の場合、月間合計は「¥0」と表示される', async ({ page }) => {
-		// 当月の支出をすべて削除
-		await clearCurrentMonthExpenses(page);
-
-		await page.goto('/expenses');
+		// データが存在しない過去月を指定して空状態を確認
+		await page.goto('/expenses?month=1970-01');
 
 		await expect(page.getByTestId('expense-total')).toHaveText('¥0');
 	});

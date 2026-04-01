@@ -117,6 +117,27 @@ paths:
           description: 削除成功
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /expenses/{id}/finalize:
+    post:
+      tags: [expense]
+      summary: 支出確定
+      description: 確認済みの支出を確定済みに更新する。確定後は編集・削除・承認状態変更が不可となる。
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: 確定成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseWithCategory'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
 
   /expenses/categories:
     get:
@@ -212,7 +233,7 @@ components:
   schemas:
     Expense:
       type: object
-      required: [id, userId, amount, categoryId, approvedAt, createdAt]
+      required: [id, userId, amount, categoryId, approvedAt, finalizedAt, createdAt]
       properties:
         id:
           type: string
@@ -233,6 +254,11 @@ components:
           format: date-time
           nullable: true
           description: 承認日時。null の場合は未承認
+        finalizedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 確定日時。null の場合は未確定（編集・削除可能）
         createdAt:
           type: string
           format: date-time
@@ -339,10 +365,10 @@ components:
                   properties:
                     field:
                       type: string
-                      example: amount
+                      example: field_name
                     message:
                       type: string
-                      example: 金額は必須です
+                      example: フィールドは必須です
 
     Conflict:
       description: 競合エラー（使用中のリソースは削除不可）
@@ -357,7 +383,7 @@ components:
                 example: CONFLICT
               message:
                 type: string
-                example: このカテゴリは使用中のため削除できません
+                example: このリソースは使用中のため削除できません
 
     NotFound:
       description: リソースが見つからない
