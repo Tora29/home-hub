@@ -677,20 +677,29 @@ test.describe('支出 - 確定操作', () => {
 		await deleteCategory(page, categoryId);
 	});
 
-	test('[SPEC: AC-014] 確認済みの支出の「確定」ボタンを押すと承認状態が「確定済み」に更新される', async ({
+	test('[SPEC: AC-014] 確認済みの支出の確定選択ボタンを押し、確認ダイアログで確定すると「確定済み」に更新される', async ({
 		page
 	}) => {
 		await page.goto('/expenses');
 
-		// 確認済みの支出行を取得
+		// 確認済みの支出行を取得し、確定選択トグルボタンをクリック（選択状態にする）
 		const item = page.getByTestId('expense-item').filter({ hasText: '確認済み' }).first();
 		await expect(item).toBeVisible();
 		await expect(item.getByTestId('expense-finalize-button')).toBeVisible();
-
-		// 確定ボタンをクリック
 		await item.getByTestId('expense-finalize-button').click();
 
-		// 承認状態が「確定済み」に更新される
+		// 「まとめて確定」ボタンが出現することを確認
+		await expect(page.getByTestId('expense-bulk-finalize-button')).toBeVisible();
+
+		// 「確定する（1件）」ボタンをクリックしてダイアログを開く
+		await page.getByTestId('expense-bulk-finalize-button').click();
+		await expect(page.getByTestId('expense-finalize-dialog')).toBeVisible();
+
+		// ダイアログで確定ボタンをクリック
+		await page.getByTestId('expense-finalize-confirm-button').click();
+
+		// ダイアログが閉じ、承認状態が「確定済み」に更新される
+		await expect(page.getByTestId('expense-finalize-dialog')).not.toBeVisible();
 		const updatedItem = page.getByTestId('expense-item').filter({ hasText: '¥4,500' }).first();
 		await expect(updatedItem).toContainText('確定済み');
 		await expect(updatedItem.getByTestId('expense-finalize-button')).not.toBeVisible();
@@ -712,6 +721,9 @@ test.describe('支出 - 確定操作', () => {
 		await expect(item.getByTestId('expense-edit-button')).not.toBeVisible();
 		await expect(item.getByTestId('expense-delete-button')).not.toBeVisible();
 		await expect(item.getByTestId('expense-unapprove-button')).not.toBeVisible();
+
+		// 行がグレーアウトされている
+		await expect(item).toHaveClass(/opacity-60/);
 		await expect(item.getByTestId('expense-finalize-button')).not.toBeVisible();
 		await expect(item.getByTestId('expense-approve-button')).not.toBeVisible();
 	});

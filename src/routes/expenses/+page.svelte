@@ -24,6 +24,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { Wallet, Plus, CheckCircle, RotateCcw, Pencil, Trash2, Tag, Check } from '@lucide/svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import Button from '$lib/components/Button.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import ExpenseForm from './components/ExpenseForm.svelte';
@@ -48,7 +49,7 @@
 	let isDeleting = $state(false);
 
 	// 確定対象として選択中の支出 ID セット
-	let finalizeTargetIds = $state(new Set<string>());
+	let finalizeTargetIds = new SvelteSet<string>();
 	let showFinalizeDialog = $state(false);
 	let isFinalizing = $state(false);
 
@@ -88,13 +89,11 @@
 
 	// 確定対象の選択トグル
 	function toggleFinalizeTarget(id: string) {
-		const next = new Set(finalizeTargetIds);
-		if (next.has(id)) {
-			next.delete(id);
+		if (finalizeTargetIds.has(id)) {
+			finalizeTargetIds.delete(id);
 		} else {
-			next.add(id);
+			finalizeTargetIds.add(id);
 		}
-		finalizeTargetIds = next;
 	}
 
 	// まとめて確定
@@ -102,11 +101,9 @@
 		isFinalizing = true;
 		try {
 			await Promise.all(
-				[...finalizeTargetIds].map((id) =>
-					fetch(`/expenses/${id}/finalize`, { method: 'POST' })
-				)
+				[...finalizeTargetIds].map((id) => fetch(`/expenses/${id}/finalize`, { method: 'POST' }))
 			);
-			finalizeTargetIds = new Set();
+			finalizeTargetIds.clear();
 			showFinalizeDialog = false;
 			await invalidateAll();
 		} finally {
@@ -219,9 +216,9 @@
 			{#each data.expenses.items as exp (exp.id)}
 				<li
 					data-testid="expense-item"
-					class="rounded-3xl bg-bg-card p-4 shadow-sm transition-all {finalizeTargetIds.has(exp.id)
-						? 'ring-2 ring-accent/50'
-						: ''}"
+					class="rounded-3xl bg-bg-card p-4 shadow-sm transition-all {exp.finalizedAt !== null
+						? 'opacity-60'
+						: ''} {finalizeTargetIds.has(exp.id) ? 'ring-2 ring-accent/50' : ''}"
 				>
 					<div class="flex items-start gap-3">
 						<!-- Amount & Category -->
@@ -286,7 +283,9 @@
 										variant={finalizeTargetIds.has(exp.id) ? 'primary' : 'secondary'}
 										size="sm"
 										onclick={() => toggleFinalizeTarget(exp.id)}
-										aria-label={finalizeTargetIds.has(exp.id) ? '確定対象から外す' : '確定対象にする'}
+										aria-label={finalizeTargetIds.has(exp.id)
+											? '確定対象から外す'
+											: '確定対象にする'}
 									>
 										{#if finalizeTargetIds.has(exp.id)}
 											<Check size={14} />

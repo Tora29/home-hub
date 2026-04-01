@@ -86,6 +86,14 @@ describe('+page.svelte - 確定済み支出の表示制御', () => {
 		await expect.element(page.getByTestId('expense-item')).toBeVisible();
 		await expect.element(page.getByTestId('expense-finalize-button')).not.toBeInTheDocument();
 	});
+
+	it('[SPEC: AC-015] 確定済みの支出行はグレーアウトされる', async () => {
+		render(Page, { data: mockDataWithFinalized });
+
+		const item = page.getByTestId('expense-item');
+		await expect.element(item).toBeVisible();
+		await expect.element(item).toHaveClass('opacity-60');
+	});
 });
 
 describe('+page.svelte - フロントバリデーション', () => {
