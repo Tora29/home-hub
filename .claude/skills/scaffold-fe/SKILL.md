@@ -13,7 +13,8 @@ spec.md を主入力として、フロントエンド実装コードを生成す
 - `specs/infra-spec.md` が存在すること（技術スタック・ディレクトリ構成の参照）
 - `.claude/references/design-system.md` が存在すること
 - `.claude/rules/` に schemas, data-testid, security が定義されていること
-- `/scaffold-test-unit` が実行済みであること（テストが存在すること）
+- `/scaffold-contract` が実行済みであり、schema.ts・tables.ts・migrations がコミット済みであること
+- `/scaffold-test-unit` が実行済みであり、テストがコミット済みであること（worktree のベースとして使用する）
 - （推奨）BE 実装が完了していること（API エンドポイントが利用可能）
 
 ## 起動時の挙動
@@ -29,8 +30,21 @@ options:
 ## ワークフロー
 
 ```
-入力読み込み → rules 参照 → コード生成 → チェックリスト検証
+worktree 作成 → 入力読み込み → rules 参照 → コード生成 → チェックリスト検証 → main へ取り込み
 ```
+
+### Step 0: worktree の作成
+
+テストファイルが存在しない環境で実装を生成するため、テストコミットの1つ前をベースに worktree を作成する。
+
+```bash
+git worktree add -b worktree/scaffold-fe-{feature} ../home-hub-fe-{feature} HEAD~1
+cd ../home-hub-fe-{feature}
+```
+
+- ブランチ名: `worktree/scaffold-fe-{feature}`
+- ベース: `HEAD~1`（scaffold-test-unit のコミット前＝テストが存在しない状態）
+- 以降の全ファイル操作はこの worktree ディレクトリで行う
 
 ### Step 1: 入力読み込み
 
@@ -69,9 +83,8 @@ Glob('src/routes/{feature}/**/*.svelte')
 **以下のファイルは新規・更新を問わず一切 Read しない:**
 
 - 他 feature のファイル
-- テストファイル（`*.test.ts`, `*.integration.test.ts`, `*.svelte.test.ts`, `*.e2e.ts`）
 
-> **なぜテストを読まないか**: テストは実装の正しさを検証するものであり、実装の根拠は spec.md と openapi.yaml のみとする。テストを読んで実装すると TDD のフィードバックループが機能しなくなる。
+> worktree は `HEAD~1`（テスト追加前）ベースのため、テストファイルは物理的に存在しない。
 
 ### Step 4: コード生成
 
@@ -79,8 +92,9 @@ spec.md の画面仕様・UI Requirements に基づき、infra-spec.md のディ
 
 1. **ページコンポーネント** — spec.md の画面構成に対応するメインコンポーネント
 2. **部品コンポーネント** — spec.md の画面構成に基づき、責務ごとに分割
-3. **FE スキーマ** — schemas rule に従い、FE バリデーション用スキーマを定義
-4. **data-testid の付与** — data-testid rule の命名テーブルに従い、全インタラクティブ要素に付与
+3. **data-testid の付与** — data-testid rule の命名テーブルに従い、全インタラクティブ要素に付与
+
+> **schema.ts は生成しない**。`/scaffold-contract` が生成済みのため、worktree 内の `src/routes/{feature}/schema.ts` をそのまま import する。
 
 生成するファイルの配置場所は infra-spec.md のディレクトリ構成に従う。
 
@@ -97,16 +111,31 @@ spec.md の画面仕様・UI Requirements に基づき、infra-spec.md のディ
 - [ ] アクセシビリティ要件が適切に実装されている
 - [ ] ディレクトリ構成が infra-spec.md に従っている
 - [ ] 全生成ファイルに file-headers rule に従ったヘッダーコメントが付与されている
-- [ ] **テストファイルを一切 Read・編集・削除していない**
 
-### Step 5: 次のステップ案内
+### Step 5: main へ実装ファイルを取り込む
+
+worktree で生成した実装ファイルを main ブランチに取り込む。
+
+```bash
+# main ブランチに戻る
+cd ../home-hub
+
+# worktree の実装ファイルのみを取り込む（テストは main 側に既にある）
+git checkout worktree/scaffold-fe-{feature} -- src/routes/{feature}/
+
+# worktree を削除
+git worktree remove ../home-hub-fe-{feature}
+git branch -d worktree/scaffold-fe-{feature}
+```
+
+### Step 6: 次のステップ案内
 
 チェックリスト完了後、以下をユーザーに表示する:
 
 ```
 FE 実装が完了しました。
 次のステップ:
-1. `/test-and-fix` を実行してテストを GREEN にしてください。
+1. `/test-and-fix` を実行してテストを GREEN にしてください（unit + integration のみ）。
 2. GREEN になったら `/spec-coverage` でドリフトを確認してください。
 3. ドリフトがあれば `/spec-sync` で解消してください。
 4. `/verify-app` でアプリの動作を確認してください。

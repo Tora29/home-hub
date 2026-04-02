@@ -175,13 +175,28 @@ describe('{ComponentName}', () => {
 - [ ] 全生成ファイルに file-headers rule に従ったヘッダーコメントが付与されている
 - [ ] **Bash ツールで `npm run test:unit -- --run` と `npm run test:integration -- --run` を実行し、生成したテストが RED になることを確認した**（実装前のため RED が正常。`Cannot find module` や型エラーで落ちることが期待される）
 
-### Step 6: 次のステップ案内
+### Step 6: テストをコミット
+
+scaffold-be / scaffold-fe が worktree のベースとして参照するため、**テスト生成後は必ずコミットする**。
+
+```bash
+git add src/routes/{feature}/ e2e/{feature}.e2e.ts
+git commit -m "test({feature}): unit / integration / e2e テスト生成"
+```
+
+- コミットメッセージは Conventional Commits 形式
+- テストファイル以外（実装ファイル等）はこのコミットに含めない
+
+### Step 7: 次のステップ案内
 
 チェックリスト完了後、以下をユーザーに表示する:
 
 ```
-テスト生成が完了しました。チェックリストを表示します。
-次のステップ: `/scaffold-be` を実行して BE 実装を生成してください。
+テスト生成とコミットが完了しました。
+次のステップ:
+1. `/scaffold-be` を worktree で実行して BE 実装を生成してください。
+2. 別ターミナルで `/scaffold-fe` を worktree で実行して FE 実装を生成してください。
+3. 両方完了したら `/test-and-fix` を実行してください。
 ```
 
 ## テスト生成の原則
