@@ -14,16 +14,28 @@ openapi.yaml を主入力として、API テスト・ユニットテストを生
 - `specs/infra-spec.md` が存在すること（テストフレームワーク・コマンドの参照）
 - `.claude/rules/testing.md` が定義されていること
 - `specs/{feature}/openapi.yaml` が存在すること（API 要件がある場合のみ。ない場合は spec.md の AC のみを入力とする）
-- 既存テストファイルがある場合はそのまま活用し、不足分のみ生成する
+- `/scaffold-contract` が実行済みであり、schema.ts・tables.ts・migrations がコミット済みであること（この HEAD が worktree のベースとなる）
 
 ## 起動時の挙動
 
-スキル起動後、AskUserQuestion ツールを使って対象 feature を確認する。
+スキル起動後、以下の順序で必ず実行する。
+
+**1. AskUserQuestion で対象 feature を確認する**
 
 ```
 question: "どの feature のテストを生成しますか？"
 options:
   - specs/ 配下の feature ディレクトリを動的にリスト
+```
+
+**2. 【他のツール呼び出しより前に】worktree を作成する**
+
+feature が確定したら、ファイルを一切読む前に worktree を作成する。
+以降の全ファイル操作はこの worktree ディレクトリで行う。
+
+```bash
+git worktree add -b worktree/scaffold-test-unit-{feature} ../home-hub-test-{feature} HEAD
+cd ../home-hub-test-{feature}
 ```
 
 ## ワークフロー
@@ -61,28 +73,35 @@ spec.md の AC を分類し、テストケースにマッピングする:
 | 異常系（AC-101〜） | API テスト: エラーレスポンスの検証 | バリデーションエラー → 400 |
 | 境界値（AC-201〜） | Unit テスト / API テスト           | 最大長、空文字、特殊文字   |
 
-#### 3-2: 期待ファイルリストの作成と存在確認
+#### 3-2: 期待ファイルリストの作成・存在確認・AC カバレッジ確認
 
-spec.md の「テスト戦略」セクション（または testing.md のファイル命名規則）をもとに、**生成すべきテストファイルの完全なリスト**を作成する。
+spec.md の「テスト戦略」セクション（または testing.md のファイル命名規則）をもとに、**生成すべきテストファイルの完全なリスト**と**各ファイルがカバーすべき AC リスト**を作成する。
 
 ```
 期待ファイル例（spec.md のテスト戦略テーブルから抽出）:
-- src/routes/{feature}/schema.test.ts
-- src/routes/{feature}/server.test.ts
-- src/routes/{feature}/[id]/server.test.ts
-- src/routes/{feature}/page.svelte.test.ts       ← FE コンポーネントテスト
-- src/routes/{feature}/service.integration.test.ts
-- e2e/{feature}.e2e.ts                           ← E2E テスト
+- src/routes/{feature}/schema.test.ts            → AC-101〜109, AC-201〜203
+- src/routes/{feature}/server.test.ts            → AC-101〜109, AC-106
+- src/routes/{feature}/[id]/server.test.ts       → AC-106, AC-113, AC-114
+- src/routes/{feature}/page.svelte.test.ts       → AC-016〜020, AC-111〜112
+- src/routes/{feature}/service.integration.test.ts → AC-001〜007, AC-013〜015
+- e2e/{feature}.e2e.ts                           → AC-204〜205
 ```
 
-次に **Glob ツールで各ファイルの存在を確認**し、存在しないファイルを「生成対象」として特定する。
+次に **Glob ツールで各ファイルの存在を確認**し、2通りに処理する：
+
+**ファイルが存在しない場合** → Step 4 で新規生成する。
+
+**ファイルが存在する場合** → **必ず Grep で `\[SPEC: AC-\d+\]` を抽出し、期待 AC リストと差分を取る**。
 
 ```
-存在確認: Glob('src/routes/{feature}/**/*.test.ts')
-存在確認: Glob('e2e/{feature}.e2e.ts')
+カバレッジ確認: Grep('\[SPEC: AC-\d+\]', 対象ファイル)
 ```
 
-**既存ファイルは読まずにスキップ。不足ファイルのみを Step 4 で生成する。**
+- 抽出した AC 番号と期待 AC リストを比較する
+- **不足している AC がある場合 → Step 4 でそのテストケースのみ追記する**
+- 全 AC が揃っている場合 → スキップ
+
+> ファイルが存在しても中身が不完全な場合があるため、必ず AC カバレッジを確認すること。
 
 ### Step 4: テスト生成
 
@@ -166,6 +185,7 @@ describe('{ComponentName}', () => {
 以下の項目を順番に確認する。**テスト実行は必ず Bash ツールで行うこと。**
 
 - [ ] **Step 3-2 で作成した期待ファイルリストの全ファイルが存在する**（Glob で確認済み）
+- [ ] **既存ファイルを含む全テストファイルで `[SPEC: AC-XXX]` を Grep し、期待 AC との差分がゼロである**（Step 3-2 の AC カバレッジ確認済み）
 - [ ] 全ての AC にテストケースが存在する（`[SPEC: AC-XXX]` で紐付け済み）— FE コンポーネントテスト・E2E テストを含む
 - [ ] openapi.yaml の全エンドポイントに対するテストが存在する（openapi.yaml がある場合のみ）
 - [ ] 正常系・異常系・境界値の各カテゴリをカバーしている
@@ -175,11 +195,23 @@ describe('{ComponentName}', () => {
 - [ ] 全生成ファイルに file-headers rule に従ったヘッダーコメントが付与されている
 - [ ] **Bash ツールで `npm run test:unit -- --run` と `npm run test:integration -- --run` を実行し、生成したテストが RED になることを確認した**（実装前のため RED が正常。`Cannot find module` や型エラーで落ちることが期待される）
 
-### Step 6: テストをコミット
+### Step 6: main へテストファイルを取り込む
 
-scaffold-be / scaffold-fe が worktree のベースとして参照するため、**テスト生成後は必ずコミットする**。
+worktree で生成したテストファイルを main ブランチに取り込み、履歴管理のためにコミットする。
 
 ```bash
+# main ブランチに戻る
+cd ../home-hub
+
+# worktree のテストファイルのみを取り込む
+git checkout worktree/scaffold-test-unit-{feature} -- src/routes/{feature}/
+git checkout worktree/scaffold-test-unit-{feature} -- e2e/{feature}.e2e.ts
+
+# worktree を削除
+git worktree remove ../home-hub-test-{feature}
+git branch -d worktree/scaffold-test-unit-{feature}
+
+# コミット（履歴管理のため。be / fe との依存関係はない）
 git add src/routes/{feature}/ e2e/{feature}.e2e.ts
 git commit -m "test({feature}): unit / integration / e2e テスト生成"
 ```
@@ -194,9 +226,8 @@ git commit -m "test({feature}): unit / integration / e2e テスト生成"
 ```
 テスト生成とコミットが完了しました。
 次のステップ:
-1. `/scaffold-be` を worktree で実行して BE 実装を生成してください。
-2. 別ターミナルで `/scaffold-fe` を worktree で実行して FE 実装を生成してください。
-3. 両方完了したら `/test-and-fix` を実行してください。
+1. /scaffold-be・/scaffold-fe がまだの場合は並列で実行してください。
+2. 3つ全て取り込み完了後、`/test-and-fix` を実行して unit + integration を GREEN にしてください。
 ```
 
 ## テスト生成の原則
@@ -215,6 +246,8 @@ git commit -m "test({feature}): unit / integration / e2e テスト生成"
 - `src/routes/**` — 既存機能の実装・スキーマ・テスト（他 feature のものも含む）
 - `src/lib/**` — 共通ライブラリ実装
 - `vite.config.ts`, `wrangler.toml`, `package.json` — インフラ設定
+
+> worktree は scaffold-contract コミット直後の HEAD ベースのため、be / fe / test-unit の成果物は物理的に存在しない。「読まない」ではなく「存在しない」状態で作業する。
 
 コーディングパターンが必要な場合は `.claude/rules/` の rules ファイルを参照すること。
 テスト記法は `testing.md`、スキーマ記法は `schemas.md`、ファイルヘッダーは `file-headers.md` が正とする。
