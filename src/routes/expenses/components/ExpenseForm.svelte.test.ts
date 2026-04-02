@@ -81,3 +81,32 @@ describe('ExpenseForm - FE バリデーション', () => {
 		await expect.element(page.getByTestId('expense-category-error')).toBeVisible();
 	});
 });
+
+describe('ExpenseForm - 金額入力の自動整形', () => {
+	it('[SPEC: AC-206] 全角数字を入力すると半角数字に自動変換される', async () => {
+		render(ExpenseForm, defaultProps);
+
+		const input = page.getByTestId('expense-amount-input');
+		await input.fill('１２３４');
+
+		await expect.element(input).toHaveValue('1,234');
+	});
+
+	it('[SPEC: AC-207] 半角数字を入力するとカンマ区切りで整形される', async () => {
+		render(ExpenseForm, defaultProps);
+
+		const input = page.getByTestId('expense-amount-input');
+		await input.fill('1000');
+
+		await expect.element(input).toHaveValue('1,000');
+	});
+
+	it('[SPEC: AC-207] カンマ付きで入力しても正しく整形される', async () => {
+		render(ExpenseForm, defaultProps);
+
+		const input = page.getByTestId('expense-amount-input');
+		await input.fill('1,500');
+
+		await expect.element(input).toHaveValue('1,500');
+	});
+});

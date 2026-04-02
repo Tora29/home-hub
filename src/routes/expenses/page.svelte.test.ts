@@ -128,16 +128,14 @@ describe('+page.svelte - モバイル行メニューの表示制御', () => {
 
 		await expect.element(page.getByTestId('expense-approve-button')).toBeVisible();
 		await expect.element(page.getByTestId('expense-unapprove-button')).not.toBeInTheDocument();
-		await expect.element(page.getByTestId('expense-finalize-button')).not.toBeInTheDocument();
 	});
 
-	it('[SPEC: AC-019] 確認済み（未確定）行のメニューには「未承認に戻す」と「確定対象にする」が表示される', async () => {
+	it('[SPEC: AC-019] 確認済み（未確定）行のメニューには「未承認に戻す」が表示され、「確認済みにする」は表示されない', async () => {
 		render(Page, { data: mockDataWithApproved });
 
 		await page.getByTestId('expense-menu-button').click();
 
 		await expect.element(page.getByTestId('expense-unapprove-button')).toBeVisible();
-		await expect.element(page.getByTestId('expense-finalize-button')).toBeVisible();
 		await expect.element(page.getByTestId('expense-approve-button')).not.toBeInTheDocument();
 	});
 
@@ -182,7 +180,7 @@ describe('+page.svelte - 確定済み支出の表示制御', () => {
 		render(Page, { data: mockDataWithFinalized });
 
 		await expect.element(page.getByTestId('expense-item')).toBeVisible();
-		await expect.element(page.getByTestId('expense-finalize-button')).not.toBeInTheDocument();
+		await expect.element(page.getByTestId('expense-bulk-finalize-button')).not.toBeInTheDocument();
 	});
 
 	it('[SPEC: AC-015] 確定済みの支出行はグレーアウトされる', async () => {

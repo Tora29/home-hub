@@ -52,12 +52,12 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-011: カテゴリを編集すると、一覧に表示されているカテゴリ名が更新される
 - AC-012: カテゴリに紐付く支出が 0 件の場合、カテゴリを削除できる
 - AC-013: 一覧画面に選択中の月の支出合計金額（承認済み・未承認の全件）がカンマ区切りで表示される
-- AC-014: 確認済み（未確定）の支出の行メニューを開き「確定対象にする」を選択すると確定対象に追加され、1 件以上選択した状態で「確定する（N件）」ボタンを押し確認モーダルで確定すると、選択した支出がまとめて確定済みに更新される（以降変更不可）
+- AC-014: 確認済み（未確定）の支出が 1 件以上存在すると「確定する（N件）」ボタンがヘッダーに表示され、押して確認モーダルで確定すると確認済みの全支出がまとめて確定済みに更新される（以降変更不可）
 - AC-015: 確定済みの支出行には行メニューボタンが表示されず、行全体がグレーアウトされる
 - AC-016: 未承認の行の `expense-menu-button` をタップすると `expense-menu` が表示される
 - AC-017: `expense-menu` 表示中にメニュー外をクリックすると `expense-menu` が閉じる
 - AC-018: 未承認行のメニューには「確認済みにする」のみが表示され、「未承認に戻す」「確定対象にする」は表示されない
-- AC-019: 確認済み（未確定）行のメニューには「未承認に戻す」と「確定対象にする」が表示され、「確認済みにする」は表示されない
+- AC-019: 確認済み（未確定）行のメニューには「未承認に戻す」が表示され、「確認済みにする」は表示されない
 - AC-020: 確定済み行には `expense-menu-button` が表示されない
 
 ### 異常系
@@ -82,6 +82,8 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-201: 金額が 1 の場合、登録できる
 - AC-202: 金額が 9,999,999 の場合、登録できる
 - AC-203: カテゴリ名が 50 文字の場合、登録できる
+- AC-206: 金額欄に全角数字を入力すると半角数字に自動変換される
+- AC-207: 金額欄の入力値がカンマ区切りで整形される（例: 1000 → 1,000）
 - AC-204: 支出が 0 件の場合、空状態メッセージ（`expense-empty`）が表示される
 - AC-205: 支出が 0 件の場合、合計金額は「¥0」と表示される
 
@@ -93,7 +95,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 - **月切り替えセレクト** (`expense-month-select`): 表示する月を選択。デフォルトは当月（`YYYY-MM` 形式）。選択肢は当月を含む過去 13 か月分
 - **カテゴリ管理リンク**: カテゴリ管理ページ（`/expenses/categories`）へのリンク
-- **まとめて確定ボタン** (`expense-bulk-finalize-button`): 確定対象が 1 件以上選択されているときのみ登録ボタン左に表示。`「確定する（N件）」` と件数を表示
+- **まとめて確定ボタン** (`expense-bulk-finalize-button`): 確認済み（未確定）の支出が 1 件以上あるときのみ登録ボタン左に表示。`「確定する（N件）」` と件数を表示。確認済みになった時点で自動的に対象に含まれる
 - **支出登録ボタン** (`expense-create-button`): 右上。クリックで登録フォームダイアログを開く
 - **月間合計** (`expense-total`): 対象月の支出合計金額（全件・承認状態問わず）をカンマ区切りで表示（例: `¥12,300`）
 - **支出一覧** (`expense-list`): 各行に金額・カテゴリ名・登録日・承認状態バッジ・操作
@@ -105,7 +107,6 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
   - **確定済み行のスタイル**: `finalizedAt` が設定された行は opacity を下げてグレーアウト表示し、操作ボタンを非表示にする
   - **確認済みボタン** (`expense-approve-button`): 未承認の行のみ表示
   - **未承認に戻すボタン** (`expense-unapprove-button`): 確認済み（未確定）の行のみ表示
-  - **確定選択ボタン** (`expense-finalize-button`): 確認済み（未確定）の行のみ表示。クリックで確定対象に追加/解除するトグル。選択中は強調表示
   - **編集ボタン** (`expense-edit-button`): 未承認・確認済み（未確定）の行のみ表示
   - **削除ボタン** (`expense-delete-button`): 未承認・確認済み（未確定）の行のみ表示
 
@@ -119,7 +120,6 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
   - **行メニュー** (`expense-menu`): 行メニューボタンの近くに表示されるドロップダウン。ステータスに応じて以下の選択肢を表示する
     - 「確認済みにする」(`expense-approve-button`): 未承認の行のみ
     - 「未承認に戻す」(`expense-unapprove-button`): 確認済み（未確定）の行のみ
-    - 「確定対象にする / 確定対象から外す」(`expense-finalize-button`): 確認済み（未確定）の行のみ。確定対象中は「確定対象から外す」に変わる
     - 「編集」(`expense-edit-button`): 未承認・確認済み（未確定）の行
     - 「削除」(`expense-delete-button`): 未承認・確認済み（未確定）の行
   - メニュー外をタップするとメニューを閉じる
@@ -138,7 +138,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - 編集ボタンクリック → 編集フォームダイアログを表示（現在の金額・カテゴリを初期値にセット）
 - 「確認済み」ボタンクリック → `PUT /expenses/[id]` で `approved: true` に更新 → 一覧を更新
 - 「未承認に戻す」ボタンクリック → `PUT /expenses/[id]` で `approved: false` に更新 → 一覧を更新
-- 「確定」ボタンクリック（行）→ 確定対象に追加/解除（トグル）。1 件以上選択で `expense-bulk-finalize-button` が出現
+- 確認済み支出が 1 件以上存在すると `expense-bulk-finalize-button` が自動で出現
 - 削除ボタンクリック → `expense-delete-dialog` を表示し確定で `DELETE /expenses/[id]` を呼ぶ
 
 **モバイル（`md:` 未満）のみ**
@@ -148,7 +148,6 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - メニュー「編集」選択 → メニューを閉じ、編集フォームダイアログを表示（現在の金額・カテゴリを初期値にセット）
 - メニュー「確認済みにする」選択 → メニューを閉じ、`PUT /expenses/[id]` で `approved: true` に更新 → 一覧を更新
 - メニュー「未承認に戻す」選択 → メニューを閉じ、`PUT /expenses/[id]` で `approved: false` に更新 → 一覧を更新
-- メニュー「確定対象にする / 確定対象から外す」選択 → メニューを閉じ、確定対象に追加/解除（トグル）。1 件以上選択で `expense-bulk-finalize-button` が出現
 - メニュー「削除」選択 → メニューを閉じ、`expense-delete-dialog` を表示し確定で `DELETE /expenses/[id]` を呼ぶ
 
 #### バリデーション表示
@@ -209,8 +208,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 | `expense-menu`                           | `<div>`    | 行メニュードロップダウン                                    |
 | `expense-approve-button`                 | `<button>` | メニュー内「確認済みにする」（未承認行のみ）                |
 | `expense-unapprove-button`               | `<button>` | メニュー内「未承認に戻す」（確認済み・未確定行のみ）        |
-| `expense-finalize-button`                | `<button>` | メニュー内「確定対象にする / 外す」（確認済み・未確定行のみ）|
-| `expense-bulk-finalize-button`           | `<button>` | まとめて確定ボタン（確定対象 1 件以上のときヘッダーに出現） |
+| `expense-bulk-finalize-button`           | `<button>` | まとめて確定ボタン（確認済み未確定が 1 件以上のときヘッダーに自動出現） |
 | `expense-finalize-dialog`                | `<dialog>` | 支出まとめて確定の確認ダイアログ                            |
 | `expense-finalize-confirm-button`        | `<button>` | 支出確定の確定ボタン                                        |
 | `expense-delete-button`                  | `<button>` | 支出削除ボタン                                              |
@@ -249,6 +247,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 | AC-111〜112    | Unit        | `page.svelte.test.ts`                                     | フロントのインラインバリデーション表示を検証（ページ統合）  |
 | AC-111〜112    | Unit        | `components/ExpenseForm.svelte.test.ts`                   | ExpenseForm コンポーネント直接のバリデーション検証          |
 | AC-201〜203    | Unit        | `schema.test.ts`, `categories/schema.test.ts`             | Zod 境界値検証                                              |
+| AC-206〜207    | Unit        | `components/ExpenseForm.svelte.test.ts`                   | 金額欄の全角変換・カンマ整形を検証                          |
 | AC-204〜205    | E2E         | `e2e/expense.e2e.ts`                                      | 空状態・合計¥0 表示はブラウザ全体が必要                     |
 
 ## Non-Functional Requirements

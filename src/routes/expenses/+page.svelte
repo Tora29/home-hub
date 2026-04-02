@@ -6,9 +6,10 @@
   @description
   月ごとの支出一覧を表示する。月切り替え・登録・編集・削除・承認・確定操作ができる。
   確定は複数行を選択してまとめて確定するバッチフロー。
+  各行のアクションは行メニューボタン（expense-menu-button）から操作する。
 
   @spec specs/expenses/spec.md
-  @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-013, AC-014, AC-015, AC-204, AC-205
+  @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-013, AC-014, AC-015, AC-016, AC-017, AC-018, AC-019, AC-020, AC-204, AC-205
 
   @navigation
   - 遷移先: /expenses/categories - カテゴリ管理画面
@@ -23,8 +24,17 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { Wallet, Plus, CheckCircle, RotateCcw, Pencil, Trash2, Tag, Check } from '@lucide/svelte';
-	import { SvelteSet } from 'svelte/reactivity';
+	import {
+		Wallet,
+		Plus,
+		CheckCircle,
+		RotateCcw,
+		Pencil,
+		Trash2,
+		Tag,
+		Check,
+		MoreVertical
+	} from '@lucide/svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import ExpenseForm from './components/ExpenseForm.svelte';
@@ -48,8 +58,13 @@
 	let deletingExpense = $state<ExpenseWithCategory | null>(null);
 	let isDeleting = $state(false);
 
-	// 確定対象として選択中の支出 ID セット
-	let finalizeTargetIds = new SvelteSet<string>();
+	// 行メニューの開閉管理（開いている行の ID を保持）
+	let openMenuId = $state<string | null>(null);
+
+	// 確認済み（未確定）の支出を自動で確定対象にする
+	let finalizeTargets = $derived(
+		data.expenses.items.filter((e) => e.approvedAt !== null && e.finalizedAt === null)
+	);
 	let showFinalizeDialog = $state(false);
 	let isFinalizing = $state(false);
 
@@ -87,23 +102,13 @@
 		void goto(`?month=${month}`, { keepFocus: true, replaceState: true });
 	}
 
-	// 確定対象の選択トグル
-	function toggleFinalizeTarget(id: string) {
-		if (finalizeTargetIds.has(id)) {
-			finalizeTargetIds.delete(id);
-		} else {
-			finalizeTargetIds.add(id);
-		}
-	}
-
-	// まとめて確定
+	// まとめて確定（確認済み未確定を全件）
 	async function handleBulkFinalize() {
 		isFinalizing = true;
 		try {
 			await Promise.all(
-				[...finalizeTargetIds].map((id) => fetch(`/expenses/${id}/finalize`, { method: 'POST' }))
+				finalizeTargets.map((e) => fetch(`/expenses/${e.id}/finalize`, { method: 'POST' }))
 			);
-			finalizeTargetIds.clear();
 			showFinalizeDialog = false;
 			await invalidateAll();
 		} finally {
@@ -156,16 +161,17 @@
 	<!-- Header -->
 	<div class="mb-6 flex items-center gap-3">
 		<Wallet size={28} class="text-accent" />
-		<h1 class="flex-1 text-2xl font-medium text-label">支出</h1>
+		<h1 class="flex-1 whitespace-nowrap text-2xl font-medium text-label">支出</h1>
 		<a
 			href="/expenses/categories"
-			class="inline-flex items-center gap-1.5 rounded-2xl border border-separator px-3 py-2 text-sm text-secondary hover:text-label"
+			class="inline-flex items-center gap-1.5 rounded-2xl border border-separator px-2 py-2 text-sm text-secondary hover:text-label md:px-3"
+			aria-label="カテゴリ管理"
 		>
 			<Tag size={14} />
-			カテゴリ管理
+			<span class="hidden md:inline">カテゴリ管理</span>
 		</a>
-		<!-- 確定対象が1件以上あるときにまとめて確定ボタンを表示 -->
-		{#if finalizeTargetIds.size > 0}
+		<!-- 確認済み（未確定）が1件以上あるときにまとめて確定ボタンを表示 -->
+		{#if finalizeTargets.length > 0}
 			<Button
 				data-testid="expense-bulk-finalize-button"
 				onclick={() => (showFinalizeDialog = true)}
@@ -173,7 +179,8 @@
 				size="md"
 			>
 				<Check size={16} />
-				確定する（{finalizeTargetIds.size}件）
+				<span class="hidden md:inline">確定する（{finalizeTargets.length}件）</span>
+				<span class="md:hidden">{finalizeTargets.length}件確定</span>
 			</Button>
 		{/if}
 		<Button
@@ -181,9 +188,10 @@
 			onclick={() => (showCreateDialog = true)}
 			variant="primary"
 			size="md"
+			aria-label="支出を登録"
 		>
 			<Plus size={18} />
-			登録
+			<span class="hidden md:inline">登録</span>
 		</Button>
 	</div>
 
@@ -212,18 +220,24 @@
 			この月の支出はありません。「登録」ボタンから追加してみましょう！
 		</p>
 	{:else}
-		<ul data-testid="expense-list" class="flex flex-col gap-3">
+		<!-- expense-list のクリックでメニューを閉じる -->
+		<ul
+			data-testid="expense-list"
+			class="flex flex-col gap-3"
+			onclick={() => (openMenuId = null)}
+			role="list"
+		>
 			{#each data.expenses.items as exp (exp.id)}
 				<li
 					data-testid="expense-item"
 					class="rounded-3xl bg-bg-card p-4 shadow-sm transition-all {exp.finalizedAt !== null
 						? 'opacity-60'
-						: ''} {finalizeTargetIds.has(exp.id) ? 'ring-2 ring-accent/50' : ''}"
+						: ''}"
 				>
 					<div class="flex items-start gap-3">
 						<!-- Amount & Category -->
 						<div class="min-w-0 flex-1">
-							<div class="flex items-center gap-2">
+							<div class="flex flex-wrap items-center gap-2">
 								<span class="text-lg font-semibold text-label">{formatAmount(exp.amount)}</span>
 								<span class="rounded-xl bg-bg-secondary px-2 py-0.5 text-xs text-secondary">
 									{exp.category.name}
@@ -252,9 +266,10 @@
 							<p class="mt-0.5 text-xs text-secondary">{formatDate(exp.createdAt)}</p>
 						</div>
 
-						<!-- Actions -->
-						<div class="flex shrink-0 items-center gap-1">
-							{#if exp.finalizedAt === null}
+						<!-- Actions (non-finalized rows only) -->
+						{#if exp.finalizedAt === null}
+							<!-- デスクトップ: 直接ボタン -->
+							<div class="hidden shrink-0 items-center gap-1 md:flex">
 								{#if exp.approvedAt === null}
 									<Button
 										data-testid="expense-approve-button"
@@ -277,21 +292,6 @@
 										<RotateCcw size={14} />
 										未承認に戻す
 									</Button>
-									<!-- 確定ボタン：選択状態をトグル -->
-									<Button
-										data-testid="expense-finalize-button"
-										variant={finalizeTargetIds.has(exp.id) ? 'primary' : 'secondary'}
-										size="sm"
-										onclick={() => toggleFinalizeTarget(exp.id)}
-										aria-label={finalizeTargetIds.has(exp.id)
-											? '確定対象から外す'
-											: '確定対象にする'}
-									>
-										{#if finalizeTargetIds.has(exp.id)}
-											<Check size={14} />
-										{/if}
-										確定
-									</Button>
 								{/if}
 								<Button
 									data-testid="expense-edit-button"
@@ -311,8 +311,74 @@
 								>
 									<Trash2 size={14} />
 								</Button>
-							{/if}
-						</div>
+							</div>
+
+							<!-- モバイル: 3点メニュー -->
+							<div class="relative shrink-0 md:hidden">
+								<button
+									data-testid="expense-menu-button"
+									onclick={(e) => {
+										e.stopPropagation();
+										openMenuId = openMenuId === exp.id ? null : exp.id;
+									}}
+									class="rounded-xl p-1.5 text-secondary hover:bg-bg-secondary hover:text-label"
+									aria-label="操作メニューを開く"
+									aria-expanded={openMenuId === exp.id}
+								>
+									<MoreVertical size={18} />
+								</button>
+
+								{#if openMenuId === exp.id}
+									<div
+										data-testid="expense-menu"
+										class="absolute right-0 top-full z-20 mt-1 w-48 rounded-2xl border border-separator bg-bg-card py-1 shadow-md"
+										onclick={(e) => e.stopPropagation()}
+										role="menu"
+									>
+										{#if exp.approvedAt === null}
+											<button
+												data-testid="expense-approve-button"
+												onclick={() => { openMenuId = null; void handleApprove(exp); }}
+												class="flex w-full items-center gap-2 px-4 py-2 text-sm text-label hover:bg-bg-secondary"
+												role="menuitem"
+											>
+												<CheckCircle size={14} class="text-success" />
+												確認済みにする
+											</button>
+										{:else}
+											<button
+												data-testid="expense-unapprove-button"
+												onclick={() => { openMenuId = null; void handleUnapprove(exp); }}
+												class="flex w-full items-center gap-2 px-4 py-2 text-sm text-label hover:bg-bg-secondary"
+												role="menuitem"
+											>
+												<RotateCcw size={14} />
+												未承認に戻す
+											</button>
+										{/if}
+										<hr class="my-1 border-separator" />
+										<button
+											data-testid="expense-edit-button"
+											onclick={() => { openMenuId = null; editingExpense = exp; }}
+											class="flex w-full items-center gap-2 px-4 py-2 text-sm text-label hover:bg-bg-secondary"
+											role="menuitem"
+										>
+											<Pencil size={14} />
+											編集
+										</button>
+										<button
+											data-testid="expense-delete-button"
+											onclick={() => { openMenuId = null; deletingExpense = exp; }}
+											class="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-bg-secondary"
+											role="menuitem"
+										>
+											<Trash2 size={14} />
+											削除
+										</button>
+									</div>
+								{/if}
+							</div>
+						{/if}
 					</div>
 				</li>
 			{/each}
@@ -414,7 +480,7 @@
 		<div class="w-full max-w-sm rounded-3xl bg-bg-card p-6 shadow-md">
 			<h2 class="mb-2 text-lg font-medium text-label">支出を確定しますか？</h2>
 			<p class="mb-6 text-sm text-secondary">
-				{finalizeTargetIds.size}件の支出を確定します。確定後は編集・削除・承認状態の変更ができなくなります。
+				確認済みの支出 {finalizeTargets.length} 件を確定します。確定後は編集・削除・承認状態の変更ができなくなります。
 			</p>
 			<div class="flex justify-end gap-3">
 				<Button

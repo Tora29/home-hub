@@ -51,24 +51,36 @@
 		onCancel: () => void;
 	} = $props();
 
-	let amountStr = $state(untrack(() => (expense ? String(expense.amount) : '')));
+	// 内部値はカンマなしの半角数字文字列
+	let amountRaw = $state(untrack(() => (expense ? String(expense.amount) : '')));
 	let categoryId = $state(untrack(() => expense?.categoryId ?? ''));
 	let amountError = $state('');
 	let categoryError = $state('');
 	let serverError = $state('');
 	let isSubmitting = $state(false);
 
+	// 全角数字→半角、カンマ・非数字を除去して内部値を更新し、入力欄をカンマ整形で再描画
+	function handleAmountInput(e: Event) {
+		const input = e.target as HTMLInputElement;
+		const raw = input.value
+			.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+			.replace(/[,，]/g, '')
+			.replace(/[^0-9]/g, '');
+		amountRaw = raw;
+		input.value = raw ? Number(raw).toLocaleString('ja-JP') : '';
+	}
+
 	function validate(): boolean {
 		amountError = '';
 		categoryError = '';
 		let valid = true;
 
-		if (!amountStr.trim()) {
+		if (!amountRaw) {
 			amountError = '金額は必須です';
 			valid = false;
 		} else {
-			const n = Number(amountStr);
-			if (!Number.isInteger(n) || isNaN(n) || n < 1) {
+			const n = Number(amountRaw);
+			if (n < 1) {
 				amountError = '1円以上の金額を入力してください';
 				valid = false;
 			} else if (n > 9999999) {
@@ -91,7 +103,7 @@
 		isSubmitting = true;
 		serverError = '';
 
-		const amount = Number(amountStr);
+		const amount = Number(amountRaw);
 		const approved = expense?.approvedAt !== null && expense?.approvedAt !== undefined;
 		const body = mode === 'create' ? { amount, categoryId } : { amount, categoryId, approved };
 
@@ -153,9 +165,9 @@
 				data-testid="expense-amount-input"
 				type="text"
 				inputmode="numeric"
-				pattern="[0-9]*"
-				bind:value={amountStr}
-				placeholder="例: 3000"
+				value={amountRaw ? Number(amountRaw).toLocaleString('ja-JP') : ''}
+				oninput={handleAmountInput}
+				placeholder="例: 3,000"
 				class="w-full"
 			/>
 			{#if amountError}
