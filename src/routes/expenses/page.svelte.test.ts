@@ -114,7 +114,7 @@ describe('+page.svelte - モバイル行メニューの開閉', () => {
 
 		// メニュー外をクリック
 		await page.getByTestId('expense-list').click();
-		await expect.element(page.getByTestId('expense-menu')).not.toBeVisible();
+		await expect.element(page.getByTestId('expense-menu')).not.toBeInTheDocument();
 	});
 });
 

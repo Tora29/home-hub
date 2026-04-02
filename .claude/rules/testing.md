@@ -124,6 +124,53 @@ src/app.d.ts
 | 関数カバレッジ | 80% 以上 |
 | 行カバレッジ   | 80% 以上 |
 
+## コンポーネントテストの注意事項
+
+### `toBeVisible()` と `toBeInTheDocument()` の使い分け
+
+| 状況 | 正しいマッチャー |
+| ---- | --------------- |
+| `{#if ...}` による条件レンダリングで要素が存在しない | `not.toBeInTheDocument()` |
+| CSS（`display: none` / `hidden` クラス等）で非表示 | `not.toBeVisible()` |
+
+Svelte の `{#if ...}` は DOM から要素を除去するため、`not.toBeVisible()` を使うと  
+`Cannot find element with locator: getByTestId(...)` エラーが発生する。
+
+```typescript
+// ✅ 正しい（条件レンダリング）
+await expect.element(page.getByTestId('expense-menu')).not.toBeInTheDocument();
+
+// ❌ 誤り（DOM に存在しないのに visibility を確認しようとする）
+await expect.element(page.getByTestId('expense-menu')).not.toBeVisible();
+```
+
+### レスポンシブ（モバイル/デスクトップ）の振る舞いはコンポーネントテストで検証しない
+
+`vite.config.ts` に `viewport: { width: 1280, height: 800 }` が設定されており、  
+テスト内で `page.viewport(375, 812)` を呼んでも **CSS メディアクエリには反映されない**。
+
+そのため以下の挙動はコンポーネントテスト（`*.svelte.test.ts`）では検証できない：
+
+- `md:hidden` / `block md:hidden` 等 Tailwind レスポンシブクラスの切り替え
+- モバイル専用 UI（ハンバーガーメニュー、行メニューボタン等）の表示/非表示
+
+**→ これらは E2E テスト（Playwright）で検証する。**  
+E2E テストでは `page.setViewportSize({ width: 375, height: 812 })` が正常に機能する。
+
+```typescript
+// ✅ E2E テストで viewport を変更
+test('[SPEC: AC-016] モバイルで行メニューが開く', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  // ...
+});
+
+// ❌ コンポーネントテストでは viewport 変更が CSS に反映されない
+it('[SPEC: AC-016] ...', async () => {
+  await page.viewport(375, 812); // 効果なし
+  // ...
+});
+```
+
 ## テストコマンド
 
 ```bash
