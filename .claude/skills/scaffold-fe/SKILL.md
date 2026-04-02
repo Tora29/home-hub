@@ -13,18 +13,28 @@ spec.md を主入力として、フロントエンド実装コードを生成す
 - `specs/infra-spec.md` が存在すること（技術スタック・ディレクトリ構成の参照）
 - `.claude/references/design-system.md` が存在すること
 - `.claude/rules/` に schemas, data-testid, security が定義されていること
-- `/scaffold-contract` が実行済みであり、schema.ts・tables.ts・migrations がコミット済みであること
-- `/scaffold-test-unit` が実行済みであり、テストがコミット済みであること（worktree のベースとして使用する）
-- （推奨）BE 実装が完了していること（API エンドポイントが利用可能）
+- `/scaffold-contract` が実行済みであり、schema.ts・tables.ts・migrations がコミット済みであること（この HEAD が worktree のベースとなる）
 
 ## 起動時の挙動
 
-スキル起動後、AskUserQuestion ツールを使って対象 feature を確認する。
+スキル起動後、以下の順序で必ず実行する。
+
+**1. AskUserQuestion で対象 feature を確認する**
 
 ```
 question: "どの feature の FE コードを生成しますか？"
 options:
   - specs/ 配下の feature ディレクトリを動的にリスト
+```
+
+**2. 【他のツール呼び出しより前に】worktree を作成する**
+
+feature が確定したら、ファイルを一切読む前に worktree を作成する。
+以降の全ファイル操作はこの worktree ディレクトリで行う。
+
+```bash
+git worktree add -b worktree/scaffold-fe-{feature} ../home-hub-fe-{feature} HEAD
+cd ../home-hub-fe-{feature}
 ```
 
 ## ワークフロー
@@ -35,16 +45,7 @@ worktree 作成 → 入力読み込み → rules 参照 → コード生成 → 
 
 ### Step 0: worktree の作成
 
-テストファイルが存在しない環境で実装を生成するため、テストコミットの1つ前をベースに worktree を作成する。
-
-```bash
-git worktree add -b worktree/scaffold-fe-{feature} ../home-hub-fe-{feature} HEAD~1
-cd ../home-hub-fe-{feature}
-```
-
-- ブランチ名: `worktree/scaffold-fe-{feature}`
-- ベース: `HEAD~1`（scaffold-test-unit のコミット前＝テストが存在しない状態）
-- 以降の全ファイル操作はこの worktree ディレクトリで行う
+worktree の作成は「起動時の挙動」で完了済み。このステップはスキップして Step 1 へ進む。
 
 ### Step 1: 入力読み込み
 
@@ -84,7 +85,7 @@ Glob('src/routes/{feature}/**/*.svelte')
 
 - 他 feature のファイル
 
-> worktree は `HEAD~1`（テスト追加前）ベースのため、テストファイルは物理的に存在しない。
+> worktree は scaffold-contract コミット直後の HEAD ベースのため、be / fe / test-unit の成果物は物理的に存在しない。
 
 ### Step 4: コード生成
 
@@ -135,11 +136,12 @@ git branch -d worktree/scaffold-fe-{feature}
 ```
 FE 実装が完了しました。
 次のステップ:
-1. `/test-and-fix` を実行してテストを GREEN にしてください（unit + integration のみ）。
-2. GREEN になったら `/spec-coverage` でドリフトを確認してください。
-3. ドリフトがあれば `/spec-sync` で解消してください。
-4. `/verify-app` でアプリの動作を確認してください。
-5. 問題なければ `/commit-push-pr` でコミット・PR を作成してください。
+1. /scaffold-be・/scaffold-test-unit がまだの場合は並列で実行してください。
+2. 3つ全て取り込み完了後、`/test-and-fix` を実行して unit + integration を GREEN にしてください。
+3. GREEN になったら `/spec-coverage` でドリフトを確認してください。
+4. ドリフトがあれば `/spec-sync` で解消してください。
+5. `/verify-app` でアプリの動作を確認してください。
+6. 問題なければ `/commit-push-pr` でコミット・PR を作成してください。
 ```
 
 ## 生成ルール

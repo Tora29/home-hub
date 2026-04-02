@@ -12,18 +12,19 @@
   ↓
 /scaffold-contract
   │ schema.ts + tables.ts + migrations を生成・コミット
+  │ ← ここが be / fe / test-unit の共通 worktree ベース
   ↓
-/scaffold-test-unit
-  │ テストファイルを生成・コミット（RED）
-  ↓
-  ├─ /scaffold-be  ── worktree で実行（別ターミナル可）
+  ├─ /scaffold-be        ── worktree で実行（別ターミナル可）
   │   service.ts + +server.ts を生成 → main に取り込み
   │
-  └─ /scaffold-fe  ── worktree で実行（別ターミナル可）
-      +page.svelte + components/ を生成 → main に取り込み
-  ↓（両方完了後）
+  ├─ /scaffold-fe        ── worktree で実行（別ターミナル可）
+  │   +page.svelte + components/ を生成 → main に取り込み
+  │
+  └─ /scaffold-test-unit ── worktree で実行（別ターミナル可）
+      テストファイルを生成 → main に取り込み
+  ↓（3つの取り込み完了後）
 /test-and-fix unit
-  │ unit + integration テストを GREEN に
+  │ be / fe / test-unit の不整合を吸収して unit + integration を GREEN に
   ↓
 /scaffold-test-e2e
   │ E2E テストを生成
@@ -42,6 +43,8 @@
   ↓
 /commit-push-pr
 ```
+
+> **並列化の根拠**: be / fe / test-unit はいずれも `spec.md` + `openapi.yaml` を入力とし、互いの成果物を参照しない。ズレは `/test-and-fix` が吸収する。
 
 ### 随時使うスキル
 
