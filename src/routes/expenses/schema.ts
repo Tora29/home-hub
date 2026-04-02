@@ -1,20 +1,24 @@
 /**
- * @file スキーマ: Expense
+ * @file スキーマ: Expense / Category
  * @module src/routes/expenses/schema.ts
  * @feature expenses
  *
  * @description
- * 支出機能の Zod バリデーションスキーマ。FE/BE 共通で使用する。
+ * 支出・カテゴリ機能の Zod バリデーションスキーマ。FE/BE 共通で使用する。
  *
  * @spec specs/expenses/spec.md - Schema セクション
  *
  * @schemas
- * - expenseCreateSchema - 作成用入力
- * - expenseUpdateSchema - 更新用入力
+ * - expenseCreateSchema   - 支出作成用入力
+ * - expenseUpdateSchema   - 支出更新用入力
+ * - categoryCreateSchema  - カテゴリ作成用入力
+ * - categoryUpdateSchema  - カテゴリ更新用入力
  *
  * @types
- * - ExpenseCreate - 作成用入力型
- * - ExpenseUpdate - 更新用入力型
+ * - ExpenseCreate  - 支出作成用入力型
+ * - ExpenseUpdate  - 支出更新用入力型
+ * - CategoryCreate - カテゴリ作成用入力型
+ * - CategoryUpdate - カテゴリ更新用入力型
  */
 import { z } from 'zod';
 
@@ -41,5 +45,21 @@ export const expenseUpdateSchema = z.object({
 	approved: z.boolean()
 });
 
+export const categoryCreateSchema = z.object({
+	name: z
+		.string({ error: (iss) => (iss.input === undefined ? 'カテゴリ名は必須です' : undefined) })
+		.min(1, 'カテゴリ名は必須です')
+		.max(50, '50文字以内で入力してください')
+});
+
+export const categoryUpdateSchema = z.object({
+	name: z
+		.string({ error: (iss) => (iss.input === undefined ? 'カテゴリ名は必須です' : undefined) })
+		.min(1, 'カテゴリ名は必須です')
+		.max(50, '50文字以内で入力してください')
+});
+
 export type ExpenseCreate = z.infer<typeof expenseCreateSchema>;
 export type ExpenseUpdate = z.infer<typeof expenseUpdateSchema>;
+export type CategoryCreate = z.infer<typeof categoryCreateSchema>;
+export type CategoryUpdate = z.infer<typeof categoryUpdateSchema>;
