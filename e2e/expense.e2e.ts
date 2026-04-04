@@ -5,7 +5,8 @@
  *
  * @spec specs/expenses/spec.md
  * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009,
- *         AC-010, AC-011, AC-012, AC-013, AC-014, AC-015, AC-111, AC-112, AC-204, AC-205
+ *         AC-010, AC-011, AC-012, AC-013, AC-014, AC-015, AC-016, AC-017, AC-018, AC-019, AC-020,
+ *         AC-111, AC-112, AC-204, AC-205
  *
  * @scenarios
  * - 支出一覧の初期表示（当月フィルタ・登録日時降順）
@@ -19,6 +20,7 @@
  * - カテゴリ管理（追加・編集・削除）
  * - 月間合計金額の表示
  * - FE バリデーション（金額未入力・カテゴリ未選択）
+ * - モバイル行メニューの開閉・表示切り替え（viewport: 375x812）
  * - 空状態・合計¥0 表示
  *
  * @pages
@@ -677,18 +679,16 @@ test.describe('支出 - 確定操作', () => {
 		await deleteCategory(page, categoryId);
 	});
 
-	test('[SPEC: AC-014] 確認済みの支出の確定選択ボタンを押し、確認ダイアログで確定すると「確定済み」に更新される', async ({
+	test('[SPEC: AC-014] 確認済みの支出がある状態で「まとめて確定」ボタンを押し、確認ダイアログで確定すると「確定済み」に更新される', async ({
 		page
 	}) => {
 		await page.goto('/expenses');
 
-		// 確認済みの支出行を取得し、確定選択トグルボタンをクリック（選択状態にする）
+		// 確認済みの支出行が表示されていることを確認
 		const item = page.getByTestId('expense-item').filter({ hasText: '確認済み' }).first();
 		await expect(item).toBeVisible();
-		await expect(item.getByTestId('expense-finalize-button')).toBeVisible();
-		await item.getByTestId('expense-finalize-button').click();
 
-		// 「まとめて確定」ボタンが出現することを確認
+		// 確認済み未確定が存在するため「まとめて確定」ボタンが表示される
 		await expect(page.getByTestId('expense-bulk-finalize-button')).toBeVisible();
 
 		// 「確定する（1件）」ボタンをクリックしてダイアログを開く
@@ -702,7 +702,6 @@ test.describe('支出 - 確定操作', () => {
 		await expect(page.getByTestId('expense-finalize-dialog')).not.toBeVisible();
 		const updatedItem = page.getByTestId('expense-item').filter({ hasText: '¥4,500' }).first();
 		await expect(updatedItem).toContainText('確定済み');
-		await expect(updatedItem.getByTestId('expense-finalize-button')).not.toBeVisible();
 	});
 
 	test('[SPEC: AC-015] 確定済みの支出行には編集・削除・未承認に戻す・確定ボタンが表示されない', async ({
@@ -724,8 +723,111 @@ test.describe('支出 - 確定操作', () => {
 
 		// 行がグレーアウトされている
 		await expect(item).toHaveClass(/opacity-60/);
-		await expect(item.getByTestId('expense-finalize-button')).not.toBeVisible();
 		await expect(item.getByTestId('expense-approve-button')).not.toBeVisible();
+	});
+});
+
+// ============================================================
+// モバイル行メニュー（viewport: 375x812）
+// ============================================================
+
+test.describe('支出一覧 - モバイル行メニュー', () => {
+	let categoryId: string;
+	let expenseId: string;
+
+	test.beforeEach(async ({ page }) => {
+		await page.setViewportSize({ width: 375, height: 812 });
+		await login(page);
+		categoryId = await createCategory(page, 'E2Eモバイルテスト');
+		expenseId = await createExpense(page, 1200, categoryId);
+	});
+
+	test.afterEach(async ({ page }) => {
+		try {
+			await deleteExpense(page, expenseId);
+		} catch {
+			// 確定済みの場合は削除不可
+		}
+		await deleteCategory(page, categoryId);
+	});
+
+	test('[SPEC: AC-016] 未承認の行メニューボタンをタップするとメニューが表示される', async ({
+		page
+	}) => {
+		await page.goto('/expenses');
+
+		const item = page.getByTestId('expense-item').filter({ hasText: '¥1,200' }).first();
+
+		// モバイルでは expense-menu-button が表示される
+		const menuButton = item.getByTestId('expense-menu-button');
+		await expect(menuButton).toBeVisible();
+
+		// タップするとメニューが開く
+		await menuButton.click();
+		await expect(item.getByTestId('expense-menu')).toBeVisible();
+	});
+
+	test('[SPEC: AC-017] メニュー表示中にメニュー外をクリックするとメニューが閉じる', async ({
+		page
+	}) => {
+		await page.goto('/expenses');
+
+		const item = page.getByTestId('expense-item').filter({ hasText: '¥1,200' }).first();
+		await item.getByTestId('expense-menu-button').click();
+		await expect(item.getByTestId('expense-menu')).toBeVisible();
+
+		// メニュー外（月間合計エリア）をクリック
+		await page.getByTestId('expense-total').click();
+
+		// メニューが閉じる
+		await expect(item.getByTestId('expense-menu')).not.toBeVisible();
+	});
+
+	test('[SPEC: AC-018] 未承認行のメニューには「確認済みにする」のみ表示され「未承認に戻す」は表示されない', async ({
+		page
+	}) => {
+		await page.goto('/expenses');
+
+		const item = page.getByTestId('expense-item').filter({ hasText: '未承認' }).first();
+		await item.getByTestId('expense-menu-button').click();
+		const menu = item.getByTestId('expense-menu');
+
+		await expect(menu).toBeVisible();
+		await expect(menu.getByTestId('expense-approve-button')).toBeVisible();
+		await expect(menu.getByTestId('expense-unapprove-button')).not.toBeVisible();
+	});
+
+	test('[SPEC: AC-019] 確認済み行のメニューには「未承認に戻す」が表示され「確認済みにする」は表示されない', async ({
+		page
+	}) => {
+		// 確認済みにする
+		await page.request.put(`/expenses/${expenseId}`, {
+			data: { amount: 1200, categoryId, approved: true }
+		});
+
+		await page.goto('/expenses');
+
+		const item = page.getByTestId('expense-item').filter({ hasText: '確認済み' }).first();
+		await item.getByTestId('expense-menu-button').click();
+		const menu = item.getByTestId('expense-menu');
+
+		await expect(menu).toBeVisible();
+		await expect(menu.getByTestId('expense-unapprove-button')).toBeVisible();
+		await expect(menu.getByTestId('expense-approve-button')).not.toBeVisible();
+	});
+
+	test('[SPEC: AC-020] 確定済みの行にはメニューボタンが表示されない', async ({ page }) => {
+		// 確認済みにしてから確定
+		await page.request.put(`/expenses/${expenseId}`, {
+			data: { amount: 1200, categoryId, approved: true }
+		});
+		await page.request.post(`/expenses/${expenseId}/finalize`);
+
+		await page.goto('/expenses');
+
+		const item = page.getByTestId('expense-item').filter({ hasText: '確定済み' }).first();
+		await expect(item).toBeVisible();
+		await expect(item.getByTestId('expense-menu-button')).not.toBeVisible();
 	});
 });
 

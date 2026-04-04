@@ -126,8 +126,9 @@ describe('+page.svelte - モバイル行メニューの表示制御', () => {
 
 		await page.getByTestId('expense-menu-button').click();
 
-		await expect.element(page.getByTestId('expense-approve-button')).toBeVisible();
-		await expect.element(page.getByTestId('expense-unapprove-button')).not.toBeInTheDocument();
+		const menu = page.getByTestId('expense-menu');
+		await expect.element(menu.getByTestId('expense-approve-button')).toBeVisible();
+		await expect.element(menu.getByTestId('expense-unapprove-button')).not.toBeInTheDocument();
 	});
 
 	it('[SPEC: AC-019] 確認済み（未確定）行のメニューには「未承認に戻す」が表示され、「確認済みにする」は表示されない', async () => {
@@ -135,8 +136,9 @@ describe('+page.svelte - モバイル行メニューの表示制御', () => {
 
 		await page.getByTestId('expense-menu-button').click();
 
-		await expect.element(page.getByTestId('expense-unapprove-button')).toBeVisible();
-		await expect.element(page.getByTestId('expense-approve-button')).not.toBeInTheDocument();
+		const menu = page.getByTestId('expense-menu');
+		await expect.element(menu.getByTestId('expense-unapprove-button')).toBeVisible();
+		await expect.element(menu.getByTestId('expense-approve-button')).not.toBeInTheDocument();
 	});
 
 	it('[SPEC: AC-020] 確定済み行には expense-menu-button が表示されない', async () => {

@@ -15,6 +15,27 @@
 			"when": 1774000000000,
 			"tag": "0002_recipes",
 			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "6",
+			"when": 1743339875000,
+			"tag": "0003_expenses",
+			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "6",
+			"when": 1743473058000,
+			"tag": "0004_expense_finalize",
+			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "6",
+			"when": 1775302346232,
+			"tag": "0005_oval_omega_flight",
+			"breakpoints": true
 		}
 	]
 }

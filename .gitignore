@@ -16,8 +16,7 @@ Thumbs.db
 # SvelteKit generated
 .svelte-kit/
 
-# Drizzle
-drizzle/meta/
+
 
 # Editor
 .vscode/
