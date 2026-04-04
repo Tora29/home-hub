@@ -36,7 +36,7 @@ function createEvent(pathname: string, accept = 'text/html', sessionUser: unknow
 	} as never);
 	return {
 		platform: {
-			env: { DB: {}, BETTER_AUTH_SECRET: 'secret', BETTER_AUTH_URL: 'http://localhost' }
+			env: { DB: {}, BETTER_AUTH_SECRET: 'secret' }
 		},
 		url,
 		request,

@@ -157,11 +157,11 @@
 	const monthOptions = getMonthOptions();
 </script>
 
-<div class="mx-auto max-w-3xl">
+<div class="mx-auto max-w-3xl" onclick={() => (openMenuId = null)} role="presentation">
 	<!-- Header -->
 	<div class="mb-6 flex items-center gap-3">
 		<Wallet size={28} class="text-accent" />
-		<h1 class="flex-1 whitespace-nowrap text-2xl font-medium text-label">支出</h1>
+		<h1 class="flex-1 text-2xl font-medium whitespace-nowrap text-label">支出</h1>
 		<a
 			href="/expenses/categories"
 			class="inline-flex items-center gap-1.5 rounded-2xl border border-separator px-2 py-2 text-sm text-secondary hover:text-label md:px-3"
@@ -220,12 +220,9 @@
 			この月の支出はありません。「登録」ボタンから追加してみましょう！
 		</p>
 	{:else}
-		<!-- expense-list のクリックでメニューを閉じる -->
 		<ul
 			data-testid="expense-list"
 			class="flex flex-col gap-3"
-			onclick={() => (openMenuId = null)}
-			role="list"
 		>
 			{#each data.expenses.items as exp (exp.id)}
 				<li
@@ -331,14 +328,17 @@
 								{#if openMenuId === exp.id}
 									<div
 										data-testid="expense-menu"
-										class="absolute right-0 top-full z-20 mt-1 w-48 rounded-2xl border border-separator bg-bg-card py-1 shadow-md"
+										class="absolute top-full right-0 z-20 mt-1 w-48 rounded-2xl border border-separator bg-bg-card py-1 shadow-md"
 										onclick={(e) => e.stopPropagation()}
 										role="menu"
 									>
 										{#if exp.approvedAt === null}
 											<button
 												data-testid="expense-approve-button"
-												onclick={() => { openMenuId = null; void handleApprove(exp); }}
+												onclick={() => {
+													openMenuId = null;
+													void handleApprove(exp);
+												}}
 												class="flex w-full items-center gap-2 px-4 py-2 text-sm text-label hover:bg-bg-secondary"
 												role="menuitem"
 											>
@@ -348,7 +348,10 @@
 										{:else}
 											<button
 												data-testid="expense-unapprove-button"
-												onclick={() => { openMenuId = null; void handleUnapprove(exp); }}
+												onclick={() => {
+													openMenuId = null;
+													void handleUnapprove(exp);
+												}}
 												class="flex w-full items-center gap-2 px-4 py-2 text-sm text-label hover:bg-bg-secondary"
 												role="menuitem"
 											>
@@ -359,7 +362,10 @@
 										<hr class="my-1 border-separator" />
 										<button
 											data-testid="expense-edit-button"
-											onclick={() => { openMenuId = null; editingExpense = exp; }}
+											onclick={() => {
+												openMenuId = null;
+												editingExpense = exp;
+											}}
 											class="flex w-full items-center gap-2 px-4 py-2 text-sm text-label hover:bg-bg-secondary"
 											role="menuitem"
 										>
@@ -368,7 +374,10 @@
 										</button>
 										<button
 											data-testid="expense-delete-button"
-											onclick={() => { openMenuId = null; deletingExpense = exp; }}
+											onclick={() => {
+												openMenuId = null;
+												deletingExpense = exp;
+											}}
 											class="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-bg-secondary"
 											role="menuitem"
 										>

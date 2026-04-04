@@ -14,7 +14,6 @@ declare global {
 				DB: import('@cloudflare/workers-types').D1Database;
 				AI: import('@cloudflare/workers-types').Ai;
 				BETTER_AUTH_SECRET: string;
-				BETTER_AUTH_URL: string;
 				USE_REAL_AI?: string;
 			};
 			context: import('@cloudflare/workers-types').ExecutionContext;

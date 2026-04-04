@@ -81,7 +81,7 @@ export const expense = sqliteTable('Expense', {
 	amount: integer('amount').notNull(),
 	categoryId: text('categoryId')
 		.notNull()
-		.references(() => expenseCategory.id),
+		.references(() => expenseCategory.id, { onDelete: 'restrict' }),
 	approvedAt: integer('approvedAt', { mode: 'timestamp' }),
 	finalizedAt: integer('finalizedAt', { mode: 'timestamp' }),
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
@@ -99,10 +99,10 @@ export const recipe = sqliteTable('Recipe', {
 	servings: integer('servings'),
 	cookingTimeMinutes: integer('cookingTimeMinutes'),
 	cookedCount: integer('cookedCount').notNull().default(0),
-	lastCookedAt: integer('lastCookedAt', { mode: 'timestamp_ms' }),
+	lastCookedAt: integer('lastCookedAt', { mode: 'timestamp' }),
 	rating: text('rating'), // 'excellent' | 'good' | 'average' | 'poor'
 	difficulty: text('difficulty'), // 'easy' | 'medium' | 'hard'
 	memo: text('memo'),
-	createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull(),
-	updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull()
+	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
+	updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull()
 });
