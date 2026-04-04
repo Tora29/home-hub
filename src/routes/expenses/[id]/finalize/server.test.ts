@@ -8,7 +8,7 @@
  * @covers AC-113, AC-114
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { AppError } from '$lib/server/errors.js';
 
 vi.mock('../../service.js', () => ({
@@ -36,7 +36,7 @@ describe('POST /expenses/[id]/finalize', () => {
 	});
 
 	describe('finalizeExpense', () => {
-		it('[SPEC: AC-114] 未承認の支出に対して finalize を試みると 409 CONFLICT が返る', async () => {
+		test('[SPEC: AC-114] 未承認の支出に対して finalize を試みると 409 CONFLICT が返る', async () => {
 			vi.mocked(finalizeExpense).mockRejectedValueOnce(
 				new AppError('CONFLICT', 409, '確認済みにしてから確定してください')
 			);
@@ -49,7 +49,7 @@ describe('POST /expenses/[id]/finalize', () => {
 			expect(body.message).toBe('確認済みにしてから確定してください');
 		});
 
-		it('[SPEC: AC-113] 確定済みの支出に対して finalize を試みると 409 CONFLICT が返る', async () => {
+		test('[SPEC: AC-113] 確定済みの支出に対して finalize を試みると 409 CONFLICT が返る', async () => {
 			vi.mocked(finalizeExpense).mockRejectedValueOnce(
 				new AppError('CONFLICT', 409, '確定済みの支出は変更できません')
 			);
@@ -62,7 +62,7 @@ describe('POST /expenses/[id]/finalize', () => {
 			expect(body.message).toBe('確定済みの支出は変更できません');
 		});
 
-		it('[SPEC: AC-106] 存在しない支出 ID に finalize を試みると 404 NOT_FOUND が返る', async () => {
+		test('[SPEC: AC-106] 存在しない支出 ID に finalize を試みると 404 NOT_FOUND が返る', async () => {
 			vi.mocked(finalizeExpense).mockRejectedValueOnce(
 				new AppError('NOT_FOUND', 404, '該当データが見つかりません')
 			);
@@ -75,7 +75,7 @@ describe('POST /expenses/[id]/finalize', () => {
 			expect(body.message).toBe('該当データが見つかりません');
 		});
 
-		it('[SPEC: AC-014] 確認済みの支出を確定すると 200 と更新済み支出が返る', async () => {
+		test('[SPEC: AC-014] 確認済みの支出を確定すると 200 と更新済み支出が返る', async () => {
 			const mockExpense = {
 				id: 'expense-1',
 				userId: 'user-1',

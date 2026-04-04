@@ -8,7 +8,7 @@
  * @covers AC-107, AC-108, AC-010
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('$lib/server/db', () => ({
 	createDb: vi.fn().mockReturnValue({})
@@ -38,7 +38,7 @@ beforeEach(() => {
 });
 
 describe('GET /expense/categories', () => {
-	it('[SPEC: AC-010] カテゴリ一覧を取得できる', async () => {
+	test('[SPEC: AC-010] カテゴリ一覧を取得できる', async () => {
 		const mockResponse = {
 			items: [
 				{
@@ -69,7 +69,7 @@ describe('GET /expense/categories', () => {
 
 describe('POST /expense/categories', () => {
 	describe('正常系', () => {
-		it('[SPEC: AC-010] 有効なカテゴリ名で登録すると、201 を返す', async () => {
+		test('[SPEC: AC-010] 有効なカテゴリ名で登録すると、201 を返す', async () => {
 			const mockCreated = {
 				id: 'cat-new',
 				userId: 'user-1',
@@ -91,7 +91,7 @@ describe('POST /expense/categories', () => {
 	});
 
 	describe('異常系', () => {
-		it('[SPEC: AC-107] カテゴリ名が空の場合、400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-107] カテゴリ名が空の場合、400 VALIDATION_ERROR を返す', async () => {
 			const response = await POST({
 				request: makePostRequest({ name: '' }),
 				locals: mockLocals,
@@ -105,7 +105,7 @@ describe('POST /expense/categories', () => {
 			expect(body.fields).toContainEqual({ field: 'name', message: 'カテゴリ名は必須です' });
 		});
 
-		it('[SPEC: AC-107] カテゴリ名が未指定の場合、400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-107] カテゴリ名が未指定の場合、400 VALIDATION_ERROR を返す', async () => {
 			const response = await POST({
 				request: makePostRequest({}),
 				locals: mockLocals,
@@ -117,7 +117,7 @@ describe('POST /expense/categories', () => {
 			expect(body.code).toBe('VALIDATION_ERROR');
 		});
 
-		it('[SPEC: AC-108] カテゴリ名が51文字以上の場合、400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-108] カテゴリ名が51文字以上の場合、400 VALIDATION_ERROR を返す', async () => {
 			const response = await POST({
 				request: makePostRequest({ name: 'あ'.repeat(51) }),
 				locals: mockLocals,

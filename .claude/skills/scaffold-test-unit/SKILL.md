@@ -134,12 +134,14 @@ spec.md の**テスト戦略テーブルに `components/*.svelte.test.ts` が記
 
 - **フレームワーク**: `vitest-browser-svelte`（`render` + `page` from `vitest/browser`）
 - **入力**: spec.md の `data-testid` テーブル + 対応 AC のみ（実装コードを読まない）
-- **セレクタ**: `page.getByTestId(...)` のみ使用（CSS クラス・要素名は使わない）
+- **セレクタ**: `data-testid.md` のセレクタ優先順位に従う（`getByRole` → `getByLabelText` → `getByText` → `getByTestId`）
+- **クリック操作**: ナビゲーションを伴わないボタンは `element().click()` + `flushSync()` を使う（`locator.click()` は SvelteKit 環境で 5〜15 秒かかるため）
 - **テキスト検証**: `expect.element(page.getByText('....')).toBeVisible()` を使用（`toHaveText` は使わない）
 - **非通信確認**: AC に「サーバー非通信」が含まれる場合は `vi.stubGlobal('fetch', vi.fn())` で fetch が呼ばれないことを確認
 
 ```typescript
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, test, expect, afterEach, vi } from 'vitest';
+import { flushSync } from 'svelte';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { ComponentName } from './{ComponentName}.svelte';
@@ -149,7 +151,7 @@ afterEach(() => {
 });
 
 describe('{ComponentName}', () => {
-	it('[SPEC: AC-XXX] {振る舞いの説明}', async () => {
+	test('[SPEC: AC-XXX] {振る舞いの説明}', async () => {
 		render(
 			{ ComponentName },
 			{
@@ -157,13 +159,15 @@ describe('{ComponentName}', () => {
 			}
 		);
 
-		await page.getByTestId('{data-testid}').click();
+		// getByRole が使えない場合のみ getByTestId を使う（data-testid.md 参照）
+		page.getByRole('button', { name: '{ボタンラベル}' }).element().click();
+		flushSync();
 
-		await expect.element(page.getByTestId('{error-testid}')).toBeVisible();
+		await expect.element(page.getByRole('alert')).toBeVisible();
 		await expect.element(page.getByText('{エラーメッセージ}')).toBeVisible();
 	});
 
-	it('[SPEC: AC-XXX] サーバー通信は発生しない', async () => {
+	test('[SPEC: AC-XXX] サーバー通信は発生しない', async () => {
 		const fetchMock = vi.fn();
 		vi.stubGlobal('fetch', fetchMock);
 
@@ -173,7 +177,8 @@ describe('{ComponentName}', () => {
 				/* props */
 			}
 		);
-		await page.getByTestId('{submit-testid}').click();
+		page.getByRole('button', { name: '{ボタンラベル}' }).element().click();
+		flushSync();
 
 		expect(fetchMock).not.toHaveBeenCalled();
 	});

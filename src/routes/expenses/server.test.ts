@@ -8,7 +8,7 @@
  * @covers AC-101, AC-102, AC-103, AC-104, AC-105
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('$lib/server/db', () => ({
 	createDb: vi.fn().mockReturnValue({})
@@ -46,7 +46,7 @@ beforeEach(() => {
 });
 
 describe('GET /expense', () => {
-	it('[SPEC: AC-001] 支出一覧を取得できる', async () => {
+	test('[SPEC: AC-001] 支出一覧を取得できる', async () => {
 		const mockResponse = { items: [], total: 0, page: 1, limit: 20, monthTotal: 0 };
 		vi.mocked(service.getExpenses).mockResolvedValueOnce(mockResponse);
 
@@ -63,7 +63,7 @@ describe('GET /expense', () => {
 		expect(body).toHaveProperty('monthTotal');
 	});
 
-	it('[SPEC: AC-002] month クエリパラメータを指定して支出一覧を取得できる', async () => {
+	test('[SPEC: AC-002] month クエリパラメータを指定して支出一覧を取得できる', async () => {
 		const mockResponse = { items: [], total: 0, page: 1, limit: 20, monthTotal: 0 };
 		vi.mocked(service.getExpenses).mockResolvedValueOnce(mockResponse);
 
@@ -78,7 +78,7 @@ describe('GET /expense', () => {
 });
 
 describe('POST /expense', () => {
-	it('[SPEC: AC-101] 金額が未入力の場合、400 VALIDATION_ERROR を返す', async () => {
+	test('[SPEC: AC-101] 金額が未入力の場合、400 VALIDATION_ERROR を返す', async () => {
 		const response = await POST({
 			request: makePostRequest({ categoryId: 'cat-1' }),
 			locals: mockLocals,
@@ -92,7 +92,7 @@ describe('POST /expense', () => {
 		expect(body.fields).toContainEqual({ field: 'amount', message: '金額は必須です' });
 	});
 
-	it('[SPEC: AC-102] 金額が0の場合、400 VALIDATION_ERROR を返す', async () => {
+	test('[SPEC: AC-102] 金額が0の場合、400 VALIDATION_ERROR を返す', async () => {
 		const response = await POST({
 			request: makePostRequest({ amount: 0, categoryId: 'cat-1' }),
 			locals: mockLocals,
@@ -108,7 +108,7 @@ describe('POST /expense', () => {
 		});
 	});
 
-	it('[SPEC: AC-103] 金額が9,999,999を超える場合、400 VALIDATION_ERROR を返す', async () => {
+	test('[SPEC: AC-103] 金額が9,999,999を超える場合、400 VALIDATION_ERROR を返す', async () => {
 		const response = await POST({
 			request: makePostRequest({ amount: 10000000, categoryId: 'cat-1' }),
 			locals: mockLocals,
@@ -124,7 +124,7 @@ describe('POST /expense', () => {
 		});
 	});
 
-	it('[SPEC: AC-104] 金額が文字列の場合、400 VALIDATION_ERROR を返す', async () => {
+	test('[SPEC: AC-104] 金額が文字列の場合、400 VALIDATION_ERROR を返す', async () => {
 		const response = await POST({
 			request: makePostRequest({ amount: '千円', categoryId: 'cat-1' }),
 			locals: mockLocals,
@@ -136,7 +136,7 @@ describe('POST /expense', () => {
 		expect(body.code).toBe('VALIDATION_ERROR');
 	});
 
-	it('[SPEC: AC-104] 金額が小数の場合、400 VALIDATION_ERROR を返す', async () => {
+	test('[SPEC: AC-104] 金額が小数の場合、400 VALIDATION_ERROR を返す', async () => {
 		const response = await POST({
 			request: makePostRequest({ amount: 100.5, categoryId: 'cat-1' }),
 			locals: mockLocals,
@@ -148,7 +148,7 @@ describe('POST /expense', () => {
 		expect(body.code).toBe('VALIDATION_ERROR');
 	});
 
-	it('[SPEC: AC-105] カテゴリIDが未指定の場合、400 VALIDATION_ERROR を返す', async () => {
+	test('[SPEC: AC-105] カテゴリIDが未指定の場合、400 VALIDATION_ERROR を返す', async () => {
 		const response = await POST({
 			request: makePostRequest({ amount: 1000 }),
 			locals: mockLocals,
@@ -161,7 +161,7 @@ describe('POST /expense', () => {
 		expect(body.fields).toContainEqual({ field: 'categoryId', message: 'カテゴリは必須です' });
 	});
 
-	it('[SPEC: AC-105] カテゴリIDが空文字の場合、400 VALIDATION_ERROR を返す', async () => {
+	test('[SPEC: AC-105] カテゴリIDが空文字の場合、400 VALIDATION_ERROR を返す', async () => {
 		const response = await POST({
 			request: makePostRequest({ amount: 1000, categoryId: '' }),
 			locals: mockLocals,
@@ -174,7 +174,7 @@ describe('POST /expense', () => {
 		expect(body.fields).toContainEqual({ field: 'categoryId', message: 'カテゴリは必須です' });
 	});
 
-	it('[SPEC: AC-003] 正しいデータの場合、201 を返す', async () => {
+	test('[SPEC: AC-003] 正しいデータの場合、201 を返す', async () => {
 		const mockCreated = {
 			id: 'exp-1',
 			userId: 'user-1',

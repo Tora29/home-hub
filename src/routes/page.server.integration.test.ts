@@ -9,7 +9,7 @@
  * @covers AC-008, AC-009
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { createExpense, updateExpense, getUnapprovedCount } from './expenses/service';
@@ -20,7 +20,7 @@ function makeUserId() {
 }
 
 describe('load (ダッシュボード +page.server.ts)', () => {
-	it('[SPEC: AC-008] 全期間の未承認支出が 1 件以上ある場合、unapprovedCount が件数を返す', async () => {
+	test('[SPEC: AC-008] 全期間の未承認支出が 1 件以上ある場合、unapprovedCount が件数を返す', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -33,7 +33,7 @@ describe('load (ダッシュボード +page.server.ts)', () => {
 		expect(unapprovedCount).toBe(2);
 	});
 
-	it('[SPEC: AC-008] 自分の未承認支出のみカウントされる（他ユーザーの支出は含まれない）', async () => {
+	test('[SPEC: AC-008] 自分の未承認支出のみカウントされる（他ユーザーの支出は含まれない）', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -49,7 +49,7 @@ describe('load (ダッシュボード +page.server.ts)', () => {
 		expect(unapprovedCount).toBe(1);
 	});
 
-	it('[SPEC: AC-008] 全期間（複数月）の未承認支出をカウントする', async () => {
+	test('[SPEC: AC-008] 全期間（複数月）の未承認支出をカウントする', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -65,7 +65,7 @@ describe('load (ダッシュボード +page.server.ts)', () => {
 		expect(unapprovedCount).toBe(3);
 	});
 
-	it('[SPEC: AC-009] 全支出が承認済みになると unapprovedCount が 0 を返す', async () => {
+	test('[SPEC: AC-009] 全支出が承認済みになると unapprovedCount が 0 を返す', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -90,7 +90,7 @@ describe('load (ダッシュボード +page.server.ts)', () => {
 		expect(unapprovedCount).toBe(0);
 	});
 
-	it('[SPEC: AC-009] 支出が 0 件の場合、unapprovedCount は 0 を返す', async () => {
+	test('[SPEC: AC-009] 支出が 0 件の場合、unapprovedCount は 0 を返す', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 

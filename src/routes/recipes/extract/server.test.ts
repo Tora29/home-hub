@@ -8,7 +8,7 @@
  * @covers AC-011, AC-012, AC-114
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { POST } from './+server';
 
 // dev フラグをテストごとに切り替えられるようにする
@@ -35,7 +35,7 @@ function createEvent(body: unknown, ai?: AiMock) {
 
 describe('POST /recipes/extract', () => {
 	describe('dev モード（ダミーレスポンス）', () => {
-		it('[SPEC: AC-011] テキストを送信すると 200 とダミーレシピデータが返る', async () => {
+		test('[SPEC: AC-011] テキストを送信すると 200 とダミーレシピデータが返る', async () => {
 			const event = createEvent({
 				text: '鶏のから揚げ\n材料：鶏もも肉 300g\n作り方：1. 下味をつける 2. 揚げる'
 			});
@@ -51,7 +51,7 @@ describe('POST /recipes/extract', () => {
 			expect(Array.isArray(body.steps)).toBe(true);
 		});
 
-		it('[SPEC: AC-012] ノイズを含むテキストでも 200 が返る', async () => {
+		test('[SPEC: AC-012] ノイズを含むテキストでも 200 が返る', async () => {
 			const event = createEvent({
 				text: [
 					'ホーム | レシピ一覧 | お気に入り',
@@ -70,7 +70,7 @@ describe('POST /recipes/extract', () => {
 			expect(body).toHaveProperty('name');
 		});
 
-		it('[SPEC: AC-114] text が空の場合は 400 VALIDATION_ERROR が返る', async () => {
+		test('[SPEC: AC-114] text が空の場合は 400 VALIDATION_ERROR が返る', async () => {
 			const event = createEvent({ text: '' });
 
 			const response = await POST(event as Parameters<typeof POST>[0]);
@@ -80,7 +80,7 @@ describe('POST /recipes/extract', () => {
 			expect(body.code).toBe('VALIDATION_ERROR');
 		});
 
-		it('[SPEC: AC-114] text が未指定の場合は 400 VALIDATION_ERROR が返る', async () => {
+		test('[SPEC: AC-114] text が未指定の場合は 400 VALIDATION_ERROR が返る', async () => {
 			const event = createEvent({});
 
 			const response = await POST(event as Parameters<typeof POST>[0]);
@@ -99,7 +99,7 @@ describe('POST /recipes/extract', () => {
 			mockDev = true;
 		});
 
-		it('[SPEC: AC-011] Workers AI がクリーンな JSON を返した場合に正しく抽出される', async () => {
+		test('[SPEC: AC-011] Workers AI がクリーンな JSON を返した場合に正しく抽出される', async () => {
 			const ai: AiMock = {
 				run: async () => ({
 					response: JSON.stringify({
@@ -123,7 +123,7 @@ describe('POST /recipes/extract', () => {
 			expect(body.ingredients).toEqual([{ name: '食材A', amount: '100g' }]);
 		});
 
-		it('[SPEC: AC-011] Workers AI が説明文付きで JSON を返した場合も正しく抽出される', async () => {
+		test('[SPEC: AC-011] Workers AI が説明文付きで JSON を返した場合も正しく抽出される', async () => {
 			const ai: AiMock = {
 				run: async () => ({
 					response:
@@ -140,7 +140,7 @@ describe('POST /recipes/extract', () => {
 			expect(body.servings).toBe(4);
 		});
 
-		it('[SPEC: AC-011] Workers AI がコードブロック付きで JSON を返した場合も正しく抽出される', async () => {
+		test('[SPEC: AC-011] Workers AI がコードブロック付きで JSON を返した場合も正しく抽出される', async () => {
 			const ai: AiMock = {
 				run: async () => ({
 					response:
@@ -156,7 +156,7 @@ describe('POST /recipes/extract', () => {
 			expect(body.name).toBe('親子丼');
 		});
 
-		it('[SPEC: AC-011] Workers AI が JSON を返せなかった場合は全フィールド null で 200 が返る', async () => {
+		test('[SPEC: AC-011] Workers AI が JSON を返せなかった場合は全フィールド null で 200 が返る', async () => {
 			const ai: AiMock = {
 				run: async () => ({
 					response: 'Sorry, I could not extract the recipe information.'

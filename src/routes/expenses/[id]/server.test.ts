@@ -8,7 +8,7 @@
  * @covers AC-101, AC-102, AC-103, AC-104, AC-105, AC-106, AC-113
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import type * as ErrorsModule from '$lib/server/errors';
 
 vi.mock('$lib/server/db', () => ({
@@ -53,7 +53,7 @@ beforeEach(() => {
 
 describe('PUT /expense/[id]', () => {
 	describe('正常系', () => {
-		it('[SPEC: AC-004] approved: true を送信すると、200 が返る', async () => {
+		test('[SPEC: AC-004] approved: true を送信すると、200 が返る', async () => {
 			const mockUpdated = {
 				id: EXPENSE_ID,
 				userId: 'user-1',
@@ -83,7 +83,7 @@ describe('PUT /expense/[id]', () => {
 			expect(body.id).toBe(EXPENSE_ID);
 		});
 
-		it('[SPEC: AC-005] approved: false を送信すると、200 が返る', async () => {
+		test('[SPEC: AC-005] approved: false を送信すると、200 が返る', async () => {
 			const mockUpdated = {
 				id: EXPENSE_ID,
 				userId: 'user-1',
@@ -113,7 +113,7 @@ describe('PUT /expense/[id]', () => {
 	});
 
 	describe('異常系（バリデーション）', () => {
-		it('[SPEC: AC-101] 金額が未入力の場合、400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-101] 金額が未入力の場合、400 VALIDATION_ERROR を返す', async () => {
 			const response = await PUT({
 				request: makePutRequest({ categoryId: 'cat-1', approved: false }),
 				params: { id: EXPENSE_ID },
@@ -127,7 +127,7 @@ describe('PUT /expense/[id]', () => {
 			expect(body.fields).toContainEqual({ field: 'amount', message: '金額は必須です' });
 		});
 
-		it('[SPEC: AC-102] 金額が0以下の場合、400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-102] 金額が0以下の場合、400 VALIDATION_ERROR を返す', async () => {
 			const response = await PUT({
 				request: makePutRequest({ amount: 0, categoryId: 'cat-1', approved: false }),
 				params: { id: EXPENSE_ID },
@@ -144,7 +144,7 @@ describe('PUT /expense/[id]', () => {
 			});
 		});
 
-		it('[SPEC: AC-103] 金額が9,999,999を超える場合、400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-103] 金額が9,999,999を超える場合、400 VALIDATION_ERROR を返す', async () => {
 			const response = await PUT({
 				request: makePutRequest({ amount: 10000000, categoryId: 'cat-1', approved: false }),
 				params: { id: EXPENSE_ID },
@@ -161,7 +161,7 @@ describe('PUT /expense/[id]', () => {
 			});
 		});
 
-		it('[SPEC: AC-104] 金額が小数の場合、400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-104] 金額が小数の場合、400 VALIDATION_ERROR を返す', async () => {
 			const response = await PUT({
 				request: makePutRequest({ amount: 100.5, categoryId: 'cat-1', approved: false }),
 				params: { id: EXPENSE_ID },
@@ -174,7 +174,7 @@ describe('PUT /expense/[id]', () => {
 			expect(body.code).toBe('VALIDATION_ERROR');
 		});
 
-		it('[SPEC: AC-105] カテゴリIDが未指定の場合、400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-105] カテゴリIDが未指定の場合、400 VALIDATION_ERROR を返す', async () => {
 			const response = await PUT({
 				request: makePutRequest({ amount: 1000, approved: false }),
 				params: { id: EXPENSE_ID },
@@ -188,7 +188,7 @@ describe('PUT /expense/[id]', () => {
 			expect(body.fields).toContainEqual({ field: 'categoryId', message: 'カテゴリは必須です' });
 		});
 
-		it('[SPEC: AC-106] 存在しない支出IDの場合、404 NOT_FOUND を返す', async () => {
+		test('[SPEC: AC-106] 存在しない支出IDの場合、404 NOT_FOUND を返す', async () => {
 			vi.mocked(service.updateExpense).mockRejectedValueOnce(
 				new AppError('NOT_FOUND', 404, '該当データが見つかりません')
 			);
@@ -206,7 +206,7 @@ describe('PUT /expense/[id]', () => {
 			expect(body.message).toBe('該当データが見つかりません');
 		});
 
-		it('[SPEC: AC-113] 確定済みの支出を更新しようとした場合、409 CONFLICT を返す', async () => {
+		test('[SPEC: AC-113] 確定済みの支出を更新しようとした場合、409 CONFLICT を返す', async () => {
 			vi.mocked(service.updateExpense).mockRejectedValueOnce(
 				new AppError('CONFLICT', 409, '確定済みの支出は変更できません')
 			);
@@ -227,7 +227,7 @@ describe('PUT /expense/[id]', () => {
 });
 
 describe('DELETE /expense/[id]', () => {
-	it('[SPEC: AC-007] 正常に削除できる場合、204 を返す', async () => {
+	test('[SPEC: AC-007] 正常に削除できる場合、204 を返す', async () => {
 		vi.mocked(service.deleteExpense).mockResolvedValueOnce(undefined);
 
 		const response = await DELETE({
@@ -240,7 +240,7 @@ describe('DELETE /expense/[id]', () => {
 		expect(response.status).toBe(204);
 	});
 
-	it('[SPEC: AC-106] 存在しない支出IDの場合、404 NOT_FOUND を返す', async () => {
+	test('[SPEC: AC-106] 存在しない支出IDの場合、404 NOT_FOUND を返す', async () => {
 		vi.mocked(service.deleteExpense).mockRejectedValueOnce(
 			new AppError('NOT_FOUND', 404, '該当データが見つかりません')
 		);
@@ -258,7 +258,7 @@ describe('DELETE /expense/[id]', () => {
 		expect(body.message).toBe('該当データが見つかりません');
 	});
 
-	it('[SPEC: AC-113] 確定済みの支出を削除しようとした場合、409 CONFLICT を返す', async () => {
+	test('[SPEC: AC-113] 確定済みの支出を削除しようとした場合、409 CONFLICT を返す', async () => {
 		vi.mocked(service.deleteExpense).mockRejectedValueOnce(
 			new AppError('CONFLICT', 409, '確定済みの支出は変更できません')
 		);

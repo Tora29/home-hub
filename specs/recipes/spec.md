@@ -62,7 +62,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-112: AI 相談で question が 501 文字以上の場合、400 VALIDATION_ERROR が返る
 - AC-113: sort に定義外の値を指定した場合、400 VALIDATION_ERROR が返る
 - AC-114: AI 抽出で text が空の場合、400 VALIDATION_ERROR が返る
-- AC-115: AI 相談欄が空欄のまま送信した場合、「質問を入力してください」と表示される（フロント完結・サーバー非通信）
+- AC-115: AI 相談欄が空欄のまま送信した場合、「質問を入力してください」と表示される
 
 ### 境界値
 

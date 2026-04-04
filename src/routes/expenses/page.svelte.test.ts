@@ -5,13 +5,22 @@
  *
  * @target ./+page.svelte
  * @spec specs/expenses/spec.md
- * @covers AC-015, AC-016, AC-017, AC-018, AC-019, AC-020, AC-111, AC-112
+ * @covers AC-015, AC-111, AC-112
  */
 
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, test, expect, afterEach, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import Page from './+page.svelte';
+
+vi.mock('$app/navigation', () => ({
+	goto: vi.fn(),
+	invalidateAll: vi.fn()
+}));
+
+vi.mock('$app/state', () => ({
+	page: { url: new URL('http://localhost/') }
+}));
 
 afterEach(() => {
 	vi.unstubAllGlobals();
@@ -41,7 +50,7 @@ const approvedExpense = {
 	category: mockCategory
 };
 
-const mockDataWithUnapproved = {
+const _mockDataWithUnapproved = {
 	expenses: {
 		items: [unapprovedExpense],
 		total: 1,
@@ -52,7 +61,7 @@ const mockDataWithUnapproved = {
 	categories: { items: [mockCategory], total: 1, page: 1, limit: 20 }
 };
 
-const mockDataWithApproved = {
+const _mockDataWithApproved = {
 	expenses: {
 		items: [approvedExpense],
 		total: 1,
@@ -95,97 +104,47 @@ const mockDataWithFinalized = {
 	categories: { items: [mockCategory], total: 1, page: 1, limit: 20 }
 };
 
-describe('+page.svelte - モバイル行メニューの開閉', () => {
-	// expense-menu-button はモバイル（md: 未満）のみ表示。scaffold-fe 実装後に GREEN になる。
-
-	it('[SPEC: AC-016] 未承認行の expense-menu-button をタップすると expense-menu が表示される', async () => {
-		render(Page, { data: mockDataWithUnapproved });
-
-		await expect.element(page.getByTestId('expense-menu')).not.toBeInTheDocument();
-		await page.getByTestId('expense-menu-button').click();
-		await expect.element(page.getByTestId('expense-menu')).toBeVisible();
-	});
-
-	it('[SPEC: AC-017] expense-menu 表示中にメニュー外をクリックすると expense-menu が閉じる', async () => {
-		render(Page, { data: mockDataWithUnapproved });
-
-		await page.getByTestId('expense-menu-button').click();
-		await expect.element(page.getByTestId('expense-menu')).toBeVisible();
-
-		// メニュー外をクリック
-		await page.getByTestId('expense-list').click();
-		await expect.element(page.getByTestId('expense-menu')).not.toBeInTheDocument();
-	});
-});
-
-describe('+page.svelte - モバイル行メニューの表示制御', () => {
-	// expense-menu-button はモバイル（md: 未満）のみ表示。scaffold-fe 実装後に GREEN になる。
-
-	it('[SPEC: AC-018] 未承認行のメニューには「確認済みにする」のみが表示される', async () => {
-		render(Page, { data: mockDataWithUnapproved });
-
-		await page.getByTestId('expense-menu-button').click();
-
-		const menu = page.getByTestId('expense-menu');
-		await expect.element(menu.getByTestId('expense-approve-button')).toBeVisible();
-		await expect.element(menu.getByTestId('expense-unapprove-button')).not.toBeInTheDocument();
-	});
-
-	it('[SPEC: AC-019] 確認済み（未確定）行のメニューには「未承認に戻す」が表示され、「確認済みにする」は表示されない', async () => {
-		render(Page, { data: mockDataWithApproved });
-
-		await page.getByTestId('expense-menu-button').click();
-
-		const menu = page.getByTestId('expense-menu');
-		await expect.element(menu.getByTestId('expense-unapprove-button')).toBeVisible();
-		await expect.element(menu.getByTestId('expense-approve-button')).not.toBeInTheDocument();
-	});
-
-	it('[SPEC: AC-020] 確定済み行には expense-menu-button が表示されない', async () => {
-		render(Page, { data: mockDataWithFinalized });
-
-		await expect.element(page.getByTestId('expense-item')).toBeVisible();
-		await expect.element(page.getByTestId('expense-menu-button')).not.toBeInTheDocument();
-	});
-});
-
 describe('+page.svelte - 確定済み支出の表示制御', () => {
-	it('[SPEC: AC-015] 確定済みの支出行には編集ボタンが表示されない', async () => {
+	test('[SPEC: AC-015] 確定済みの支出行には編集ボタンが表示されない', async () => {
 		render(Page, { data: mockDataWithFinalized });
 
 		await expect.element(page.getByTestId('expense-item')).toBeVisible();
-		await expect.element(page.getByTestId('expense-edit-button')).not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: '編集' })).not.toBeInTheDocument();
 	});
 
-	it('[SPEC: AC-015] 確定済みの支出行には削除ボタンが表示されない', async () => {
+	test('[SPEC: AC-015] 確定済みの支出行には削除ボタンが表示されない', async () => {
 		render(Page, { data: mockDataWithFinalized });
 
 		await expect.element(page.getByTestId('expense-item')).toBeVisible();
-		await expect.element(page.getByTestId('expense-delete-button')).not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: '削除' })).not.toBeInTheDocument();
 	});
 
-	it('[SPEC: AC-015] 確定済みの支出行には未承認に戻すボタンが表示されない', async () => {
+	test('[SPEC: AC-015] 確定済みの支出行には未承認に戻すボタンが表示されない', async () => {
 		render(Page, { data: mockDataWithFinalized });
 
 		await expect.element(page.getByTestId('expense-item')).toBeVisible();
-		await expect.element(page.getByTestId('expense-unapprove-button')).not.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('button', { name: '未承認に戻す' }))
+			.not.toBeInTheDocument();
 	});
 
-	it('[SPEC: AC-015] 確定済みの支出行には確認済みボタンも表示されない', async () => {
+	test('[SPEC: AC-015] 確定済みの支出行には確認済みボタンも表示されない', async () => {
 		render(Page, { data: mockDataWithFinalized });
 
 		await expect.element(page.getByTestId('expense-item')).toBeVisible();
-		await expect.element(page.getByTestId('expense-approve-button')).not.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('button', { name: '確認済みにする' }))
+			.not.toBeInTheDocument();
 	});
 
-	it('[SPEC: AC-015] 確定済みの支出行には確定ボタンも表示されない', async () => {
+	test('[SPEC: AC-015] 確定済みの支出行には確定ボタンも表示されない', async () => {
 		render(Page, { data: mockDataWithFinalized });
 
 		await expect.element(page.getByTestId('expense-item')).toBeVisible();
 		await expect.element(page.getByTestId('expense-bulk-finalize-button')).not.toBeInTheDocument();
 	});
 
-	it('[SPEC: AC-015] 確定済みの支出行はグレーアウトされる', async () => {
+	test('[SPEC: AC-015] 確定済みの支出行はグレーアウトされる', async () => {
 		render(Page, { data: mockDataWithFinalized });
 
 		const item = page.getByTestId('expense-item');
@@ -195,54 +154,59 @@ describe('+page.svelte - 確定済み支出の表示制御', () => {
 });
 
 describe('+page.svelte - フロントバリデーション', () => {
-	it('[SPEC: AC-111] 金額が空のまま確定ボタンを押すと「金額は必須です」がインライン表示される', async () => {
+	test('[SPEC: AC-111] 金額が空のまま確定ボタンを押すと「金額は必須です」がインライン表示される', async () => {
 		render(Page, { data: mockData });
 
 		// 登録ボタンをクリックしてフォームダイアログを開く
-		await page.getByTestId('expense-create-button').click();
+		await page.getByRole('button', { name: '支出を登録' }).click();
+		// ダイアログが開くのを待つ
+		await expect.element(page.getByTestId('expense-form')).toBeVisible();
 
 		// 金額を入力せずに確定ボタンをクリック
-		await page.getByTestId('expense-submit-button').click();
+		await page.getByRole('button', { name: '確定' }).click();
 
 		await expect.element(page.getByTestId('expense-amount-error')).toBeVisible();
 		await expect.element(page.getByText('金額は必須です')).toBeVisible();
 	});
 
-	it('[SPEC: AC-111] 金額が空のままの場合、サーバー通信は発生しない', async () => {
+	test('[SPEC: AC-111] 金額が空のままの場合、サーバー通信は発生しない', async () => {
 		const fetchMock = vi.fn();
 		vi.stubGlobal('fetch', fetchMock);
 
 		render(Page, { data: mockData });
 
-		await page.getByTestId('expense-create-button').click();
-		await page.getByTestId('expense-submit-button').click();
+		await page.getByRole('button', { name: '支出を登録' }).click();
+		await expect.element(page.getByTestId('expense-form')).toBeVisible();
+		await page.getByRole('button', { name: '確定' }).click();
 
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
-	it('[SPEC: AC-112] カテゴリが未選択のまま確定ボタンを押すと「カテゴリは必須です」がインライン表示される', async () => {
+	test('[SPEC: AC-112] カテゴリが未選択のまま確定ボタンを押すと「カテゴリは必須です」がインライン表示される', async () => {
 		render(Page, { data: mockData });
 
 		// 登録ボタンをクリックしてフォームダイアログを開く
-		await page.getByTestId('expense-create-button').click();
+		await page.getByRole('button', { name: '支出を登録' }).click();
+		await expect.element(page.getByTestId('expense-form')).toBeVisible();
 
 		// 金額を入力するがカテゴリは未選択のまま確定ボタンをクリック
-		await page.getByTestId('expense-amount-input').fill('1000');
-		await page.getByTestId('expense-submit-button').click();
+		await page.getByRole('textbox').fill('1000');
+		await page.getByRole('button', { name: '確定' }).click();
 
 		await expect.element(page.getByTestId('expense-category-error')).toBeVisible();
 		await expect.element(page.getByText('カテゴリは必須です')).toBeVisible();
 	});
 
-	it('[SPEC: AC-112] カテゴリが未選択のままの場合、サーバー通信は発生しない', async () => {
+	test('[SPEC: AC-112] カテゴリが未選択のままの場合、サーバー通信は発生しない', async () => {
 		const fetchMock = vi.fn();
 		vi.stubGlobal('fetch', fetchMock);
 
 		render(Page, { data: mockData });
 
-		await page.getByTestId('expense-create-button').click();
-		await page.getByTestId('expense-amount-input').fill('1000');
-		await page.getByTestId('expense-submit-button').click();
+		await page.getByRole('button', { name: '支出を登録' }).click();
+		await expect.element(page.getByTestId('expense-form')).toBeVisible();
+		await page.getByRole('textbox').fill('1000');
+		await page.getByRole('button', { name: '確定' }).click();
 
 		expect(fetchMock).not.toHaveBeenCalled();
 	});

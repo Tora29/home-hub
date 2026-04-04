@@ -9,7 +9,7 @@
  * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009, AC-013, AC-014, AC-015
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { AppError } from '$lib/server/errors';
@@ -28,7 +28,7 @@ function makeUserId() {
 }
 
 describe('createExpense', () => {
-	it('[SPEC: AC-003] 金額とカテゴリを指定して支出を登録できる', async () => {
+	test('[SPEC: AC-003] 金額とカテゴリを指定して支出を登録できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -48,7 +48,7 @@ describe('createExpense', () => {
 		expect(created.category.name).toBe('食費');
 	});
 
-	it('[SPEC: AC-003] 登録日時（createdAt）は自動でセットされる', async () => {
+	test('[SPEC: AC-003] 登録日時（createdAt）は自動でセットされる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -67,7 +67,7 @@ describe('createExpense', () => {
 });
 
 describe('getExpenses', () => {
-	it('[SPEC: AC-001] 当月の支出一覧が登録日時の新しい順で取得できる', async () => {
+	test('[SPEC: AC-001] 当月の支出一覧が登録日時の新しい順で取得できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -88,7 +88,7 @@ describe('getExpenses', () => {
 		expect(result.items.map((i) => i.amount)).toEqual(expect.arrayContaining([500, 1000, 1500]));
 	});
 
-	it('[SPEC: AC-001] 自分の支出のみ取得できる（他ユーザーの支出は含まれない）', async () => {
+	test('[SPEC: AC-001] 自分の支出のみ取得できる（他ユーザーの支出は含まれない）', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -108,7 +108,7 @@ describe('getExpenses', () => {
 		expect(result.items[0].userId).toBe(userId);
 	});
 
-	it('[SPEC: AC-002] 月フィルタで指定した月の支出のみ取得できる', async () => {
+	test('[SPEC: AC-002] 月フィルタで指定した月の支出のみ取得できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -132,7 +132,7 @@ describe('getExpenses', () => {
 		expect(nextResult.total).toBe(0);
 	});
 
-	it('[SPEC: AC-013] monthTotal に対象月の支出合計金額（全件）が含まれる', async () => {
+	test('[SPEC: AC-013] monthTotal に対象月の支出合計金額（全件）が含まれる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -148,7 +148,7 @@ describe('getExpenses', () => {
 		expect(result.monthTotal).toBe(7800);
 	});
 
-	it('[SPEC: AC-013] 承認済み・未承認問わず合計に含まれる', async () => {
+	test('[SPEC: AC-013] 承認済み・未承認問わず合計に含まれる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -172,7 +172,7 @@ describe('getExpenses', () => {
 });
 
 describe('updateExpense', () => {
-	it('[SPEC: AC-004] 未承認の支出を「確認済み」に更新できる', async () => {
+	test('[SPEC: AC-004] 未承認の支出を「確認済み」に更新できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -193,7 +193,7 @@ describe('updateExpense', () => {
 		expect(updated.category.id).toBe(category.id);
 	});
 
-	it('[SPEC: AC-005] 確認済みの支出を「未承認」に戻せる', async () => {
+	test('[SPEC: AC-005] 確認済みの支出を「未承認」に戻せる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -217,7 +217,7 @@ describe('updateExpense', () => {
 		expect(reverted.approvedAt).toBeNull();
 	});
 
-	it('[SPEC: AC-006] 支出の金額とカテゴリを更新できる', async () => {
+	test('[SPEC: AC-006] 支出の金額とカテゴリを更新できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -237,7 +237,7 @@ describe('updateExpense', () => {
 		expect(updated.category.name).toBe('交通費');
 	});
 
-	it('[SPEC: AC-006] 存在しない支出 ID を指定した場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-006] 存在しない支出 ID を指定した場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -264,7 +264,7 @@ describe('updateExpense', () => {
 		}
 	});
 
-	it('[SPEC: AC-006] 他ユーザーの支出を更新しようとした場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-006] 他ユーザーの支出を更新しようとした場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -288,7 +288,7 @@ describe('updateExpense', () => {
 });
 
 describe('deleteExpense', () => {
-	it('[SPEC: AC-007] 支出を削除できる', async () => {
+	test('[SPEC: AC-007] 支出を削除できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -302,7 +302,7 @@ describe('deleteExpense', () => {
 		expect(result.items.find((e) => e.id === created.id)).toBeUndefined();
 	});
 
-	it('[SPEC: AC-007] 存在しない支出 ID を指定した場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-007] 存在しない支出 ID を指定した場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -317,7 +317,7 @@ describe('deleteExpense', () => {
 		}
 	});
 
-	it('[SPEC: AC-007] 他ユーザーの支出を削除しようとした場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-007] 他ユーザーの支出を削除しようとした場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -333,7 +333,7 @@ describe('deleteExpense', () => {
 });
 
 describe('finalizeExpense', () => {
-	it('[SPEC: AC-014] 確認済みの支出を確定すると finalizedAt がセットされる', async () => {
+	test('[SPEC: AC-014] 確認済みの支出を確定すると finalizedAt がセットされる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -356,7 +356,7 @@ describe('finalizeExpense', () => {
 		expect(finalized.category.id).toBe(category.id);
 	});
 
-	it('[SPEC: AC-014] [SPEC: AC-015] 確定後は updateExpense が CONFLICT になる（確定後ロック）', async () => {
+	test('[SPEC: AC-014] [SPEC: AC-015] 確定後は updateExpense が CONFLICT になる（確定後ロック）', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -384,7 +384,7 @@ describe('finalizeExpense', () => {
 		}
 	});
 
-	it('[SPEC: AC-014] [SPEC: AC-015] 確定後は deleteExpense が CONFLICT になる（確定後ロック）', async () => {
+	test('[SPEC: AC-014] [SPEC: AC-015] 確定後は deleteExpense が CONFLICT になる（確定後ロック）', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -408,7 +408,7 @@ describe('finalizeExpense', () => {
 		}
 	});
 
-	it('[SPEC: AC-014] 未承認の支出を確定しようとすると CONFLICT になる', async () => {
+	test('[SPEC: AC-014] 未承認の支出を確定しようとすると CONFLICT になる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -427,7 +427,7 @@ describe('finalizeExpense', () => {
 		}
 	});
 
-	it('[SPEC: AC-014] 確定済みの支出を再度 finalize すると CONFLICT になる', async () => {
+	test('[SPEC: AC-014] 確定済みの支出を再度 finalize すると CONFLICT になる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -451,7 +451,7 @@ describe('finalizeExpense', () => {
 		}
 	});
 
-	it('[SPEC: AC-014] 存在しない支出 ID を指定した場合は NOT_FOUND になる', async () => {
+	test('[SPEC: AC-014] 存在しない支出 ID を指定した場合は NOT_FOUND になる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -465,7 +465,7 @@ describe('finalizeExpense', () => {
 		}
 	});
 
-	it('[SPEC: AC-015] 確定済みの支出は getExpenses で finalizedAt がセットされた状態で返る', async () => {
+	test('[SPEC: AC-015] 確定済みの支出は getExpenses で finalizedAt がセットされた状態で返る', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -489,7 +489,7 @@ describe('finalizeExpense', () => {
 });
 
 describe('getUnapprovedCount', () => {
-	it('[SPEC: AC-008] 未承認の支出が 1 件以上ある場合、件数が返る', async () => {
+	test('[SPEC: AC-008] 未承認の支出が 1 件以上ある場合、件数が返る', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -501,7 +501,7 @@ describe('getUnapprovedCount', () => {
 		expect(count).toBe(2);
 	});
 
-	it('[SPEC: AC-008] 自分の未承認支出のみカウントされる（他ユーザーの支出は含まれない）', async () => {
+	test('[SPEC: AC-008] 自分の未承認支出のみカウントされる（他ユーザーの支出は含まれない）', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -516,7 +516,7 @@ describe('getUnapprovedCount', () => {
 		expect(count).toBe(1);
 	});
 
-	it('[SPEC: AC-009] 全支出が承認済みの場合、0 が返る', async () => {
+	test('[SPEC: AC-009] 全支出が承認済みの場合、0 が返る', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -539,7 +539,7 @@ describe('getUnapprovedCount', () => {
 		expect(count).toBe(0);
 	});
 
-	it('[SPEC: AC-009] 支出が 0 件の場合、0 が返る', async () => {
+	test('[SPEC: AC-009] 支出が 0 件の場合、0 が返る', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 

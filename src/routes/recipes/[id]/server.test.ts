@@ -7,7 +7,7 @@
  * @spec specs/recipes/spec.md
  * @covers AC-101, AC-102, AC-103, AC-104, AC-105, AC-106, AC-107, AC-108, AC-109, AC-110
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { AppError } from '$lib/server/errors';
 import type { PUT, DELETE } from './+server';
 
@@ -61,7 +61,7 @@ describe('PUT /recipes/[id]', () => {
 	});
 
 	describe('name バリデーション', () => {
-		it('[SPEC: AC-101] name が空の場合 400 VALIDATION_ERROR「レシピ名は必須です」を返す', async () => {
+		test('[SPEC: AC-101] name が空の場合 400 VALIDATION_ERROR「レシピ名は必須です」を返す', async () => {
 			const { PUT } = await import('./+server');
 			const event = createPutEvent(EXISTING_ID, { ...validUpdateBody, name: '' });
 			const response = await PUT(event);
@@ -75,7 +75,7 @@ describe('PUT /recipes/[id]', () => {
 			);
 		});
 
-		it('[SPEC: AC-102] name が 101 文字以上の場合 400 VALIDATION_ERROR「100 文字以内で入力してください」を返す', async () => {
+		test('[SPEC: AC-102] name が 101 文字以上の場合 400 VALIDATION_ERROR「100 文字以内で入力してください」を返す', async () => {
 			const { PUT } = await import('./+server');
 			const event = createPutEvent(EXISTING_ID, { ...validUpdateBody, name: 'a'.repeat(101) });
 			const response = await PUT(event);
@@ -91,7 +91,7 @@ describe('PUT /recipes/[id]', () => {
 	});
 
 	describe('description バリデーション', () => {
-		it('[SPEC: AC-103] description が 501 文字以上の場合 400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-103] description が 501 文字以上の場合 400 VALIDATION_ERROR を返す', async () => {
 			const { PUT } = await import('./+server');
 			const event = createPutEvent(EXISTING_ID, {
 				...validUpdateBody,
@@ -108,7 +108,7 @@ describe('PUT /recipes/[id]', () => {
 	});
 
 	describe('memo バリデーション', () => {
-		it('[SPEC: AC-104] memo が 1001 文字以上の場合 400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-104] memo が 1001 文字以上の場合 400 VALIDATION_ERROR を返す', async () => {
 			const { PUT } = await import('./+server');
 			const event = createPutEvent(EXISTING_ID, { ...validUpdateBody, memo: 'a'.repeat(1001) });
 			const response = await PUT(event);
@@ -122,7 +122,7 @@ describe('PUT /recipes/[id]', () => {
 	});
 
 	describe('rating バリデーション', () => {
-		it('[SPEC: AC-105] rating に定義外の値を指定した場合 400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-105] rating に定義外の値を指定した場合 400 VALIDATION_ERROR を返す', async () => {
 			const { PUT } = await import('./+server');
 			const event = createPutEvent(EXISTING_ID, { ...validUpdateBody, rating: 'bad' });
 			const response = await PUT(event);
@@ -136,7 +136,7 @@ describe('PUT /recipes/[id]', () => {
 	});
 
 	describe('difficulty バリデーション', () => {
-		it('[SPEC: AC-106] difficulty に定義外の値を指定した場合 400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-106] difficulty に定義外の値を指定した場合 400 VALIDATION_ERROR を返す', async () => {
 			const { PUT } = await import('./+server');
 			const event = createPutEvent(EXISTING_ID, { ...validUpdateBody, difficulty: 'impossible' });
 			const response = await PUT(event);
@@ -150,7 +150,7 @@ describe('PUT /recipes/[id]', () => {
 	});
 
 	describe('servings バリデーション', () => {
-		it('[SPEC: AC-108] servings が 0 の場合 400 VALIDATION_ERROR「1 以上の値を入力してください」を返す', async () => {
+		test('[SPEC: AC-108] servings が 0 の場合 400 VALIDATION_ERROR「1 以上の値を入力してください」を返す', async () => {
 			const { PUT } = await import('./+server');
 			const event = createPutEvent(EXISTING_ID, { ...validUpdateBody, servings: 0 });
 			const response = await PUT(event);
@@ -164,7 +164,7 @@ describe('PUT /recipes/[id]', () => {
 	});
 
 	describe('cookingTimeMinutes バリデーション', () => {
-		it('[SPEC: AC-109] cookingTimeMinutes が 0 の場合 400 VALIDATION_ERROR「1 以上の値を入力してください」を返す', async () => {
+		test('[SPEC: AC-109] cookingTimeMinutes が 0 の場合 400 VALIDATION_ERROR「1 以上の値を入力してください」を返す', async () => {
 			const { PUT } = await import('./+server');
 			const event = createPutEvent(EXISTING_ID, { ...validUpdateBody, cookingTimeMinutes: 0 });
 			const response = await PUT(event);
@@ -178,7 +178,7 @@ describe('PUT /recipes/[id]', () => {
 	});
 
 	describe('cookedCount バリデーション', () => {
-		it('[SPEC: AC-110] cookedCount が負の値の場合 400 VALIDATION_ERROR「0 以上の値を入力してください」を返す', async () => {
+		test('[SPEC: AC-110] cookedCount が負の値の場合 400 VALIDATION_ERROR「0 以上の値を入力してください」を返す', async () => {
 			const { PUT } = await import('./+server');
 			const event = createPutEvent(EXISTING_ID, { ...validUpdateBody, cookedCount: -1 });
 			const response = await PUT(event);
@@ -192,7 +192,7 @@ describe('PUT /recipes/[id]', () => {
 	});
 
 	describe('NOT_FOUND', () => {
-		it('[SPEC: AC-107] 存在しない ID に対して PUT した場合 404 NOT_FOUND を返す', async () => {
+		test('[SPEC: AC-107] 存在しない ID に対して PUT した場合 404 NOT_FOUND を返す', async () => {
 			const { updateRecipe } = await import('../service');
 			vi.mocked(updateRecipe).mockRejectedValue(
 				new AppError('NOT_FOUND', 404, '該当データが見つかりません')
@@ -213,7 +213,7 @@ describe('DELETE /recipes/[id]', () => {
 	});
 
 	describe('NOT_FOUND', () => {
-		it('[SPEC: AC-107] 存在しない ID に対して DELETE した場合 404 NOT_FOUND を返す', async () => {
+		test('[SPEC: AC-107] 存在しない ID に対して DELETE した場合 404 NOT_FOUND を返す', async () => {
 			const { deleteRecipe } = await import('../service');
 			vi.mocked(deleteRecipe).mockRejectedValue(
 				new AppError('NOT_FOUND', 404, '該当データが見つかりません')

@@ -8,7 +8,7 @@
  * @covers AC-006, AC-111, AC-112
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { POST } from './+server';
 
 // service をモック（ユニットテストでは DB アクセスをスキップ）
@@ -43,7 +43,7 @@ describe('POST /recipes/ask', () => {
 		vi.clearAllMocks();
 	});
 
-	it('[SPEC: AC-006] 有効な question を送信すると 200 と answer フィールドが返る', async () => {
+	test('[SPEC: AC-006] 有効な question を送信すると 200 と answer フィールドが返る', async () => {
 		const event = createEvent({ question: '最近作ってないもので肉系が食べたいんだけど？' });
 
 		const response = await POST(event as Parameters<typeof POST>[0]);
@@ -55,7 +55,7 @@ describe('POST /recipes/ask', () => {
 		expect(body.answer.length).toBeGreaterThan(0);
 	});
 
-	it('[SPEC: AC-111] question が空の場合は 400 VALIDATION_ERROR が返る', async () => {
+	test('[SPEC: AC-111] question が空の場合は 400 VALIDATION_ERROR が返る', async () => {
 		const event = createEvent({ question: '' });
 
 		const response = await POST(event as Parameters<typeof POST>[0]);
@@ -65,7 +65,7 @@ describe('POST /recipes/ask', () => {
 		expect(body.code).toBe('VALIDATION_ERROR');
 	});
 
-	it('[SPEC: AC-111] question が未指定の場合は 400 VALIDATION_ERROR が返る', async () => {
+	test('[SPEC: AC-111] question が未指定の場合は 400 VALIDATION_ERROR が返る', async () => {
 		const event = createEvent({});
 
 		const response = await POST(event as Parameters<typeof POST>[0]);
@@ -75,7 +75,7 @@ describe('POST /recipes/ask', () => {
 		expect(body.code).toBe('VALIDATION_ERROR');
 	});
 
-	it('[SPEC: AC-112] question が 501 文字の場合は 400 VALIDATION_ERROR が返る', async () => {
+	test('[SPEC: AC-112] question が 501 文字の場合は 400 VALIDATION_ERROR が返る', async () => {
 		const event = createEvent({ question: 'a'.repeat(501) });
 
 		const response = await POST(event as Parameters<typeof POST>[0]);
@@ -85,7 +85,7 @@ describe('POST /recipes/ask', () => {
 		expect(body.code).toBe('VALIDATION_ERROR');
 	});
 
-	it('[SPEC: AC-112] question が 500 文字の場合は 200 が返る', async () => {
+	test('[SPEC: AC-112] question が 500 文字の場合は 200 が返る', async () => {
 		const event = createEvent({ question: 'a'.repeat(500) });
 
 		const response = await POST(event as Parameters<typeof POST>[0]);

@@ -7,7 +7,7 @@
  * @spec specs/recipes/spec.md
  * @covers AC-101, AC-102, AC-103, AC-104, AC-105, AC-106, AC-108, AC-109, AC-113
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import type { GET, POST } from './+server';
 
 vi.mock('$lib/server/db', () => ({
@@ -48,7 +48,7 @@ function createPostEvent(body: unknown) {
 
 describe('GET /recipes', () => {
 	describe('sort バリデーション', () => {
-		it('[SPEC: AC-113] 定義外の sort 値を指定した場合 400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-113] 定義外の sort 値を指定した場合 400 VALIDATION_ERROR を返す', async () => {
 			const { GET } = await import('./+server');
 			const event = createGetEvent({ sort: 'invalid_sort' });
 			const response = await GET(event);
@@ -65,7 +65,7 @@ describe('POST /recipes', () => {
 	});
 
 	describe('name バリデーション', () => {
-		it('[SPEC: AC-101] name が空の場合 400 VALIDATION_ERROR「レシピ名は必須です」を返す', async () => {
+		test('[SPEC: AC-101] name が空の場合 400 VALIDATION_ERROR「レシピ名は必須です」を返す', async () => {
 			const { POST } = await import('./+server');
 			const event = createPostEvent({ name: '' });
 			const response = await POST(event);
@@ -79,7 +79,7 @@ describe('POST /recipes', () => {
 			);
 		});
 
-		it('[SPEC: AC-102] name が 101 文字以上の場合 400 VALIDATION_ERROR「100 文字以内で入力してください」を返す', async () => {
+		test('[SPEC: AC-102] name が 101 文字以上の場合 400 VALIDATION_ERROR「100 文字以内で入力してください」を返す', async () => {
 			const { POST } = await import('./+server');
 			const event = createPostEvent({ name: 'a'.repeat(101) });
 			const response = await POST(event);
@@ -95,7 +95,7 @@ describe('POST /recipes', () => {
 	});
 
 	describe('description バリデーション', () => {
-		it('[SPEC: AC-103] description が 501 文字以上の場合 400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-103] description が 501 文字以上の場合 400 VALIDATION_ERROR を返す', async () => {
 			const { POST } = await import('./+server');
 			const event = createPostEvent({ name: 'テストレシピ', description: 'a'.repeat(501) });
 			const response = await POST(event);
@@ -109,7 +109,7 @@ describe('POST /recipes', () => {
 	});
 
 	describe('memo バリデーション', () => {
-		it('[SPEC: AC-104] memo が 1001 文字以上の場合 400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-104] memo が 1001 文字以上の場合 400 VALIDATION_ERROR を返す', async () => {
 			const { POST } = await import('./+server');
 			const event = createPostEvent({ name: 'テストレシピ', memo: 'a'.repeat(1001) });
 			const response = await POST(event);
@@ -123,7 +123,7 @@ describe('POST /recipes', () => {
 	});
 
 	describe('rating バリデーション', () => {
-		it('[SPEC: AC-105] rating に定義外の値を指定した場合 400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-105] rating に定義外の値を指定した場合 400 VALIDATION_ERROR を返す', async () => {
 			const { POST } = await import('./+server');
 			const event = createPostEvent({ name: 'テストレシピ', rating: 'bad' });
 			const response = await POST(event);
@@ -137,7 +137,7 @@ describe('POST /recipes', () => {
 	});
 
 	describe('difficulty バリデーション', () => {
-		it('[SPEC: AC-106] difficulty に定義外の値を指定した場合 400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-106] difficulty に定義外の値を指定した場合 400 VALIDATION_ERROR を返す', async () => {
 			const { POST } = await import('./+server');
 			const event = createPostEvent({ name: 'テストレシピ', difficulty: 'impossible' });
 			const response = await POST(event);
@@ -151,7 +151,7 @@ describe('POST /recipes', () => {
 	});
 
 	describe('servings バリデーション', () => {
-		it('[SPEC: AC-108] servings が 0 の場合 400 VALIDATION_ERROR「1 以上の値を入力してください」を返す', async () => {
+		test('[SPEC: AC-108] servings が 0 の場合 400 VALIDATION_ERROR「1 以上の値を入力してください」を返す', async () => {
 			const { POST } = await import('./+server');
 			const event = createPostEvent({ name: 'テストレシピ', servings: 0 });
 			const response = await POST(event);
@@ -165,7 +165,7 @@ describe('POST /recipes', () => {
 	});
 
 	describe('cookingTimeMinutes バリデーション', () => {
-		it('[SPEC: AC-109] cookingTimeMinutes が 0 の場合 400 VALIDATION_ERROR「1 以上の値を入力してください」を返す', async () => {
+		test('[SPEC: AC-109] cookingTimeMinutes が 0 の場合 400 VALIDATION_ERROR「1 以上の値を入力してください」を返す', async () => {
 			const { POST } = await import('./+server');
 			const event = createPostEvent({ name: 'テストレシピ', cookingTimeMinutes: 0 });
 			const response = await POST(event);

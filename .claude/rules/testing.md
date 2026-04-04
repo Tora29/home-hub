@@ -33,14 +33,21 @@ Zod スキーマは純粋関数（`.parse()` / `.safeParse()`）なので D1 不
 
 ### AC 番号とテスト種別の対応
 
-| AC 範囲               | 内容                               | テスト種別                  |
-| --------------------- | ---------------------------------- | --------------------------- |
-| AC-001〜099（正常系） | DB を含む正常動作                  | Integration テスト（実 D1） |
-| AC-101〜199（異常系） | バリデーションエラー・権限エラー等 | Zod schema Unit テスト      |
-| AC-201〜299（境界値） | 文字数上限・数値範囲等             | Zod schema Unit テスト      |
+> **適用スコープ**: このマッピングはサーバーサイドのテストファイル（`service.ts` / `schema.ts` / `+server.ts`）に適用する。
+> `page.svelte.test.ts` などの Unit client テストも正常系 AC を参照してよい（Integration テストに限定されない）。
+
+| AC 範囲               | 内容                               | テスト種別（サーバーサイド） |
+| --------------------- | ---------------------------------- | ---------------------------- |
+| AC-001〜099（正常系） | DB を含む正常動作                  | Integration テスト（実 D1）  |
+| AC-101〜199（異常系） | バリデーションエラー・権限エラー等 | Zod schema Unit テスト       |
+| AC-201〜299（境界値） | 文字数上限・数値範囲等             | Zod schema Unit テスト       |
 
 > バリデーション系の AC を Integration テストで書くと D1 セットアップが毎回走り低速になる。
 > Zod schema の Unit テストで代替することで高速・シンプルに保つ。
+>
+> **`+server.ts` ハンドラの Unit テスト（`+server.test.ts`）について**:
+> バリデーションエラー（AC-101〜199）はバリデーション失敗でサービスコールが発生しないため、**service のモック不要**。
+> 正常系（AC-001〜099）は `service.integration.test.ts` で DB レベルから検証するため、ハンドラ単体の Integration テストは書かない。
 
 ## ファイル命名・配置
 
@@ -78,21 +85,21 @@ e2e/
 
 ```typescript
 describe('createDishSchema', () => {
-  it('[SPEC: AC-001] 正しいデータは parse できる', () => { ... });
-  it('[SPEC: AC-101] name が空の場合は VALIDATION_ERROR になる', () => { ... });
-  it('[SPEC: AC-201] name が100文字の場合は parse できる', () => { ... });
+  test('[SPEC: AC-001] 正しいデータは parse できる', () => { ... });
+  test('[SPEC: AC-101] name が空の場合は VALIDATION_ERROR になる', () => { ... });
+  test('[SPEC: AC-201] name が100文字の場合は parse できる', () => { ... });
 });
 
 describe('createDish', () => {
-  it('[SPEC: AC-001] 料理を作成できる', async () => { ... });  // Integration
+  test('[SPEC: AC-001] 料理を作成できる', async () => { ... });  // Integration
 });
 ```
 
 ### テストケース命名規則
 
-- `test()` は使用しない。必ず `describe` + `it` の組み合わせで記述する
+- 必ず `describe` + `test()` の組み合わせで記述する（**E2E のみ** `test.describe()` + `test()`）
 - `describe` にはテスト対象の関数名・スキーマ名・コンポーネント名を指定する
-- `it` は「〜できる」「〜の場合は〜」の日本語形式
+- `test()` の説明は「〜できる」「〜の場合は〜」の日本語形式
 
 ## カバレッジ
 
@@ -125,6 +132,29 @@ src/app.d.ts
 | 行カバレッジ   | 80% 以上 |
 
 ## コンポーネントテストの注意事項
+
+### セレクタの選択（`data-testid.md` 参照）
+
+セレクタの優先順位は `.claude/rules/data-testid.md` が唯一の定義元。要約:
+
+| テスト種別                        | 優先順位                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------ |
+| Unit / Component テスト（Vitest） | `getByRole` → `getByLabelText` → `getByText` → `getByTestId`（最終手段） |
+| E2E テスト（Playwright）          | `getByTestId` → `getByRole` → `getByText`                                |
+
+Unit / Component テストで `getByRole` が使えるのに `getByTestId` を使わない。
+`getByRole` を優先することでアクセシビリティの問題も同時に検出できる。
+
+```typescript
+// ✅ 正しい（Unit/Component テスト: getByRole 優先）
+page.getByRole('button', { name: '追加' }).element().click();
+await expect.element(page.getByRole('listitem')).toBeInTheDocument();
+
+// ❌ 誤り（role/text で一意に取得できるのに getByTestId を使う）
+page.getByTestId('add-button').element().click();
+```
+
+---
 
 ### `toBeVisible()` と `toBeInTheDocument()` の使い分け
 
@@ -165,11 +195,69 @@ test('[SPEC: AC-016] モバイルで行メニューが開く', async ({ page }) 
 });
 
 // ❌ コンポーネントテストでは viewport 変更が CSS に反映されない
-it('[SPEC: AC-016] ...', async () => {
+test('[SPEC: AC-016] ...', async () => {
 	await page.viewport(375, 812); // 効果なし
 	// ...
 });
 ```
+
+### `$app/navigation` / `$app/state` のモック（ページコンポーネントテスト必須）
+
+`$app/navigation` や `$app/state` を import するページコンポーネント（`+page.svelte`）をテストする場合、
+これらをモックしないと Playwright が「ナビゲーション完了待機」で最大 **15 秒**ブロックされ、テストがタイムアウトする。
+
+```typescript
+// ✅ 必須：$app/* を import するページのテストファイル先頭に追加
+vi.mock('$app/navigation', () => ({
+	goto: vi.fn(),
+	invalidateAll: vi.fn()
+}));
+
+vi.mock('$app/state', () => ({
+	page: { url: new URL('http://localhost/') }
+}));
+```
+
+- `$app/navigation` のみ import するページ（例: ログインページ）も同様にモックする
+- これを省略すると、ボタンクリック後に Playwright が SvelteKit のルーター初期化処理を  
+  ナビゲーションとして検出し、長時間待機する
+
+### `element().click()` + `flushSync()` パターン
+
+Vitest browser mode の公式推奨は `userEvent.click()` from `@vitest/browser/context` だが、
+`userEvent.click()` は内部で Playwright の CDP を使うため `locator.click()` と同様にナビゲーション完了を待機し、  
+SvelteKit 環境では 5〜15 秒かかる／タイムアウトする問題がある。
+
+ナビゲーションを伴わないボタン（バリデーション・リスト操作等）は `element().click()` で  
+ネイティブ DOM click を使い、`flushSync()` で Svelte の状態更新を即時反映させる。  
+これは SvelteKit + Vitest browser mode 固有の回避策であり、一般的な Vitest の推奨パターンとは異なる。
+
+```typescript
+import { flushSync } from 'svelte';
+
+// ✅ 正しい（ナビゲーションなし・即時 DOM 更新が必要な場合）
+// Unit/Component テストではセレクタは getByRole 優先（data-testid.md 参照）
+page.getByRole('button', { name: '追加' }).element().click();
+flushSync(); // Svelte の pending state をすべて即時適用
+expect((await page.getByRole('listitem').elements()).length).toBe(1);
+
+// ✅ 非同期チェック（DOM が更新されるまで自動ポーリング）
+page.getByRole('button', { name: '保存' }).element().click();
+flushSync();
+await expect.element(page.getByRole('alert')).toBeVisible(); // エラーメッセージは role="alert" 等
+
+// ⚠️ locator.click() は遅い（ナビゲーション待機あり）
+await page.getByRole('button', { name: '追加' }).click(); // 最初のクリックで 5〜15 秒かかる場合あり
+```
+
+**`flushSync` が必要なケース：**
+
+- `element().click()` 直後に `elements()` でリスト件数を確認する場合
+- `element().click()` 直後に同期的なアサーション（`expect(mock).toHaveBeenCalled()` など）をする場合
+
+**`flushSync` が不要なケース：**
+
+- `await expect.element(...).toBeVisible()` など、ポーリングで待機するアサーションの前
 
 ## テストコマンド
 

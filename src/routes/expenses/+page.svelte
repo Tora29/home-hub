@@ -36,8 +36,9 @@
 		MoreVertical
 	} from '@lucide/svelte';
 	import Button from '$lib/components/Button.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Select from '$lib/components/Select.svelte';
-	import ExpenseForm from './components/ExpenseForm.svelte';
+	import ExpenseFormDialog from './components/ExpenseFormDialog.svelte';
 
 	type Category = { id: string; userId: string; name: string; createdAt: Date };
 	type ExpenseWithCategory = {
@@ -220,10 +221,7 @@
 			この月の支出はありません。「登録」ボタンから追加してみましょう！
 		</p>
 	{:else}
-		<ul
-			data-testid="expense-list"
-			class="flex flex-col gap-3"
-		>
+		<ul data-testid="expense-list" class="flex flex-col gap-3">
 			{#each data.expenses.items as exp (exp.id)}
 				<li
 					data-testid="expense-item"
@@ -330,7 +328,9 @@
 										data-testid="expense-menu"
 										class="absolute top-full right-0 z-20 mt-1 w-48 rounded-2xl border border-separator bg-bg-card py-1 shadow-md"
 										onclick={(e) => e.stopPropagation()}
+										onkeydown={(e) => e.stopPropagation()}
 										role="menu"
+										tabindex={0}
 									>
 										{#if exp.approvedAt === null}
 											<button
@@ -395,121 +395,48 @@
 	{/if}
 </div>
 
-<!-- Create dialog -->
-{#if showCreateDialog}
-	<div
-		role="dialog"
-		aria-modal="true"
-		aria-label="支出を登録"
-		tabindex={-1}
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-		onclick={(e) => e.target === e.currentTarget && (showCreateDialog = false)}
-		onkeydown={(e) => e.key === 'Escape' && (showCreateDialog = false)}
-	>
-		<div class="w-full max-w-md rounded-3xl bg-bg-card shadow-md">
-			<ExpenseForm
-				mode="create"
-				categories={data.categories.items}
-				onSuccess={handleFormSuccess}
-				onCancel={() => (showCreateDialog = false)}
-			/>
-		</div>
-	</div>
-{/if}
-
-<!-- Edit dialog -->
-{#if editingExpense}
-	<div
-		role="dialog"
-		aria-modal="true"
-		aria-label="支出を編集"
-		tabindex={-1}
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-		onclick={(e) => e.target === e.currentTarget && (editingExpense = null)}
-		onkeydown={(e) => e.key === 'Escape' && (editingExpense = null)}
-	>
-		<div class="w-full max-w-md rounded-3xl bg-bg-card shadow-md">
-			<ExpenseForm
-				mode="edit"
-				expense={editingExpense}
-				categories={data.categories.items}
-				onSuccess={handleFormSuccess}
-				onCancel={() => (editingExpense = null)}
-			/>
-		</div>
-	</div>
-{/if}
+<!-- Create / Edit dialog -->
+<ExpenseFormDialog
+	open={showCreateDialog}
+	mode="create"
+	categories={data.categories.items}
+	onSuccess={handleFormSuccess}
+	onCancel={() => (showCreateDialog = false)}
+/>
+<ExpenseFormDialog
+	open={editingExpense !== null}
+	mode="edit"
+	expense={editingExpense}
+	categories={data.categories.items}
+	onSuccess={handleFormSuccess}
+	onCancel={() => (editingExpense = null)}
+/>
 
 <!-- Delete confirm dialog -->
-{#if deletingExpense}
-	<div
-		role="alertdialog"
-		aria-modal="true"
-		aria-label="支出を削除しますか？"
-		data-testid="expense-delete-dialog"
-		tabindex={-1}
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-		onkeydown={(e) => e.key === 'Escape' && (deletingExpense = null)}
-	>
-		<div class="w-full max-w-sm rounded-3xl bg-bg-card p-6 shadow-md">
-			<h2 class="mb-2 text-lg font-medium text-label">支出を削除しますか？</h2>
-			<p class="mb-6 text-sm text-secondary">
-				{formatAmount(deletingExpense.amount)}（{deletingExpense.category
-					.name}）を削除します。この操作は元に戻せません。
-			</p>
-			<div class="flex justify-end gap-3">
-				<Button variant="secondary" onclick={() => (deletingExpense = null)} type="button">
-					キャンセル
-				</Button>
-				<Button
-					data-testid="expense-delete-confirm-button"
-					variant="destructive"
-					onclick={() => void handleDeleteConfirm()}
-					disabled={isDeleting}
-					type="button"
-				>
-					削除する
-				</Button>
-			</div>
-		</div>
-	</div>
-{/if}
+<ConfirmDialog
+	open={deletingExpense !== null}
+	title="支出を削除しますか？"
+	description={deletingExpense
+		? `${formatAmount(deletingExpense.amount)}（${deletingExpense.category.name}）を削除します。この操作は元に戻せません。`
+		: ''}
+	confirmLabel="削除する"
+	confirmVariant="destructive"
+	loading={isDeleting}
+	data-testid="expense-delete-dialog"
+	confirmTestid="expense-delete-confirm-button"
+	onConfirm={() => void handleDeleteConfirm()}
+	onCancel={() => (deletingExpense = null)}
+/>
 
 <!-- Finalize confirm dialog -->
-{#if showFinalizeDialog}
-	<div
-		role="alertdialog"
-		aria-modal="true"
-		aria-label="支出を確定しますか？"
-		data-testid="expense-finalize-dialog"
-		tabindex={-1}
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-		onkeydown={(e) => e.key === 'Escape' && !isFinalizing && (showFinalizeDialog = false)}
-	>
-		<div class="w-full max-w-sm rounded-3xl bg-bg-card p-6 shadow-md">
-			<h2 class="mb-2 text-lg font-medium text-label">支出を確定しますか？</h2>
-			<p class="mb-6 text-sm text-secondary">
-				確認済みの支出 {finalizeTargets.length} 件を確定します。確定後は編集・削除・承認状態の変更ができなくなります。
-			</p>
-			<div class="flex justify-end gap-3">
-				<Button
-					variant="secondary"
-					onclick={() => (showFinalizeDialog = false)}
-					disabled={isFinalizing}
-					type="button"
-				>
-					キャンセル
-				</Button>
-				<Button
-					data-testid="expense-finalize-confirm-button"
-					variant="primary"
-					onclick={() => void handleBulkFinalize()}
-					disabled={isFinalizing}
-					type="button"
-				>
-					確定する
-				</Button>
-			</div>
-		</div>
-	</div>
-{/if}
+<ConfirmDialog
+	open={showFinalizeDialog}
+	title="支出を確定しますか？"
+	description={`確認済みの支出 ${finalizeTargets.length} 件を確定します。確定後は編集・削除・承認状態の変更ができなくなります。`}
+	confirmLabel="確定する"
+	loading={isFinalizing}
+	data-testid="expense-finalize-dialog"
+	confirmTestid="expense-finalize-confirm-button"
+	onConfirm={() => void handleBulkFinalize()}
+	onCancel={() => (showFinalizeDialog = false)}
+/>

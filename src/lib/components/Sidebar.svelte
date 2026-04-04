@@ -121,6 +121,7 @@
 	<!-- サイドバーナビ -->
 	<nav
 		data-testid="sidebar"
+		data-sidebar-nav
 		aria-label="メインナビゲーション"
 		aria-hidden={!isOpen}
 		class="flex h-full flex-col overflow-hidden border-r border-separator bg-bg-secondary max-md:w-0 md:w-56"
@@ -204,8 +205,9 @@
 
 <style>
 	/* mount 前（style:width が未設定の間）、data-sidebar-open="false" のときデスクトップで閉じた状態を維持する。
-	   mount 後は JS の inline style:width が CSS より優先されるため、この規則はアニメーションに影響しない。 */
-	:global(html[data-sidebar-open='false'] [data-testid='sidebar']) {
+	   mount 後は JS の inline style:width が CSS より優先されるため、この規則はアニメーションに影響しない。
+	   data-sidebar-nav はスタイリング専用属性。テスト用の data-testid とは分離する。 */
+	:global(html[data-sidebar-open='false'] [data-sidebar-nav]) {
 		width: 0;
 	}
 </style>

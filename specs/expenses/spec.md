@@ -56,9 +56,26 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-015: 確定済みの支出行には行メニューボタンが表示されず、行全体がグレーアウトされる
 - AC-016: 未承認の行の `expense-menu-button` をタップすると `expense-menu` が表示される
 - AC-017: `expense-menu` 表示中にメニュー外をクリックすると `expense-menu` が閉じる
-- AC-018: 未承認行のメニューには「確認済みにする」のみが表示され、「未承認に戻す」「確定対象にする」は表示されない
+- AC-018: 未承認行のメニューには「確認済みにする」のみが表示され、「未承認に戻す」は表示されない
 - AC-019: 確認済み（未確定）行のメニューには「未承認に戻す」が表示され、「確認済みにする」は表示されない
 - AC-020: 確定済み行には `expense-menu-button` が表示されない
+
+#### ダイアログ基本動作（Dialog / ConfirmDialog / ExpenseFormDialog）
+
+- AC-021: `Dialog` は `open=false` のとき描画されない
+- AC-022: `Dialog` は `open=true` のとき children が描画される
+- AC-023: `Dialog` で Escape キーを押すと `onClose` が呼ばれる
+- AC-024: `Dialog` で backdrop をクリックすると `onClose` が呼ばれる（`closeOnBackdrop=true` デフォルト）
+- AC-025: `Dialog` に `closeOnBackdrop=false` を渡すと backdrop クリックで `onClose` が呼ばれない
+- AC-026: `Dialog` に `disabled=true` を渡すと Escape キーで `onClose` が呼ばれない
+- AC-027: `ConfirmDialog` は title・description を表示する
+- AC-028: `ConfirmDialog` のキャンセルボタンを押すと `onCancel` が呼ばれる
+- AC-029: `ConfirmDialog` の確認ボタンを押すと `onConfirm` が呼ばれる
+- AC-030: `ConfirmDialog` に `loading=true` を渡すと両ボタンが disabled になる
+- AC-031: `ConfirmDialog` に `error` を渡すとエラーメッセージが表示される
+- AC-032: `ExpenseFormDialog` は `open=false` のときフォームが描画されない
+- AC-033: `ExpenseFormDialog` は `mode=create` のとき「支出を登録」フォームが表示される
+- AC-034: `ExpenseFormDialog` は `mode=edit` かつ `expense` を渡すと「支出を編集」フォームが表示される
 
 ### 異常系
 
@@ -208,10 +225,10 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 | `expense-approve-button`                 | `<button>` | メニュー内「確認済みにする」（未承認行のみ）                            |
 | `expense-unapprove-button`               | `<button>` | メニュー内「未承認に戻す」（確認済み・未確定行のみ）                    |
 | `expense-bulk-finalize-button`           | `<button>` | まとめて確定ボタン（確認済み未確定が 1 件以上のときヘッダーに自動出現） |
-| `expense-finalize-dialog`                | `<dialog>` | 支出まとめて確定の確認ダイアログ                                        |
+| `expense-finalize-dialog`                | `<div>`    | 支出まとめて確定の確認ダイアログ                                        |
 | `expense-finalize-confirm-button`        | `<button>` | 支出確定の確定ボタン                                                    |
 | `expense-delete-button`                  | `<button>` | 支出削除ボタン                                                          |
-| `expense-delete-dialog`                  | `<dialog>` | 支出削除確認ダイアログ                                                  |
+| `expense-delete-dialog`                  | `<div>`    | 支出削除確認ダイアログ                                                  |
 | `expense-delete-confirm-button`          | `<button>` | 支出削除の確定ボタン                                                    |
 | `expense-empty`                          | `<p>`      | 空状態メッセージ                                                        |
 | `expense-month-select`                   | `<select>` | 月切り替えセレクト                                                      |
@@ -223,7 +240,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 | `expense-category-add-button`            | `<button>` | カテゴリ追加ボタン                                                      |
 | `expense-category-edit-button`           | `<button>` | カテゴリ編集ボタン                                                      |
 | `expense-category-delete-button`         | `<button>` | カテゴリ削除ボタン                                                      |
-| `expense-category-delete-dialog`         | `<dialog>` | カテゴリ削除確認ダイアログ                                              |
+| `expense-category-delete-dialog`         | `<div>`    | カテゴリ削除確認ダイアログ                                              |
 | `expense-category-delete-confirm-button` | `<button>` | カテゴリ削除の確定ボタン                                                |
 | `expense-category-name-error`            | `<p>`      | カテゴリ名エラーメッセージ                                              |
 
@@ -242,7 +259,11 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 | AC-106, AC-109 | Unit        | `[id]/+server.test.ts`, `categories/[id]/+server.test.ts` | NOT_FOUND 形式の 404 を検証                                 |
 | AC-110         | Unit        | `categories/[id]/+server.test.ts`                         | CONFLICT 形式の 409 を検証                                  |
 | AC-113〜114    | Unit        | `[id]/+server.test.ts`, `[id]/finalize/+server.test.ts`   | 確定済みロック・未承認確定の 409 を検証                     |
-| AC-016〜020    | Unit        | `page.svelte.test.ts`                                     | モバイル行メニューの開閉・表示切り替えを検証                |
+| AC-015         | Unit        | `page.svelte.test.ts`                                     | 確定済み行の操作ボタン非表示・グレーアウトを検証            |
+| AC-016〜020    | E2E         | `e2e/expense.e2e.ts`                                      | モバイル viewport 依存のため E2E で検証（testing.md 参照）  |
+| AC-021〜026    | Unit        | `src/lib/components/Dialog.svelte.test.ts`                | Dialog の基本動作（open/close/Escape/backdrop）を検証       |
+| AC-027〜031    | Unit        | `src/lib/components/ConfirmDialog.svelte.test.ts`         | ConfirmDialog の表示・ボタン・loading・error を検証         |
+| AC-032〜034    | Unit        | `components/ExpenseFormDialog.svelte.test.ts`             | ExpenseFormDialog の open/mode 別表示を検証                 |
 | AC-111〜112    | Unit        | `page.svelte.test.ts`                                     | フロントのインラインバリデーション表示を検証（ページ統合）  |
 | AC-111〜112    | Unit        | `components/ExpenseForm.svelte.test.ts`                   | ExpenseForm コンポーネント直接のバリデーション検証          |
 | AC-201〜203    | Unit        | `schema.test.ts`, `categories/schema.test.ts`             | Zod 境界値検証                                              |
@@ -253,7 +274,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 ### Performance
 
-- 支出一覧は月単位で取得。月 100 件以内を想定し、ページネーションは不要
+- 支出一覧は月単位で取得。月 100 件以内を想定。`page`/`limit` によるページネーションを実装済み（limit デフォルト 20、最大 100）
 - カテゴリ一覧は全件取得（カテゴリ数は少量を想定）
 
 ### Security

@@ -22,6 +22,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { Tag, ArrowLeft, Pencil, Trash2, Check, X } from '@lucide/svelte';
 	import Button from '$lib/components/Button.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Input from '$lib/components/Input.svelte';
 
 	type Category = { id: string; userId: string; name: string; createdAt: Date };
@@ -270,46 +271,21 @@
 </div>
 
 <!-- Delete confirm dialog -->
-{#if deletingCategory}
-	<div
-		role="alertdialog"
-		aria-modal="true"
-		aria-label="カテゴリを削除しますか？"
-		data-testid="expense-category-delete-dialog"
-		tabindex={-1}
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-		onkeydown={(e) => e.key === 'Escape' && !isDeleting && (deletingCategory = null)}
-	>
-		<div class="w-full max-w-sm rounded-3xl bg-bg-card p-6 shadow-md">
-			<h2 class="mb-2 text-lg font-medium text-label">カテゴリを削除しますか？</h2>
-			<p class="mb-4 text-sm text-secondary">
-				「{deletingCategory.name}」を削除します。この操作は元に戻せません。
-			</p>
-			{#if deleteError}
-				<p class="mb-4 text-sm text-destructive">{deleteError}</p>
-			{/if}
-			<div class="flex justify-end gap-3">
-				<Button
-					variant="secondary"
-					onclick={() => {
-						deletingCategory = null;
-						deleteError = '';
-					}}
-					disabled={isDeleting}
-					type="button"
-				>
-					キャンセル
-				</Button>
-				<Button
-					data-testid="expense-category-delete-confirm-button"
-					variant="destructive"
-					onclick={() => void handleDeleteConfirm()}
-					disabled={isDeleting}
-					type="button"
-				>
-					削除する
-				</Button>
-			</div>
-		</div>
-	</div>
-{/if}
+<ConfirmDialog
+	open={deletingCategory !== null}
+	title="カテゴリを削除しますか？"
+	description={deletingCategory
+		? `「${deletingCategory.name}」を削除します。この操作は元に戻せません。`
+		: ''}
+	confirmLabel="削除する"
+	confirmVariant="destructive"
+	loading={isDeleting}
+	error={deleteError}
+	data-testid="expense-category-delete-dialog"
+	confirmTestid="expense-category-delete-confirm-button"
+	onConfirm={() => void handleDeleteConfirm()}
+	onCancel={() => {
+		deletingCategory = null;
+		deleteError = '';
+	}}
+/>

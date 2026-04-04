@@ -314,6 +314,26 @@ test.describe('AI レシピ抽出', () => {
 	test('[SPEC: AC-011] テキストを貼り付けて「AI で解析」ボタンを押すとフォームが自動入力され手動入力タブに切り替わる', async ({
 		page
 	}) => {
+		// AI API をモックして確定的なレスポンスを返す（LLM の非決定性によるフラキーを防ぐ）
+		await page.route('**/recipes/extract', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					name: 'テスト炒飯',
+					description: null,
+					servings: 2,
+					cookingTimeMinutes: 15,
+					ingredients: [
+						{ name: '白飯', amount: '2合' },
+						{ name: '卵', amount: '2個' },
+						{ name: 'ネギ', amount: '適量' }
+					],
+					steps: ['油を熱する', '卵を炒める', 'ご飯を加えて炒める']
+				})
+			})
+		);
+
 		const sampleText =
 			'レシピ名: テスト炒飯\n材料: 白飯 2合, 卵 2個, ネギ 適量\n手順: 1. 油を熱する 2. 卵を炒める 3. ご飯を加えて炒める\n人数: 2人前\n調理時間: 15分';
 
@@ -325,10 +345,10 @@ test.describe('AI レシピ抽出', () => {
 		await page.getByTestId('recipes-extract-button').click();
 
 		// 解析完了後、手動入力タブのフォームが表示されることを確認
-		await expect(page.getByTestId('recipes-form')).toBeVisible({ timeout: 30000 });
+		await expect(page.getByTestId('recipes-form')).toBeVisible({ timeout: 10000 });
 
 		// name・ingredients・steps が自動入力されていることを確認
-		await expect(page.getByTestId('recipes-name-input')).not.toHaveValue('');
+		await expect(page.getByTestId('recipes-name-input')).toHaveValue('テスト炒飯');
 		await expect(page.getByTestId('recipes-ingredient-item').first()).toBeVisible();
 		await expect(page.getByTestId('recipes-step-item').first()).toBeVisible();
 

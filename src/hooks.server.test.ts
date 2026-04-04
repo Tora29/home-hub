@@ -7,7 +7,7 @@
  * @spec specs/login/spec.md
  * @covers AC-003
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { handle } from './hooks.server';
 import { createAuth } from '$lib/server/auth';
 
@@ -50,7 +50,7 @@ describe('handle', () => {
 	});
 
 	describe('認証ガード', () => {
-		it('[SPEC: AC-003] 未認証でブラウザから / にアクセスすると /login へリダイレクトされる', async () => {
+		test('[SPEC: AC-003] 未認証でブラウザから / にアクセスすると /login へリダイレクトされる', async () => {
 			const event = createEvent('/', 'text/html,application/xhtml+xml');
 			const resolve = vi.fn();
 
@@ -60,7 +60,7 @@ describe('handle', () => {
 			});
 		});
 
-		it('[SPEC: AC-003] 未認証でも /login へのアクセスはリダイレクトされない', async () => {
+		test('[SPEC: AC-003] 未認証でも /login へのアクセスはリダイレクトされない', async () => {
 			const event = createEvent('/login', 'text/html');
 			const resolve = vi.fn().mockResolvedValue(new Response('ok'));
 
@@ -68,7 +68,7 @@ describe('handle', () => {
 			expect(resolve).toHaveBeenCalled();
 		});
 
-		it('[SPEC: AC-003] 認証済みユーザーは / へアクセスできる', async () => {
+		test('[SPEC: AC-003] 認証済みユーザーは / へアクセスできる', async () => {
 			const event = createEvent('/', 'text/html', { id: 'user-1', email: 'test@example.com' });
 			const resolve = vi.fn().mockResolvedValue(new Response('ok'));
 

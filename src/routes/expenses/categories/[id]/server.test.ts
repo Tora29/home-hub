@@ -8,7 +8,7 @@
  * @covers AC-107, AC-108, AC-109, AC-110
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import type * as ErrorsModule from '$lib/server/errors';
 
 vi.mock('$lib/server/db', () => ({
@@ -53,7 +53,7 @@ beforeEach(() => {
 
 describe('PUT /expense/categories/[id]', () => {
 	describe('正常系', () => {
-		it('[SPEC: AC-011] 有効なカテゴリ名で更新すると、200 を返す', async () => {
+		test('[SPEC: AC-011] 有効なカテゴリ名で更新すると、200 を返す', async () => {
 			const mockUpdated = {
 				id: CATEGORY_ID,
 				userId: 'user-1',
@@ -76,7 +76,7 @@ describe('PUT /expense/categories/[id]', () => {
 	});
 
 	describe('異常系（バリデーション）', () => {
-		it('[SPEC: AC-107] カテゴリ名が空の場合、400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-107] カテゴリ名が空の場合、400 VALIDATION_ERROR を返す', async () => {
 			const response = await PUT({
 				request: makePutRequest({ name: '' }),
 				params: { id: CATEGORY_ID },
@@ -91,7 +91,7 @@ describe('PUT /expense/categories/[id]', () => {
 			expect(body.fields).toContainEqual({ field: 'name', message: 'カテゴリ名は必須です' });
 		});
 
-		it('[SPEC: AC-108] カテゴリ名が51文字以上の場合、400 VALIDATION_ERROR を返す', async () => {
+		test('[SPEC: AC-108] カテゴリ名が51文字以上の場合、400 VALIDATION_ERROR を返す', async () => {
 			const response = await PUT({
 				request: makePutRequest({ name: 'あ'.repeat(51) }),
 				params: { id: CATEGORY_ID },
@@ -108,7 +108,7 @@ describe('PUT /expense/categories/[id]', () => {
 			});
 		});
 
-		it('[SPEC: AC-109] 存在しないカテゴリIDの場合、404 NOT_FOUND を返す', async () => {
+		test('[SPEC: AC-109] 存在しないカテゴリIDの場合、404 NOT_FOUND を返す', async () => {
 			vi.mocked(service.updateCategory).mockRejectedValueOnce(
 				new AppError('NOT_FOUND', 404, '該当データが見つかりません')
 			);
@@ -130,7 +130,7 @@ describe('PUT /expense/categories/[id]', () => {
 
 describe('DELETE /expense/categories/[id]', () => {
 	describe('正常系', () => {
-		it('[SPEC: AC-012] カテゴリに紐付く支出が0件の場合、204 を返す', async () => {
+		test('[SPEC: AC-012] カテゴリに紐付く支出が0件の場合、204 を返す', async () => {
 			vi.mocked(service.deleteCategory).mockResolvedValueOnce(undefined);
 
 			const response = await DELETE({
@@ -145,7 +145,7 @@ describe('DELETE /expense/categories/[id]', () => {
 	});
 
 	describe('異常系', () => {
-		it('[SPEC: AC-109] 存在しないカテゴリIDの場合、404 NOT_FOUND を返す', async () => {
+		test('[SPEC: AC-109] 存在しないカテゴリIDの場合、404 NOT_FOUND を返す', async () => {
 			vi.mocked(service.deleteCategory).mockRejectedValueOnce(
 				new AppError('NOT_FOUND', 404, '該当データが見つかりません')
 			);
@@ -163,7 +163,7 @@ describe('DELETE /expense/categories/[id]', () => {
 			expect(body.message).toBe('該当データが見つかりません');
 		});
 
-		it('[SPEC: AC-110] カテゴリに紐付く支出が1件以上ある場合、409 CONFLICT を返す', async () => {
+		test('[SPEC: AC-110] カテゴリに紐付く支出が1件以上ある場合、409 CONFLICT を返す', async () => {
 			vi.mocked(service.deleteCategory).mockRejectedValueOnce(
 				new AppError('CONFLICT', 409, 'このカテゴリは使用中のため削除できません')
 			);

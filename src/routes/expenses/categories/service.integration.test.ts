@@ -9,7 +9,7 @@
  * @covers AC-010, AC-011, AC-012
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { AppError } from '$lib/server/errors';
@@ -21,7 +21,7 @@ function makeUserId() {
 }
 
 describe('createCategory', () => {
-	it('[SPEC: AC-010] カテゴリを登録できる', async () => {
+	test('[SPEC: AC-010] カテゴリを登録できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -33,7 +33,7 @@ describe('createCategory', () => {
 		expect(created.createdAt).toBeTruthy();
 	});
 
-	it('[SPEC: AC-010] 登録したカテゴリが一覧に表示される', async () => {
+	test('[SPEC: AC-010] 登録したカテゴリが一覧に表示される', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -53,7 +53,7 @@ describe('createCategory', () => {
 });
 
 describe('getCategories', () => {
-	it('[SPEC: AC-010] 自分のカテゴリのみ取得できる（他ユーザーのカテゴリは含まれない）', async () => {
+	test('[SPEC: AC-010] 自分のカテゴリのみ取得できる（他ユーザーのカテゴリは含まれない）', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -70,7 +70,7 @@ describe('getCategories', () => {
 });
 
 describe('updateCategory', () => {
-	it('[SPEC: AC-011] カテゴリ名を更新できる', async () => {
+	test('[SPEC: AC-011] カテゴリ名を更新できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -82,7 +82,7 @@ describe('updateCategory', () => {
 		expect(updated.userId).toBe(userId);
 	});
 
-	it('[SPEC: AC-011] 更新後のカテゴリ名が一覧に反映される', async () => {
+	test('[SPEC: AC-011] 更新後のカテゴリ名が一覧に反映される', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -95,7 +95,7 @@ describe('updateCategory', () => {
 		expect(result.items[0].name).toBe('外食費');
 	});
 
-	it('[SPEC: AC-011] 存在しないカテゴリ ID を指定した場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-011] 存在しないカテゴリ ID を指定した場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -112,7 +112,7 @@ describe('updateCategory', () => {
 		}
 	});
 
-	it('[SPEC: AC-011] 他ユーザーのカテゴリを更新しようとした場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-011] 他ユーザーのカテゴリを更新しようとした場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -126,7 +126,7 @@ describe('updateCategory', () => {
 });
 
 describe('deleteCategory', () => {
-	it('[SPEC: AC-012] 支出が 0 件のカテゴリを削除できる', async () => {
+	test('[SPEC: AC-012] 支出が 0 件のカテゴリを削除できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -137,7 +137,7 @@ describe('deleteCategory', () => {
 		expect(result.items.find((c) => c.id === created.id)).toBeUndefined();
 	});
 
-	it('[SPEC: AC-012] 存在しないカテゴリ ID を指定した場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-012] 存在しないカテゴリ ID を指定した場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -152,7 +152,7 @@ describe('deleteCategory', () => {
 		}
 	});
 
-	it('[SPEC: AC-012] 他ユーザーのカテゴリを削除しようとした場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-012] 他ユーザーのカテゴリを削除しようとした場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -162,7 +162,7 @@ describe('deleteCategory', () => {
 		await expect(deleteCategory(db, userId, otherCategory.id)).rejects.toThrow(AppError);
 	});
 
-	it('[SPEC: AC-012] 支出に紐付くカテゴリは削除できず CONFLICT エラーになる', async () => {
+	test('[SPEC: AC-012] 支出に紐付くカテゴリは削除できず CONFLICT エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 

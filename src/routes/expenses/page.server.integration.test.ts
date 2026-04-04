@@ -9,7 +9,7 @@
  * @covers AC-001, AC-002
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { createExpense, getExpenses } from './service';
@@ -20,7 +20,7 @@ function makeUserId() {
 }
 
 describe('load (expenses +page.server.ts)', () => {
-	it('[SPEC: AC-001] month 未指定時、当月の支出一覧が取得できる', async () => {
+	test('[SPEC: AC-001] month 未指定時、当月の支出一覧が取得できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -41,7 +41,7 @@ describe('load (expenses +page.server.ts)', () => {
 		expect(result.items.map((i) => i.amount)).toEqual(expect.arrayContaining([800, 1200]));
 	});
 
-	it('[SPEC: AC-001] 支出一覧の各アイテムにカテゴリ情報が含まれる', async () => {
+	test('[SPEC: AC-001] 支出一覧の各アイテムにカテゴリ情報が含まれる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -57,7 +57,7 @@ describe('load (expenses +page.server.ts)', () => {
 		expect(result.items[0].category.name).toBe('外食費');
 	});
 
-	it('[SPEC: AC-002] month を指定すると対象月の支出のみ取得できる', async () => {
+	test('[SPEC: AC-002] month を指定すると対象月の支出のみ取得できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -83,7 +83,7 @@ describe('load (expenses +page.server.ts)', () => {
 		expect(pastResult.items).toHaveLength(0);
 	});
 
-	it('[SPEC: AC-002] 月切り替えで複数月にまたがる支出を正しく絞り込める', async () => {
+	test('[SPEC: AC-002] 月切り替えで複数月にまたがる支出を正しく絞り込める', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 

@@ -9,7 +9,7 @@
  * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-008, AC-009, AC-010, AC-107
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { AppError } from '$lib/server/errors';
@@ -20,7 +20,7 @@ function makeUserId() {
 }
 
 describe('createRecipe', () => {
-	it('[SPEC: AC-002] name のみで登録できる', async () => {
+	test('[SPEC: AC-002] name のみで登録できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -34,7 +34,7 @@ describe('createRecipe', () => {
 		expect(created.updatedAt).toBeDefined();
 	});
 
-	it('[SPEC: AC-002] 全フィールドを指定して登録できる', async () => {
+	test('[SPEC: AC-002] 全フィールドを指定して登録できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -62,7 +62,7 @@ describe('createRecipe', () => {
 });
 
 describe('getRecipes', () => {
-	it('[SPEC: AC-001] 登録済みレシピを createdAt_desc（デフォルト）で取得できる', async () => {
+	test('[SPEC: AC-001] 登録済みレシピを createdAt_desc（デフォルト）で取得できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -80,7 +80,7 @@ describe('getRecipes', () => {
 		expect(result.items[2].name).toBe('最初のレシピ');
 	});
 
-	it('[SPEC: AC-001] 自分のレシピのみ取得できる（他ユーザーのレシピは含まれない）', async () => {
+	test('[SPEC: AC-001] 自分のレシピのみ取得できる（他ユーザーのレシピは含まれない）', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -94,7 +94,7 @@ describe('getRecipes', () => {
 		expect(result.items[0].name).toBe('自分のレシピ');
 	});
 
-	it('[SPEC: AC-008] sort=lastCookedAt_asc の場合、lastCookedAt が NULL のレシピが先頭になる', async () => {
+	test('[SPEC: AC-008] sort=lastCookedAt_asc の場合、lastCookedAt が NULL のレシピが先頭になる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -118,7 +118,7 @@ describe('getRecipes', () => {
 		expect(result.items[2].name).toBe('新しいレシピ');
 	});
 
-	it('[SPEC: AC-009] sort=cookedCount_desc の場合、作った回数が多い順になる', async () => {
+	test('[SPEC: AC-009] sort=cookedCount_desc の場合、作った回数が多い順になる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -139,7 +139,7 @@ describe('getRecipes', () => {
 		expect(result.items[2].name).toBe('1回のレシピ');
 	});
 
-	it('[SPEC: AC-010] sort=rating_desc の場合、excellent→good→average→poor→未設定 の順になる', async () => {
+	test('[SPEC: AC-010] sort=rating_desc の場合、excellent→good→average→poor→未設定 の順になる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -159,7 +159,7 @@ describe('getRecipes', () => {
 		expect(result.items[4].name).toBe('未設定');
 	});
 
-	it('[SPEC: AC-001] page と limit でページネーションできる', async () => {
+	test('[SPEC: AC-001] page と limit でページネーションできる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -177,7 +177,7 @@ describe('getRecipes', () => {
 });
 
 describe('getRecipeById', () => {
-	it('[SPEC: AC-003] ID を指定してレシピを取得できる', async () => {
+	test('[SPEC: AC-003] ID を指定してレシピを取得できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -195,7 +195,7 @@ describe('getRecipeById', () => {
 		expect(recipe.description).toBe('詳細説明');
 	});
 
-	it('[SPEC: AC-107] 存在しない ID を指定した場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-107] 存在しない ID を指定した場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -210,7 +210,7 @@ describe('getRecipeById', () => {
 		}
 	});
 
-	it('[SPEC: AC-107] 他ユーザーのレシピ ID を指定した場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-107] 他ユーザーのレシピ ID を指定した場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -222,7 +222,7 @@ describe('getRecipeById', () => {
 });
 
 describe('updateRecipe', () => {
-	it('[SPEC: AC-004] レシピを更新できる', async () => {
+	test('[SPEC: AC-004] レシピを更新できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -243,7 +243,7 @@ describe('updateRecipe', () => {
 		expect(updated.difficulty).toBe('easy');
 	});
 
-	it('[SPEC: AC-004] null を指定してフィールドをクリアできる', async () => {
+	test('[SPEC: AC-004] null を指定してフィールドをクリアできる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -263,7 +263,7 @@ describe('updateRecipe', () => {
 		expect(updated.rating).toBeNull();
 	});
 
-	it('[SPEC: AC-107] 存在しない ID を指定した場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-107] 存在しない ID を指定した場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -272,7 +272,7 @@ describe('updateRecipe', () => {
 		).rejects.toThrow(AppError);
 	});
 
-	it('[SPEC: AC-107] 他ユーザーのレシピを更新しようとした場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-107] 他ユーザーのレシピを更新しようとした場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -286,7 +286,7 @@ describe('updateRecipe', () => {
 });
 
 describe('deleteRecipe', () => {
-	it('[SPEC: AC-005] レシピを削除できる', async () => {
+	test('[SPEC: AC-005] レシピを削除できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -296,14 +296,14 @@ describe('deleteRecipe', () => {
 		await expect(getRecipeById(db, userId, created.id)).rejects.toThrow(AppError);
 	});
 
-	it('[SPEC: AC-107] 存在しない ID を指定した場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-107] 存在しない ID を指定した場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		await expect(deleteRecipe(db, userId, crypto.randomUUID())).rejects.toThrow(AppError);
 	});
 
-	it('[SPEC: AC-107] 他ユーザーのレシピを削除しようとした場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-107] 他ユーザーのレシピを削除しようとした場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
