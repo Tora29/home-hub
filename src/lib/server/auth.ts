@@ -59,6 +59,19 @@ export function createAuth(d1: D1Database, secret: string, baseURL: string) {
 		},
 		session: {
 			expiresIn: 60 * 60 * 24 * 30 // 30日
+		},
+		logger: {
+			// 「User not found」は誤認証テストで意図的に発生する想定内のエラー
+			log: (level: string, message: string, ...args: unknown[]) => {
+				const timestamp = new Date().toISOString();
+				const displayMessage =
+					level === 'error' && message.includes('User not found')
+						? `${message}（想定内: 誤認証テスト）`
+						: message;
+				const formatted = `${timestamp} ${level.toUpperCase()} [Better Auth]: ${displayMessage}`;
+				if (level === 'error') console.error(formatted, ...args);
+				else if (level === 'warn') console.warn(formatted, ...args);
+			}
 		}
 	});
 }
