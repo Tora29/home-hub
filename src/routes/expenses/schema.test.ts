@@ -5,7 +5,7 @@
  *
  * @target ./schema.ts
  * @spec specs/expenses/spec.md
- * @covers AC-101, AC-102, AC-103, AC-104, AC-105, AC-201, AC-202
+ * @covers AC-101, AC-102, AC-103, AC-104, AC-105, AC-115, AC-201, AC-202
  */
 
 import { describe, test, expect } from 'vitest';
@@ -97,6 +97,30 @@ describe('expenseCreateSchema', () => {
 				const issue = result.error.issues.find((i) => i.path.includes('categoryId'));
 				expect(issue).toBeDefined();
 				expect(issue?.message).toBe('カテゴリは必須です');
+			}
+		});
+
+		test('[SPEC: AC-115] 支払者IDが未指定の場合、「支払者は必須です」エラーになる', () => {
+			const result = expenseCreateSchema.safeParse({ amount: 1000, categoryId: 'cat-1' });
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				const issue = result.error.issues.find((i) => i.path.includes('payerId'));
+				expect(issue).toBeDefined();
+				expect(issue?.message).toBe('支払者は必須です');
+			}
+		});
+
+		test('[SPEC: AC-115] 支払者IDが空文字の場合、「支払者は必須です」エラーになる', () => {
+			const result = expenseCreateSchema.safeParse({
+				amount: 1000,
+				categoryId: 'cat-1',
+				payerId: ''
+			});
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				const issue = result.error.issues.find((i) => i.path.includes('payerId'));
+				expect(issue).toBeDefined();
+				expect(issue?.message).toBe('支払者は必須です');
 			}
 		});
 	});

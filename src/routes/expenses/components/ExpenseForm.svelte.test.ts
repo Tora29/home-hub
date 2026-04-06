@@ -5,7 +5,7 @@
  *
  * @target ./ExpenseForm.svelte
  * @spec specs/expenses/spec.md
- * @covers AC-111, AC-112
+ * @covers AC-111, AC-112, AC-120
  */
 
 import { describe, test, expect, afterEach, vi } from 'vitest';
@@ -23,9 +23,15 @@ const mockCategories = [
 	{ id: 'cat-2', userId: 'user-1', name: '交通費', createdAt: new Date() }
 ];
 
+const mockPayers = [
+	{ id: 'payer-1', userId: 'user-1', name: '田中', createdAt: new Date() },
+	{ id: 'payer-2', userId: 'user-1', name: '佐藤', createdAt: new Date() }
+];
+
 const defaultProps = {
 	mode: 'create' as const,
 	categories: mockCategories,
+	payers: mockPayers,
 	onSuccess: vi.fn(),
 	onCancel: vi.fn()
 };
@@ -83,6 +89,37 @@ describe('ExpenseForm - FE バリデーション', () => {
 
 		await expect.element(page.getByTestId('expense-amount-error')).toBeVisible();
 		await expect.element(page.getByTestId('expense-category-error')).toBeVisible();
+	});
+});
+
+describe('ExpenseForm - 支払者バリデーション', () => {
+	test('[SPEC: AC-120] 支払者が未選択のまま確定ボタンを押すと「支払者は必須です」が表示される', async () => {
+		render(ExpenseForm, defaultProps);
+
+		await page.getByRole('textbox').fill('1000');
+		// カテゴリを選択
+		const categorySelect = page.getByTestId('expense-category-select');
+		await categorySelect.selectOptions('cat-1');
+		// 支払者は未選択のまま確定
+		(page.getByRole('button', { name: '確定' }).element() as HTMLElement).click();
+		flushSync();
+
+		await expect.element(page.getByTestId('expense-payer-error')).toBeVisible();
+		await expect.element(page.getByText('支払者は必須です')).toBeVisible();
+	});
+
+	test('[SPEC: AC-120] 支払者が未選択のままの場合、サーバー通信は発生しない', async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+
+		render(ExpenseForm, defaultProps);
+
+		await page.getByRole('textbox').fill('1000');
+		const categorySelect = page.getByTestId('expense-category-select');
+		await categorySelect.selectOptions('cat-1');
+		(page.getByRole('button', { name: '確定' }).element() as HTMLElement).click();
+
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 });
 
