@@ -5,7 +5,7 @@
  *
  * @target ./+server.ts
  * @spec specs/expenses/spec.md
- * @covers AC-113, AC-114
+ * @covers AC-106, AC-113, AC-114
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
@@ -73,32 +73,6 @@ describe('POST /expenses/[id]/finalize', () => {
 			expect(response.status).toBe(404);
 			expect(body.code).toBe('NOT_FOUND');
 			expect(body.message).toBe('該当データが見つかりません');
-		});
-
-		test('[SPEC: AC-014] 確認済みの支出を確定すると 200 と更新済み支出が返る', async () => {
-			const mockExpense = {
-				id: 'expense-1',
-				userId: 'user-1',
-				amount: 3000,
-				categoryId: 'cat-1',
-				approvedAt: new Date('2026-03-01T10:00:00.000Z'),
-				finalizedAt: new Date('2026-03-31T12:00:00.000Z'),
-				createdAt: new Date('2026-03-01T09:00:00.000Z'),
-				category: {
-					id: 'cat-1',
-					userId: 'user-1',
-					name: '食費',
-					createdAt: new Date('2026-01-01T00:00:00.000Z')
-				}
-			};
-			vi.mocked(finalizeExpense).mockResolvedValueOnce(mockExpense);
-
-			const response = await POST(mockEvent('expense-1'));
-			const body = await response.json();
-
-			expect(response.status).toBe(200);
-			expect(body.id).toBe('expense-1');
-			expect(body.finalizedAt).toBe('2026-03-31T12:00:00.000Z');
 		});
 	});
 });

@@ -6,7 +6,7 @@
  *
  * @target ./service.ts
  * @spec specs/expenses/spec.md
- * @covers AC-035, AC-036, AC-037, AC-038, AC-039
+ * @covers AC-035, AC-036, AC-037, AC-038, AC-040, AC-041, AC-105
  */
 
 import { describe, test, expect } from 'vitest';
@@ -22,7 +22,7 @@ function makeUserId() {
 }
 
 describe('createPayer', () => {
-	test('[SPEC: AC-035] 支払者を登録できる', async () => {
+	test('[SPEC: AC-036] 支払者を登録できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -34,7 +34,7 @@ describe('createPayer', () => {
 		expect(created.createdAt).toBeTruthy();
 	});
 
-	test('[SPEC: AC-039] 登録した支払者が一覧に表示される', async () => {
+	test('[SPEC: AC-035] 登録した支払者が一覧に表示される', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -47,7 +47,7 @@ describe('createPayer', () => {
 		expect(result.items.map((p) => p.name)).toEqual(expect.arrayContaining(['鈴木', '佐藤']));
 	});
 
-	test('[SPEC: AC-039] 自分の支払者のみ取得できる（他ユーザーの支払者は含まれない）', async () => {
+	test('[SPEC: AC-035] 自分の支払者のみ取得できる（他ユーザーの支払者は含まれない）', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -63,7 +63,7 @@ describe('createPayer', () => {
 });
 
 describe('updatePayer', () => {
-	test('[SPEC: AC-036] 支払者名を更新できる', async () => {
+	test('[SPEC: AC-037] 支払者名を更新できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -74,7 +74,7 @@ describe('updatePayer', () => {
 		expect(updated.name).toBe('新名前');
 	});
 
-	test('[SPEC: AC-036] 更新後の支払者名が一覧に反映される', async () => {
+	test('[SPEC: AC-037] 更新後の支払者名が一覧に反映される', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -87,30 +87,30 @@ describe('updatePayer', () => {
 		expect(found?.name).toBe('山田太郎');
 	});
 
-	test('[SPEC: AC-036] 存在しない支払者 ID を指定した場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-118] 存在しない支払者 ID を指定した場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
-		await expect(
-			updatePayer(db, userId, 'non-existent-id', { name: '新名前' })
-		).rejects.toThrow(AppError);
+		await expect(updatePayer(db, userId, 'non-existent-id', { name: '新名前' })).rejects.toThrow(
+			AppError
+		);
 	});
 
-	test('[SPEC: AC-036] 他ユーザーの支払者を更新しようとした場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-118] 他ユーザーの支払者を更新しようとした場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
 
 		const otherPayer = await createPayer(db, otherUserId, { name: '他人の支払者' });
 
-		await expect(
-			updatePayer(db, userId, otherPayer.id, { name: '変更後' })
-		).rejects.toThrow(AppError);
+		await expect(updatePayer(db, userId, otherPayer.id, { name: '変更後' })).rejects.toThrow(
+			AppError
+		);
 	});
 });
 
 describe('deletePayer', () => {
-	test('[SPEC: AC-037] 支出が0件の支払者を削除できる', async () => {
+	test('[SPEC: AC-038] 支出が0件の支払者を削除できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -122,14 +122,14 @@ describe('deletePayer', () => {
 		expect(found).toBeUndefined();
 	});
 
-	test('[SPEC: AC-037] 存在しない支払者 ID を指定した場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-118] 存在しない支払者 ID を指定した場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		await expect(deletePayer(db, userId, 'non-existent-id')).rejects.toThrow(AppError);
 	});
 
-	test('[SPEC: AC-037] 他ユーザーの支払者を削除しようとした場合は NOT_FOUND エラーになる', async () => {
+	test('[SPEC: AC-118] 他ユーザーの支払者を削除しようとした場合は NOT_FOUND エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -137,6 +137,40 @@ describe('deletePayer', () => {
 		const otherPayer = await createPayer(db, otherUserId, { name: '他人の支払者' });
 
 		await expect(deletePayer(db, userId, otherPayer.id)).rejects.toThrow(AppError);
+	});
+
+	test('[SPEC: AC-105] 他ユーザーの支出が存在しても自分の支払者を削除できる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+		const otherUserId = makeUserId();
+
+		const myCategory = await createCategory(db, userId, { name: '食費' });
+		const myPayer = await createPayer(db, userId, { name: '削除対象' });
+
+		// 他ユーザーが別の支払者で支出を持っている（自分の支払者には無関係）
+		const otherCategory = await createCategory(db, otherUserId, { name: '食費' });
+		const otherPayer = await createPayer(db, otherUserId, { name: '他人の支払者' });
+		await createExpense(db, otherUserId, {
+			amount: 500,
+			categoryId: otherCategory.id,
+			payerId: otherPayer.id
+		});
+
+		// 自分の myPayer には支出がないので削除できる
+		await expect(deletePayer(db, userId, myPayer.id)).resolves.toBeUndefined();
+		const result = await getPayers(db, userId);
+		expect(result.items.find((p) => p.id === myPayer.id)).toBeUndefined();
+
+		// 自分の支出が存在する場合は CONFLICT になることも確認
+		const myPayer2 = await createPayer(db, userId, { name: '使用中支払者' });
+		await createExpense(db, userId, {
+			amount: 1000,
+			categoryId: myCategory.id,
+			payerId: myPayer2.id
+		});
+		await expect(deletePayer(db, userId, myPayer2.id)).rejects.toMatchObject({
+			code: 'CONFLICT'
+		});
 	});
 
 	test('[SPEC: AC-119] 支出に紐付く支払者は削除できず CONFLICT エラーになる', async () => {
@@ -158,7 +192,7 @@ describe('deletePayer', () => {
 });
 
 describe('支払者付き支出 CRUD', () => {
-	test('[SPEC: AC-038] 支払者を選択して支出を登録すると、支払者情報が支出に紐付いて保存される', async () => {
+	test('[SPEC: AC-040] 支払者を選択して支出を登録すると、支払者情報が支出に紐付いて保存される', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -172,11 +206,11 @@ describe('支払者付き支出 CRUD', () => {
 		});
 
 		expect(expense.payerId).toBe(payer.id);
-		expect(expense.payer.id).toBe(payer.id);
-		expect(expense.payer.name).toBe('田中');
+		expect(expense.payer!.id).toBe(payer.id);
+		expect(expense.payer!.name).toBe('田中');
 	});
 
-	test('[SPEC: AC-039] 支払者を登録するとその支払者を支出作成に使用できる', async () => {
+	test('[SPEC: AC-041] 支払者を登録するとその支払者を支出作成に使用できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -195,7 +229,7 @@ describe('支払者付き支出 CRUD', () => {
 			payerId: payer2.id
 		});
 
-		expect(expense1.payer.name).toBe('佐藤');
-		expect(expense2.payer.name).toBe('鈴木');
+		expect(expense1.payer!.name).toBe('佐藤');
+		expect(expense2.payer!.name).toBe('鈴木');
 	});
 });

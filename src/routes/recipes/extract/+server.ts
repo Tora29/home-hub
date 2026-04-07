@@ -30,7 +30,15 @@ import { extractSchema } from '../schema';
  * @throws VALIDATION_ERROR - 入力値が不正な場合
  */
 export const POST: RequestHandler = async ({ request, platform }) => {
-	const body = await request.json();
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		return json(
+			{ code: 'VALIDATION_ERROR', message: 'リクエストボディが不正です', fields: [] },
+			{ status: 400 }
+		);
+	}
 	const result = extractSchema.safeParse(body);
 	if (!result.success) {
 		return json(
@@ -78,9 +86,6 @@ Rules:
 			});
 		} else {
 			if (!platform?.env?.AI) {
-				console.error(
-					'[recipes/extract] AI binding is not available. Check Cloudflare Pages AI binding configuration.'
-				);
 				return json(
 					{
 						code: 'INTERNAL_SERVER_ERROR',

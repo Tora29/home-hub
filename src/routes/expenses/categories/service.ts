@@ -53,7 +53,7 @@ export async function getCategories(
 		items: rows as Category[],
 		total: rows.length,
 		page: 1,
-		limit: rows.length || 20
+		limit: rows.length
 	};
 }
 
@@ -121,7 +121,7 @@ export async function deleteCategory(db: Db, userId: string, id: string): Promis
 	const [{ linkedCount }] = await db
 		.select({ linkedCount: sql<number>`count(*)` })
 		.from(expense)
-		.where(eq(expense.categoryId, id));
+		.where(and(eq(expense.categoryId, id), eq(expense.userId, userId)));
 
 	if (Number(linkedCount) > 0) {
 		throw new AppError('CONFLICT', 409, 'このカテゴリは使用中のため削除できません');

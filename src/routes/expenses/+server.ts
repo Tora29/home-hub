@@ -12,7 +12,7 @@
  * @endpoints
  * - GET /expenses → 200 ExpenseList - 一覧取得（月フィルタ・ページネーション）
  *   @query month:string page:number=1 limit:number=20
- * - POST /expenses → 201 ExpenseWithCategory - 新規作成
+ * - POST /expenses → 201 ExpenseWithRelations - 新規作成
  *   @body expenseCreateSchema
  *   @errors 400(VALIDATION_ERROR)
  *
@@ -21,9 +21,9 @@
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { AppError } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
-import { expenseCreateSchema } from './schema';
+import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
+import { expenseCreateSchema, expenseQuerySchema } from './schema';
 import { createExpense, getExpenses } from './service';
 
 /**
@@ -32,23 +32,20 @@ import { createExpense, getExpenses } from './service';
  * @calls getExpenses
  */
 export const GET: RequestHandler = async ({ url, locals, platform }) => {
-	const month = url.searchParams.get('month') ?? undefined;
-	const page = Number(url.searchParams.get('page') ?? 1);
-	const limit = Number(url.searchParams.get('limit') ?? 20);
+	const queryResult = expenseQuerySchema.safeParse({
+		month: url.searchParams.get('month') ?? undefined,
+		page: url.searchParams.get('page') ?? undefined,
+		limit: url.searchParams.get('limit') ?? undefined
+	});
+	if (!queryResult.success) return validationErrorResponse(queryResult.error.issues);
+	const { month, page, limit } = queryResult.data;
 
 	try {
 		const db = createDb(platform!.env.DB);
 		const result = await getExpenses(db, locals.user!.id, { month, page, limit });
 		return json(result);
 	} catch (e) {
-		if (e instanceof AppError) {
-			return json({ code: e.code, message: e.message, fields: e.fields }, { status: e.status });
-		}
-		console.error(e);
-		return json(
-			{ code: 'INTERNAL_SERVER_ERROR', message: 'サーバーエラーが発生しました' },
-			{ status: 500 }
-		);
+		return handleApiError(e);
 	}
 };
 
@@ -59,34 +56,17 @@ export const GET: RequestHandler = async ({ url, locals, platform }) => {
  * @throws VALIDATION_ERROR - 入力値が不正な場合
  */
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
-	const body = await request.json();
-	const result = expenseCreateSchema.safeParse(body);
-	if (!result.success) {
-		return json(
-			{
-				code: 'VALIDATION_ERROR',
-				message: '入力値が正しくありません',
-				fields: result.error.issues.map((i) => ({
-					field: i.path.join('.'),
-					message: i.message
-				}))
-			},
-			{ status: 400 }
-		);
-	}
+	const bodyResult = await parseJsonBody(request);
+	if (!bodyResult.ok) return bodyResult.response;
+
+	const result = expenseCreateSchema.safeParse(bodyResult.data);
+	if (!result.success) return validationErrorResponse(result.error.issues);
 
 	try {
 		const db = createDb(platform!.env.DB);
 		const created = await createExpense(db, locals.user!.id, result.data);
 		return json(created, { status: 201 });
 	} catch (e) {
-		if (e instanceof AppError) {
-			return json({ code: e.code, message: e.message, fields: e.fields }, { status: e.status });
-		}
-		console.error(e);
-		return json(
-			{ code: 'INTERNAL_SERVER_ERROR', message: 'サーバーエラーが発生しました' },
-			{ status: 500 }
-		);
+		return handleApiError(e);
 	}
 };

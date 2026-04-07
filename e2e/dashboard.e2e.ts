@@ -34,11 +34,6 @@ async function login(page: Page): Promise<void> {
 	await page.waitForURL('/');
 }
 
-function getCurrentMonth(): string {
-	const now = new Date();
-	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
 async function createCategory(page: Page, name: string): Promise<string> {
 	const res = await page.request.post('/expenses/categories', {
 		data: { name }
@@ -127,14 +122,32 @@ test.describe('ダッシュボード - 期間切り替え', () => {
 });
 
 test.describe('ダッシュボード - 未承認支出警告バナー', () => {
+	let categoryId: string;
+	let payerId: string;
+	let expenseId: string;
+
+	test.beforeEach(async ({ page }) => {
+		await login(page);
+		categoryId = await createCategory(page, `テストカテゴリ_${Date.now()}`);
+		payerId = await createPayer(page, `テスト支払者_${Date.now()}`);
+	});
+
+	test.afterEach(async ({ page }) => {
+		if (expenseId) {
+			try {
+				await page.request.delete(`/expenses/${expenseId}`);
+			} catch {
+				// 確定済みまたは削除済みの場合は無視
+			}
+		}
+		await page.request.delete(`/expenses/categories/${categoryId}`);
+		await page.request.delete(`/expenses/payers/${payerId}`);
+	});
+
 	test('[SPEC: AC-008] 全期間の未承認支出が1件以上ある場合、警告バナーに件数付きで表示される', async ({
 		page
 	}) => {
-		await login(page);
-
-		const categoryId = await createCategory(page, `テストカテゴリ_${Date.now()}`);
-		const payerId = await createPayer(page, `テスト支払者_${Date.now()}`);
-		await createExpense(page, 1000, categoryId, payerId);
+		expenseId = await createExpense(page, 1000, categoryId, payerId);
 
 		await page.goto('/');
 
@@ -146,30 +159,27 @@ test.describe('ダッシュボード - 未承認支出警告バナー', () => {
 		await expect(link).toBeVisible();
 	});
 
-	test('[SPEC: AC-009] 全支出が承認済みになると、警告バナーが非表示になる', async ({
-		page
-	}) => {
-		await login(page);
+	test('[SPEC: AC-009] 全支出が承認済みになると、警告バナーが非表示になる', async ({ page }) => {
+		expenseId = await createExpense(page, 500, categoryId, payerId);
 
-		const month = getCurrentMonth();
-		const categoryId = await createCategory(page, `テストカテゴリ_${Date.now()}`);
-		const payerId = await createPayer(page, `テスト支払者_${Date.now()}`);
-		const expenseId = await createExpense(page, 500, categoryId, payerId);
-
-		// バナーが表示されていることを確認
+		// バナーが表示されていることを確認し、承認前の未承認件数を記録
 		await page.goto('/');
 		await expect(page.getByTestId('expense-pending-alert')).toBeVisible();
+		const alertText = (await page.getByTestId('expense-pending-alert').textContent()) ?? '';
+		const countBefore = parseInt(alertText.match(/(\d+)/)?.[1] ?? '0');
 
 		// 支出を承認済みにする
 		await approveExpense(page, expenseId);
-
-		// ページをリロードしてバナーが消えることを確認
 		await page.reload();
 
-		// 他の未承認支出がない場合はバナーが非表示
-		// ※ 他テストで作成した未承認支出が存在する可能性があるため、
-		//    この特定支出の承認後にバナーが消えることを間接的に検証
-		const _ = month; // month は使用しないが参照しておく（将来の拡張のため）
-		await expect(page.getByTestId('dashboard-total')).toBeVisible();
+		if (countBefore === 1) {
+			// この1件のみが未承認だったため、バナーが非表示になる（AC-009 メインシナリオ）
+			await expect(page.getByTestId('expense-pending-alert')).not.toBeVisible();
+		} else {
+			// 他に未承認支出が存在するため、件数が1減ったことを確認
+			await expect(page.getByTestId('expense-pending-alert')).toContainText(
+				`${countBefore - 1} 件`
+			);
+		}
 	});
 });

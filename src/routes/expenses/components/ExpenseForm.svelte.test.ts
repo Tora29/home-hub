@@ -5,11 +5,16 @@
  *
  * @target ./ExpenseForm.svelte
  * @spec specs/expenses/spec.md
- * @covers AC-111, AC-112, AC-120
+ * @covers AC-111, AC-112, AC-120, AC-206, AC-207
  */
 
 import { describe, test, expect, afterEach, vi } from 'vitest';
 import { flushSync } from 'svelte';
+
+vi.mock('$app/navigation', () => ({
+	goto: vi.fn(),
+	invalidateAll: vi.fn()
+}));
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import ExpenseForm from './ExpenseForm.svelte';
@@ -54,6 +59,7 @@ describe('ExpenseForm - FE バリデーション', () => {
 		render(ExpenseForm, defaultProps);
 
 		(page.getByRole('button', { name: '確定' }).element() as HTMLElement).click();
+		flushSync();
 
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
@@ -77,6 +83,7 @@ describe('ExpenseForm - FE バリデーション', () => {
 
 		await page.getByRole('textbox').fill('1000');
 		(page.getByRole('button', { name: '確定' }).element() as HTMLElement).click();
+		flushSync();
 
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
@@ -96,10 +103,17 @@ describe('ExpenseForm - 支払者バリデーション', () => {
 	test('[SPEC: AC-120] 支払者が未選択のまま確定ボタンを押すと「支払者は必須です」が表示される', async () => {
 		render(ExpenseForm, defaultProps);
 
-		await page.getByRole('textbox').fill('1000');
+		// testing.md: locator.fill() は SvelteKit 環境でナビゲーション待機タイムアウトが発生するため
+		// element() で DOM を直接操作して oninput をディスパッチする
+		const inputEl = page.getByRole('textbox').element() as HTMLInputElement;
+		inputEl.value = '1000';
+		inputEl.dispatchEvent(new Event('input', { bubbles: true }));
 		// カテゴリを選択
-		const categorySelect = page.getByTestId('expense-category-select');
-		await categorySelect.selectOptions('cat-1');
+		const categorySelectEl = page
+			.getByTestId('expense-category-select')
+			.element() as HTMLSelectElement;
+		categorySelectEl.value = 'cat-1';
+		categorySelectEl.dispatchEvent(new Event('change', { bubbles: true }));
 		// 支払者は未選択のまま確定
 		(page.getByRole('button', { name: '確定' }).element() as HTMLElement).click();
 		flushSync();
@@ -114,10 +128,16 @@ describe('ExpenseForm - 支払者バリデーション', () => {
 
 		render(ExpenseForm, defaultProps);
 
-		await page.getByRole('textbox').fill('1000');
-		const categorySelect = page.getByTestId('expense-category-select');
-		await categorySelect.selectOptions('cat-1');
+		const inputEl = page.getByRole('textbox').element() as HTMLInputElement;
+		inputEl.value = '1000';
+		inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+		const categorySelectEl = page
+			.getByTestId('expense-category-select')
+			.element() as HTMLSelectElement;
+		categorySelectEl.value = 'cat-1';
+		categorySelectEl.dispatchEvent(new Event('change', { bubbles: true }));
 		(page.getByRole('button', { name: '確定' }).element() as HTMLElement).click();
+		flushSync();
 
 		expect(fetchMock).not.toHaveBeenCalled();
 	});

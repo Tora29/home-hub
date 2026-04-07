@@ -117,16 +117,27 @@ spec.md の画面仕様・UI Requirements に基づき、infra-spec.md のディ
 
 worktree で生成した実装ファイルを main ブランチに取り込む。
 
-```bash
-# main ブランチに戻る
-cd ../home-hub
+> **注意**: `git checkout BRANCH -- directory/` はディレクトリ内のテストファイルも含めて丸ごとチェックアウトしてしまい、他スキルが先にコミットしたテストファイルを上書きする危険がある。
+> **必ず `find + cp` でテストファイルを除いた実装ファイルのみをコピーすること。**
 
-# worktree の実装ファイルのみを取り込む（テストは main 側に既にある）
-git checkout worktree/scaffold-fe-{feature} -- src/routes/{feature}/
+```bash
+WORKTREE=../home-hub-fe-{feature}
+
+# 実装ファイルのみをコピー（テストファイルは除外）
+find "$WORKTREE/src/routes/{feature}" \( -name "*.ts" -o -name "*.svelte" \) | \
+  grep -v "\.test\.ts$" | grep -v "\.integration\.test\.ts$" | grep -v "\.svelte\.test\.ts$" | \
+  while read f; do
+    dest="./src${f#$WORKTREE/src}"
+    mkdir -p "$(dirname "$dest")"
+    cp "$f" "$dest"
+  done
 
 # worktree を削除
-git worktree remove ../home-hub-fe-{feature}
+git worktree remove --force "$WORKTREE"
 git branch -d worktree/scaffold-fe-{feature}
+
+# 実装ファイルのみをステージ（テストファイルが混入していないか確認してからコミット）
+git status --short  # *.test.ts 系が混入していないことを確認
 ```
 
 ### Step 6: 次のステップ案内

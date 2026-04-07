@@ -6,14 +6,14 @@
  *
  * @target ./service.ts
  * @spec specs/dashboard/spec.md
- * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-201, AC-202, AC-203
+ * @covers AC-001, AC-002, AC-003, AC-004, AC-006, AC-007, AC-201, AC-202, AC-203
  */
 
 import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { getDashboardSummary } from './service';
-import { createExpense, updateExpense } from '../../expenses/service';
+import { createExpense, approveExpense } from '../../expenses/service';
 import { createCategory } from '../../expenses/categories/service';
 import { createPayer } from '../../expenses/payers/service';
 
@@ -43,7 +43,7 @@ describe('getDashboardSummary - 月別集計', () => {
 		expect(summary.overall).toBe(3000);
 	});
 
-	test('[SPEC: AC-005] 全体合計金額が正しい整数で返る', async () => {
+	test('[SPEC: AC-001] 複数支出の合計金額が正しく集計される', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const month = getCurrentMonth();
@@ -159,11 +159,7 @@ describe('getDashboardSummary - 月別集計', () => {
 			categoryId: category.id,
 			payerId: payer.id
 		});
-		await updateExpense(db, userId, expense2.id, {
-			amount: 2000,
-			categoryId: category.id,
-			approved: true
-		});
+		await approveExpense(db, userId, expense2.id);
 
 		const summary = await getDashboardSummary(db, userId, { period: 'month', month });
 
@@ -201,8 +197,8 @@ describe('getDashboardSummary - 全期間集計', () => {
 		// 全期間なので month 指定しても全件取得
 		const summary = await getDashboardSummary(db, userId, { period: 'all', month: '2020-01' });
 
-		// ユーザーの支出は当月に登録されているため全期間集計では含まれる
-		expect(summary.overall).toBeGreaterThanOrEqual(5000);
+		// userId で分離されているため、このユーザーの 1 件分だけが集計される
+		expect(summary.overall).toBe(5000);
 	});
 
 	test('[SPEC: AC-003] 自分の支出のみ集計される（他ユーザーは含まれない）', async () => {

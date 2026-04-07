@@ -3,6 +3,10 @@
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
+	"engines": {
+		"node": ">=22.0.0",
+		"npm": ">=11.10.0"
+	},
 	"scripts": {
 		"dev": "vite dev",
 		"dev:cf": "npm run build && wrangler pages dev .svelte-kit/cloudflare",

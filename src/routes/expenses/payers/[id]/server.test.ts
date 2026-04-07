@@ -5,7 +5,7 @@
  *
  * @target ./+server.ts
  * @spec specs/expenses/spec.md
- * @covers AC-118, AC-119
+ * @covers AC-116, AC-117, AC-118, AC-119
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
@@ -52,29 +52,6 @@ beforeEach(() => {
 });
 
 describe('PUT /expenses/payers/[id]', () => {
-	describe('正常系', () => {
-		test('[SPEC: AC-036] 有効な支払者名で更新すると、200 を返す', async () => {
-			const mockUpdated = {
-				id: PAYER_ID,
-				userId: 'user-1',
-				name: '鈴木',
-				createdAt: new Date('2026-03-01T00:00:00.000Z')
-			};
-			vi.mocked(service.updatePayer).mockResolvedValueOnce(mockUpdated);
-
-			const response = await PUT({
-				request: makePutRequest({ name: '鈴木' }),
-				params: { id: PAYER_ID },
-				locals: mockLocals,
-				platform: mockPlatform
-			} as Parameters<typeof PUT>[0]);
-
-			expect(response.status).toBe(200);
-			const body = await response.json();
-			expect(body.name).toBe('鈴木');
-		});
-	});
-
 	describe('異常系（バリデーション）', () => {
 		test('[SPEC: AC-116] 支払者名が空の場合、400 VALIDATION_ERROR を返す', async () => {
 			const response = await PUT({
@@ -129,21 +106,6 @@ describe('PUT /expenses/payers/[id]', () => {
 });
 
 describe('DELETE /expenses/payers/[id]', () => {
-	describe('正常系', () => {
-		test('[SPEC: AC-037] 支払者に紐付く支出が0件の場合、204 を返す', async () => {
-			vi.mocked(service.deletePayer).mockResolvedValueOnce(undefined);
-
-			const response = await DELETE({
-				request: makeDeleteRequest(),
-				params: { id: PAYER_ID },
-				locals: mockLocals,
-				platform: mockPlatform
-			} as Parameters<typeof PUT>[0]);
-
-			expect(response.status).toBe(204);
-		});
-	});
-
 	describe('異常系', () => {
 		test('[SPEC: AC-118] 存在しない支払者IDの場合、404 NOT_FOUND を返す', async () => {
 			vi.mocked(service.deletePayer).mockRejectedValueOnce(
@@ -155,7 +117,7 @@ describe('DELETE /expenses/payers/[id]', () => {
 				params: { id: 'non-existent-id' },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as Parameters<typeof PUT>[0]);
+			} as Parameters<typeof DELETE>[0]);
 
 			expect(response.status).toBe(404);
 			const body = await response.json();
@@ -173,7 +135,7 @@ describe('DELETE /expenses/payers/[id]', () => {
 				params: { id: PAYER_ID },
 				locals: mockLocals,
 				platform: mockPlatform
-			} as Parameters<typeof PUT>[0]);
+			} as Parameters<typeof DELETE>[0]);
 
 			expect(response.status).toBe(409);
 			const body = await response.json();

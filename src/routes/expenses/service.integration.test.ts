@@ -6,7 +6,7 @@
  *
  * @target ./service.ts
  * @spec specs/expenses/spec.md
- * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009, AC-013, AC-014, AC-015, AC-038, AC-039
+ * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-013, AC-014, AC-015, AC-038, AC-039, AC-102, AC-103, dashboard/AC-008, dashboard/AC-009
  */
 
 import { describe, test, expect } from 'vitest';
@@ -17,6 +17,8 @@ import {
 	getExpenses,
 	createExpense,
 	updateExpense,
+	approveExpense,
+	unapproveExpense,
 	deleteExpense,
 	finalizeExpense,
 	getUnapprovedCount
@@ -180,11 +182,7 @@ describe('getExpenses', () => {
 		await createExpense(db, userId, { amount: 2000, categoryId: category.id, payerId: payer.id });
 
 		// expense1 を承認済みにする
-		await updateExpense(db, userId, expense1.id, {
-			amount: 1000,
-			categoryId: category.id,
-			approved: true
-		});
+		await approveExpense(db, userId, expense1.id);
 
 		const now = new Date();
 		const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -209,11 +207,7 @@ describe('updateExpense', () => {
 
 		expect(created.approvedAt).toBeNull();
 
-		const updated = await updateExpense(db, userId, created.id, {
-			amount: 1500,
-			categoryId: category.id,
-			approved: true
-		});
+		const updated = await approveExpense(db, userId, created.id);
 
 		expect(updated.id).toBe(created.id);
 		expect(updated.approvedAt).not.toBeNull();
@@ -234,18 +228,10 @@ describe('updateExpense', () => {
 		});
 
 		// まず承認済みにする
-		await updateExpense(db, userId, created.id, {
-			amount: 1500,
-			categoryId: category.id,
-			approved: true
-		});
+		await approveExpense(db, userId, created.id);
 
 		// 未承認に戻す
-		const reverted = await updateExpense(db, userId, created.id, {
-			amount: 1500,
-			categoryId: category.id,
-			approved: false
-		});
+		const reverted = await unapproveExpense(db, userId, created.id);
 
 		expect(reverted.approvedAt).toBeNull();
 	});
@@ -266,7 +252,7 @@ describe('updateExpense', () => {
 		const updated = await updateExpense(db, userId, created.id, {
 			amount: 3000,
 			categoryId: category2.id,
-			approved: false
+			payerId: payer.id
 		});
 
 		expect(updated.id).toBe(created.id);
@@ -280,12 +266,13 @@ describe('updateExpense', () => {
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
+		const payer = await createPayer(db, userId, { name: '田中' });
 
 		await expect(
 			updateExpense(db, userId, crypto.randomUUID(), {
 				amount: 1000,
 				categoryId: category.id,
-				approved: false
+				payerId: payer.id
 			})
 		).rejects.toThrow(AppError);
 
@@ -293,7 +280,7 @@ describe('updateExpense', () => {
 			await updateExpense(db, userId, crypto.randomUUID(), {
 				amount: 1000,
 				categoryId: category.id,
-				approved: false
+				payerId: payer.id
 			});
 		} catch (e) {
 			expect(e).toBeInstanceOf(AppError);
@@ -316,12 +303,13 @@ describe('updateExpense', () => {
 		});
 
 		const myCategory = await createCategory(db, userId, { name: '食費' });
+		const myPayer = await createPayer(db, userId, { name: '田中' });
 
 		await expect(
 			updateExpense(db, userId, otherExpense.id, {
 				amount: 2000,
 				categoryId: myCategory.id,
-				approved: false
+				payerId: myPayer.id
 			})
 		).rejects.toThrow(AppError);
 	});
@@ -393,11 +381,7 @@ describe('finalizeExpense', () => {
 		});
 
 		// まず確認済みにする
-		await updateExpense(db, userId, created.id, {
-			amount: 1500,
-			categoryId: category.id,
-			approved: true
-		});
+		await approveExpense(db, userId, created.id);
 
 		const finalized = await finalizeExpense(db, userId, created.id);
 
@@ -419,18 +403,14 @@ describe('finalizeExpense', () => {
 			categoryId: category.id,
 			payerId: payer.id
 		});
-		await updateExpense(db, userId, created.id, {
-			amount: 2000,
-			categoryId: category.id,
-			approved: true
-		});
+		await approveExpense(db, userId, created.id);
 		await finalizeExpense(db, userId, created.id);
 
 		try {
 			await updateExpense(db, userId, created.id, {
 				amount: 9999,
 				categoryId: category.id,
-				approved: true
+				payerId: payer.id
 			});
 			expect.fail('CONFLICT エラーが発生しなかった');
 		} catch (e) {
@@ -452,11 +432,7 @@ describe('finalizeExpense', () => {
 			categoryId: category.id,
 			payerId: payer.id
 		});
-		await updateExpense(db, userId, created.id, {
-			amount: 3000,
-			categoryId: category.id,
-			approved: true
-		});
+		await approveExpense(db, userId, created.id);
 		await finalizeExpense(db, userId, created.id);
 
 		try {
@@ -505,11 +481,7 @@ describe('finalizeExpense', () => {
 			categoryId: category.id,
 			payerId: payer.id
 		});
-		await updateExpense(db, userId, created.id, {
-			amount: 1000,
-			categoryId: category.id,
-			approved: true
-		});
+		await approveExpense(db, userId, created.id);
 		await finalizeExpense(db, userId, created.id);
 
 		try {
@@ -548,11 +520,7 @@ describe('finalizeExpense', () => {
 			categoryId: category.id,
 			payerId: payer.id
 		});
-		await updateExpense(db, userId, created.id, {
-			amount: 1200,
-			categoryId: category.id,
-			approved: true
-		});
+		await approveExpense(db, userId, created.id);
 		await finalizeExpense(db, userId, created.id);
 
 		const now = new Date();
@@ -566,7 +534,7 @@ describe('finalizeExpense', () => {
 });
 
 describe('getUnapprovedCount', () => {
-	test('[SPEC: AC-008] 未承認の支出が 1 件以上ある場合、件数が返る', async () => {
+	test('[SPEC: dashboard/AC-008] 未承認の支出が 1 件以上ある場合、件数が返る', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
@@ -579,7 +547,7 @@ describe('getUnapprovedCount', () => {
 		expect(count).toBe(2);
 	});
 
-	test('[SPEC: AC-008] 自分の未承認支出のみカウントされる（他ユーザーの支出は含まれない）', async () => {
+	test('[SPEC: dashboard/AC-008] 自分の未承認支出のみカウントされる（他ユーザーの支出は含まれない）', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
@@ -589,43 +557,133 @@ describe('getUnapprovedCount', () => {
 		const myPayer = await createPayer(db, userId, { name: '田中' });
 		const otherPayer = await createPayer(db, otherUserId, { name: '他人' });
 
-		await createExpense(db, userId, { amount: 1000, categoryId: myCategory.id, payerId: myPayer.id });
-		await createExpense(db, otherUserId, { amount: 2000, categoryId: otherCategory.id, payerId: otherPayer.id });
+		await createExpense(db, userId, {
+			amount: 1000,
+			categoryId: myCategory.id,
+			payerId: myPayer.id
+		});
+		await createExpense(db, otherUserId, {
+			amount: 2000,
+			categoryId: otherCategory.id,
+			payerId: otherPayer.id
+		});
 
 		const count = await getUnapprovedCount(db, userId);
 		expect(count).toBe(1);
 	});
 
-	test('[SPEC: AC-009] 全支出が承認済みの場合、0 が返る', async () => {
+	test('[SPEC: dashboard/AC-009] 全支出が承認済みの場合、0 が返る', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
 		const payer = await createPayer(db, userId, { name: '田中' });
-		const expense1 = await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerId: payer.id });
-		const expense2 = await createExpense(db, userId, { amount: 2000, categoryId: category.id, payerId: payer.id });
-
-		await updateExpense(db, userId, expense1.id, {
+		const expense1 = await createExpense(db, userId, {
 			amount: 1000,
 			categoryId: category.id,
-			approved: true
+			payerId: payer.id
 		});
-		await updateExpense(db, userId, expense2.id, {
+		const expense2 = await createExpense(db, userId, {
 			amount: 2000,
 			categoryId: category.id,
-			approved: true
+			payerId: payer.id
 		});
+
+		await approveExpense(db, userId, expense1.id);
+		await approveExpense(db, userId, expense2.id);
 
 		const count = await getUnapprovedCount(db, userId);
 		expect(count).toBe(0);
 	});
 
-	test('[SPEC: AC-009] 支出が 0 件の場合、0 が返る', async () => {
+	test('[SPEC: dashboard/AC-009] 支出が 0 件の場合、0 が返る', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		const count = await getUnapprovedCount(db, userId);
 		expect(count).toBe(0);
+	});
+});
+
+describe('createExpense / updateExpense クロステナント参照チェック', () => {
+	test('[SPEC: AC-102] 他ユーザーの categoryId を指定した場合は NOT_FOUND になる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+		const otherUserId = makeUserId();
+
+		const otherCategory = await createCategory(db, otherUserId, { name: '他人の食費' });
+		const myPayer = await createPayer(db, userId, { name: '田中' });
+
+		await expect(
+			createExpense(db, userId, {
+				amount: 1000,
+				categoryId: otherCategory.id,
+				payerId: myPayer.id
+			})
+		).rejects.toMatchObject({ code: 'NOT_FOUND' });
+	});
+
+	test('[SPEC: AC-103] 他ユーザーの payerId を指定した場合は NOT_FOUND になる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+		const otherUserId = makeUserId();
+
+		const myCategory = await createCategory(db, userId, { name: '食費' });
+		const otherPayer = await createPayer(db, otherUserId, { name: '他人' });
+
+		await expect(
+			createExpense(db, userId, {
+				amount: 1000,
+				categoryId: myCategory.id,
+				payerId: otherPayer.id
+			})
+		).rejects.toMatchObject({ code: 'NOT_FOUND' });
+	});
+
+	test('[SPEC: AC-102] updateExpense で他ユーザーの categoryId を指定した場合は NOT_FOUND になる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+		const otherUserId = makeUserId();
+
+		const myCategory = await createCategory(db, userId, { name: '食費' });
+		const otherCategory = await createCategory(db, otherUserId, { name: '他人の食費' });
+		const myPayer = await createPayer(db, userId, { name: '田中' });
+		const created = await createExpense(db, userId, {
+			amount: 1000,
+			categoryId: myCategory.id,
+			payerId: myPayer.id
+		});
+
+		await expect(
+			updateExpense(db, userId, created.id, {
+				amount: 2000,
+				categoryId: otherCategory.id,
+				payerId: myPayer.id
+			})
+		).rejects.toMatchObject({ code: 'NOT_FOUND' });
+	});
+
+	test('[SPEC: AC-103] updateExpense で他ユーザーの payerId を指定した場合は NOT_FOUND になる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+		const otherUserId = makeUserId();
+
+		const myCategory = await createCategory(db, userId, { name: '食費' });
+		const myPayer = await createPayer(db, userId, { name: '田中' });
+		const otherPayer = await createPayer(db, otherUserId, { name: '他人' });
+		const created = await createExpense(db, userId, {
+			amount: 1000,
+			categoryId: myCategory.id,
+			payerId: myPayer.id
+		});
+
+		await expect(
+			updateExpense(db, userId, created.id, {
+				amount: 2000,
+				categoryId: myCategory.id,
+				payerId: otherPayer.id
+			})
+		).rejects.toMatchObject({ code: 'NOT_FOUND' });
 	});
 });
 
@@ -644,8 +702,8 @@ describe('支払者付き支出 CRUD', () => {
 		});
 
 		expect(expense.payerId).toBe(payer.id);
-		expect(expense.payer.id).toBe(payer.id);
-		expect(expense.payer.name).toBe('田中');
+		expect(expense.payer!.id).toBe(payer.id);
+		expect(expense.payer!.name).toBe('田中');
 	});
 
 	test('[SPEC: AC-039] 支払者を登録して支出に紐付けると、支出一覧で支払者名が確認できる', async () => {
@@ -667,6 +725,6 @@ describe('支払者付き支出 CRUD', () => {
 
 		const found = result.items.find((e) => e.payerId === payer.id);
 		expect(found).toBeDefined();
-		expect(found!.payer.name).toBe('佐藤');
+		expect(found!.payer!.name).toBe('佐藤');
 	});
 });

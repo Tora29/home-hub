@@ -148,10 +148,16 @@ describe('RecipeForm - AI解析タブの sourceUrl 引き継ぎ', () => {
 
 		// AI解析タブ（create モードのデフォルト）で sourceUrl を入力
 		await expect.element(page.getByTestId('recipes-source-url-input')).toBeVisible();
-		await page.getByTestId('recipes-source-url-input').fill('https://example.com/recipe');
+		const sourceInput = page.getByTestId('recipes-source-url-input').element() as HTMLInputElement;
+		sourceInput.value = 'https://example.com/recipe';
+		sourceInput.dispatchEvent(new Event('input', { bubbles: true }));
+		flushSync();
 
 		// テキストを入力して解析ボタンをクリック
-		await page.getByTestId('recipes-extract-input').fill('カレーの作り方。材料：カレールー');
+		const extractInput = page.getByTestId('recipes-extract-input').element() as HTMLTextAreaElement;
+		extractInput.value = 'カレーの作り方。材料：カレールー';
+		extractInput.dispatchEvent(new Event('input', { bubbles: true }));
+		flushSync();
 		(page.getByTestId('recipes-extract-button').element() as HTMLElement).click();
 
 		// 手動入力タブに切り替わり、sourceUrl が引き継がれていることを確認

@@ -12,7 +12,7 @@
 import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
-import { createExpense, updateExpense, getUnapprovedCount } from './expenses/service';
+import { createExpense, approveExpense, getUnapprovedCount } from './expenses/service';
 import { createCategory } from './expenses/categories/service';
 import { createPayer } from './expenses/payers/service';
 import { getDashboardSummary } from './dashboard/summary/service';
@@ -175,16 +175,8 @@ describe('load (ダッシュボード +page.server.ts)', () => {
 		});
 
 		// 全件を承認済みにする
-		await updateExpense(db, userId, expense1.id, {
-			amount: 1000,
-			categoryId: category.id,
-			approved: true
-		});
-		await updateExpense(db, userId, expense2.id, {
-			amount: 2000,
-			categoryId: category.id,
-			approved: true
-		});
+		await approveExpense(db, userId, expense1.id);
+		await approveExpense(db, userId, expense2.id);
 
 		const unapprovedCount = await getUnapprovedCount(db, userId);
 

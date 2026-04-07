@@ -21,6 +21,10 @@ export const dashboardSummaryQuerySchema = z.object({
 	month: z
 		.string()
 		.regex(/^\d{4}-\d{2}$/, '月はYYYY-MM形式で入力してください')
+		.refine((m) => {
+			const mon = Number(m.split('-')[1]);
+			return mon >= 1 && mon <= 12;
+		}, '月は01〜12で入力してください')
 		.optional()
 });
 
