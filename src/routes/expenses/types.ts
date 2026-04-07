@@ -27,7 +27,7 @@ export type ExpenseWithRelations = {
 	userId: string;
 	amount: number;
 	categoryId: string;
-	payerId: string;
+	payerId: string | null;
 	approvedAt: Date | null;
 	finalizedAt: Date | null;
 	createdAt: Date;

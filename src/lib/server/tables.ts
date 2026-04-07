@@ -90,9 +90,7 @@ export const expense = sqliteTable('Expense', {
 	categoryId: text('categoryId')
 		.notNull()
 		.references(() => expenseCategory.id, { onDelete: 'restrict' }),
-	payerId: text('payerId')
-		.notNull()
-		.references(() => expensePayer.id, { onDelete: 'restrict' }),
+	payerId: text('payerId').references(() => expensePayer.id, { onDelete: 'restrict' }),
 	approvedAt: integer('approvedAt', { mode: 'timestamp' }),
 	finalizedAt: integer('finalizedAt', { mode: 'timestamp' }),
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()

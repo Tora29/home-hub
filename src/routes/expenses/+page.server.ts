@@ -18,13 +18,13 @@ import { getPayers } from './payers/service';
 
 export const load: PageServerLoad = async ({ platform, locals, url }) => {
 	const db = createDb(platform!.env.DB);
-	const monthParam = url.searchParams.get('month') ?? undefined;
 	const now = new Date();
-	const currentMonth =
-		monthParam ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+	// currentMonth は常に今日の月。月ドロップダウンの選択肢は今月を起点に固定する（AC-002b）
+	const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+	const selectedMonth = url.searchParams.get('month') ?? currentMonth;
 
 	const [expenses, categories, payers] = await Promise.all([
-		getExpenses(db, locals.user!.id, { month: currentMonth }),
+		getExpenses(db, locals.user!.id, { month: selectedMonth }),
 		getCategories(db, locals.user!.id),
 		getPayers(db, locals.user!.id)
 	]);

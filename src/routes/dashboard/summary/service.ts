@@ -78,8 +78,7 @@ export async function getDashboardSummary(
 		.where(whereClause);
 
 	// 支払者別合計（多い順）
-	// payerId = '' の legacy 行（migration 0006 由来）は LEFT JOIN で expensePayer が null になるため除外される。
-	// overall との不一致は既知の migration artifact であり、byPayer の空状態仕様（AC-202）を優先する。
+	// payerId が NULL の行（migration 0007 で修正済み）は LEFT JOIN で expensePayer が null になるため除外される。
 	const payerRows = await db
 		.select({
 			payerId: expensePayer.id,

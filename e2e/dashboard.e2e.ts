@@ -4,10 +4,11 @@
  * @testType e2e
  *
  * @spec specs/dashboard/spec.md
- * @covers AC-002, AC-003, AC-004, AC-008, AC-009
+ * @covers AC-002, AC-002b, AC-003, AC-004, AC-008, AC-009
  *
  * @scenarios
  * - 月切り替えセレクトで表示月を変更
+ * - 月切り替えセレクトの選択肢は過去月選択後も当月を含む（AC-002b）
  * - 「全期間」タブ選択で月切り替えセレクトが非表示になる
  * - 「月別」タブ選択で月切り替えセレクトが再表示される
  * - 全期間の未承認支出がある場合に警告バナーが表示される
@@ -87,6 +88,34 @@ test.describe('ダッシュボード - 期間切り替え', () => {
 		await page.getByTestId('dashboard-month-select').selectOption(prevMonth);
 
 		// 月切り替え後も dashboard-total が表示されていること
+		await expect(page.getByTestId('dashboard-total')).toBeVisible();
+	});
+
+	test('[SPEC: AC-002b] 過去月を選択しても選択肢に当月が含まれたまま', async ({ page }) => {
+		await login(page);
+		await page.goto('/');
+
+		const currentMonth = (() => {
+			const now = new Date();
+			return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+		})();
+
+		const prevMonth = (() => {
+			const now = new Date();
+			const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+			return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+		})();
+
+		// 過去月に切り替える
+		await page.getByTestId('dashboard-month-select').selectOption(prevMonth);
+
+		// 当月がセレクトの選択肢に存在することを確認
+		const options = await page.getByTestId('dashboard-month-select').locator('option').all();
+		const optionValues = await Promise.all(options.map((o) => o.getAttribute('value')));
+		expect(optionValues).toContain(currentMonth);
+
+		// 当月に戻せることを確認
+		await page.getByTestId('dashboard-month-select').selectOption(currentMonth);
 		await expect(page.getByTestId('dashboard-total')).toBeVisible();
 	});
 

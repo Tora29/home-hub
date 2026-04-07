@@ -22,7 +22,7 @@
 
 	type Summary = typeof data.summary;
 
-	const monthOptions = generateMonthOptions(data.currentMonth);
+	const monthOptions = $derived(generateMonthOptions(data.currentMonth));
 
 	let period = $state<'month' | 'all'>('month');
 	// SSR と一致させるため、サーバーが計算した UTC 月で初期化する

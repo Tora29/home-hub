@@ -4,7 +4,7 @@
  * @testType e2e
  *
  * @spec specs/expenses/spec.md
- * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009,
+ * @covers AC-001, AC-002, AC-002b, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009,
  *         AC-010, AC-011, AC-012, AC-013, AC-014, AC-015, AC-016, AC-017, AC-018, AC-019, AC-020,
  *         AC-035, AC-036, AC-037, AC-038, AC-039,
  *         AC-111, AC-112, AC-120, AC-204, AC-205
@@ -189,6 +189,30 @@ test.describe('支出一覧画面 - 月切り替え', () => {
 
 		// 空状態か一覧のどちらかが表示される（月によって異なるが URL は確認可能）
 		await expect(page.getByTestId('expense-month-select')).toHaveValue(oldMonth);
+	});
+
+	test('[SPEC: AC-002b] 過去月を選択しても選択肢に当月が含まれたまま', async ({ page }) => {
+		await page.goto('/expenses');
+
+		const currentMonth = getCurrentMonth();
+
+		// 2か月前に移動
+		const now = new Date();
+		const oldDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+		const oldMonth = `${oldDate.getFullYear()}-${String(oldDate.getMonth() + 1).padStart(2, '0')}`;
+
+		await page.getByTestId('expense-month-select').selectOption(oldMonth);
+		await page.waitForURL(new RegExp(`month=${oldMonth}`));
+
+		// ページリロード後（load 再実行）も当月が選択肢に存在すること
+		const options = await page.getByTestId('expense-month-select').locator('option').all();
+		const optionValues = await Promise.all(options.map((o) => o.getAttribute('value')));
+		expect(optionValues).toContain(currentMonth);
+
+		// 当月に戻せることを確認
+		await page.getByTestId('expense-month-select').selectOption(currentMonth);
+		await page.waitForURL(new RegExp(`month=${currentMonth}`));
+		await expect(page.getByTestId('expense-month-select')).toHaveValue(currentMonth);
 	});
 });
 
