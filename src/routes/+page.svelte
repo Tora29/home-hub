@@ -30,18 +30,22 @@
 	let summary = $state<Summary>(untrack(() => data.summary));
 	let fetchSeq = 0;
 
-	async function fetchSummary() {
+	async function fetchSummary(): Promise<boolean> {
 		const seq = ++fetchSeq;
 		const params = period === 'all' ? 'period=all' : `period=month&month=${selectedMonth}`;
 		const res = await fetch(`/dashboard/summary?${params}`);
 		if (res.ok && seq === fetchSeq) {
 			summary = await res.json();
+			return true;
 		}
+		return false;
 	}
 
 	async function switchPeriod(next: 'month' | 'all') {
+		const prev = period;
 		period = next;
-		await fetchSummary();
+		const ok = await fetchSummary();
+		if (!ok) period = prev;
 	}
 
 	async function handleMonthChange() {

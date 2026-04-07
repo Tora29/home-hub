@@ -7,7 +7,7 @@
  * @covers AC-001, AC-002, AC-002b, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009,
  *         AC-010, AC-011, AC-012, AC-013, AC-014, AC-015, AC-016, AC-017, AC-018, AC-019, AC-020,
  *         AC-035, AC-036, AC-037, AC-038, AC-039,
- *         AC-111, AC-112, AC-120, AC-204, AC-205
+ *         AC-111, AC-112, AC-120, AC-122, AC-204, AC-205
  *
  * @scenarios
  * - 支出一覧の初期表示（当月フィルタ・登録日時降順）
@@ -213,6 +213,21 @@ test.describe('支出一覧画面 - 月切り替え', () => {
 		await page.getByTestId('expense-month-select').selectOption(currentMonth);
 		await page.waitForURL(new RegExp(`month=${currentMonth}`));
 		await expect(page.getByTestId('expense-month-select')).toHaveValue(currentMonth);
+	});
+
+	test('[SPEC: AC-122] 不正な月パラメータ（?month=2026-13）でアクセスすると /expenses にリダイレクトされ当月の支出一覧が表示される', async ({
+		page
+	}) => {
+		await page.goto('/expenses?month=2026-13');
+
+		// /expenses（month パラメータなし）にリダイレクトされる
+		await page.waitForURL(/\/expenses($|\?(?!month=2026-13))/);
+
+		// エラーページにならず、月切り替えセレクトが表示される
+		await expect(page.getByTestId('expense-month-select')).toBeVisible();
+
+		// 当月が選択されている
+		await expect(page.getByTestId('expense-month-select')).toHaveValue(getCurrentMonth());
 	});
 });
 

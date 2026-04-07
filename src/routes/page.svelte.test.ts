@@ -5,13 +5,19 @@
  *
  * @target ./+page.svelte
  * @spec specs/dashboard/spec.md
- * @covers AC-005, AC-006, AC-007, AC-008, AC-009, AC-201, AC-202, AC-203
+ * @covers AC-005, AC-006, AC-007, AC-008, AC-009, AC-103, AC-201, AC-202, AC-203
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi, afterEach } from 'vitest';
+import { flushSync } from 'svelte';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import Page from './+page.svelte';
+
+vi.mock('$app/navigation', () => ({
+	goto: vi.fn(),
+	invalidateAll: vi.fn()
+}));
 
 const emptySummary = {
 	overall: 0,
@@ -30,6 +36,30 @@ const richSummary = {
 		{ categoryId: 'c-2', categoryName: '交通費', total: 4800 }
 	]
 };
+
+afterEach(() => {
+	vi.unstubAllGlobals();
+});
+
+describe('ダッシュボード - 期間切り替えエラー', () => {
+	test('[SPEC: AC-103] API 取得失敗時、期間タブは切り替え前の状態を維持する', async () => {
+		vi.stubGlobal('fetch', async () => new Response(null, { status: 500 }));
+
+		render(Page, {
+			data: { summary: emptySummary, unapprovedCount: 0, currentMonth: '2026-04' }
+		});
+
+		// 初期は「当月合計」ラベル（period === 'month'）
+		await expect.element(page.getByText('当月合計')).toBeVisible();
+
+		// 「全期間」タブをクリック → fetch 失敗 → period は 'month' に巻き戻る
+		(page.getByTestId('dashboard-period-tab-all').element() as HTMLElement).click();
+		flushSync();
+
+		// fetch 失敗後も「当月合計」ラベルが維持される（「全期間合計」に変わらない）
+		await expect.element(page.getByText('当月合計')).toBeVisible();
+	});
+});
 
 describe('ダッシュボード - 合計金額表示', () => {
 	test('[SPEC: AC-005] 全体合計金額がカンマ区切りで表示される（¥12,300）', async () => {

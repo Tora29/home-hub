@@ -10,18 +10,26 @@
  * @spec specs/expenses/spec.md
  * @acceptance AC-001
  */
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
 import { getExpenses } from './service';
 import { getCategories } from './categories/service';
 import { getPayers } from './payers/service';
+import { expenseQuerySchema } from './schema';
 
 export const load: PageServerLoad = async ({ platform, locals, url }) => {
 	const db = createDb(platform!.env.DB);
 	const now = new Date();
 	// currentMonth は常に今日の月。月ドロップダウンの選択肢は今月を起点に固定する（AC-002b）
 	const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-	const selectedMonth = url.searchParams.get('month') ?? currentMonth;
+	// expenseQuerySchema で month を検証。不正値（例: 2026-13）は /expenses にリダイレクト（AC-122）
+	const rawMonth = url.searchParams.get('month');
+	const parsed = expenseQuerySchema.safeParse({ month: rawMonth ?? undefined });
+	if (rawMonth !== null && !parsed.success) {
+		redirect(302, '/expenses');
+	}
+	const selectedMonth = parsed.success ? (parsed.data.month ?? currentMonth) : currentMonth;
 
 	const [expenses, categories, payers] = await Promise.all([
 		getExpenses(db, locals.user!.id, { month: selectedMonth }),
