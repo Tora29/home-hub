@@ -1,11 +1,11 @@
 ---
 name: commit-push-pr
-description: Git ワークフロー（ブランチ作成、コミット、PR 作成、Codex レビュー依頼）を自動化する。
+description: Git ワークフロー（ブランチ作成、コミット、PR 作成）を自動化する。マージ後のクリーンアップも対応。
 ---
 
 # Git ワークフロー自動化
 
-変更をコミットし、作業ブランチへプッシュして PR を作成し、Codex レビューを依頼するまでを自動化する。
+変更をコミットし、作業ブランチへプッシュして PR を作成するまでを自動化する。
 
 ## ワークフロー
 
@@ -55,13 +55,27 @@ gh pr create --base main --head <branch-name> --title "<title>" --body "<body>"
 
 PR タイトルはコミットメッセージと整合する内容にすること。本文には変更概要と確認内容を簡潔に含めること。
 
-### 6. Codex レビュー依頼
+PR URL を表示してユーザーに伝える。Codex レビューはユーザーが必要に応じて手動で行う。
 
-PR 作成後、同じ PR に `@codex review` コメントを付けてレビューを依頼する。
+### 6. マージ後のクリーンアップ（ユーザーが「完了」と言ったとき）
+
+ユーザーが「完了」「マージした」等の合図を出したら、以下を実行する：
+
+1. PR のマージ状態を確認する
 
 ```bash
-gh pr comment <pr-number-or-url> --body "@codex review"
+gh pr view <pr-number-or-url> --json state,mergedAt
 ```
+
+2. マージ済みであれば main に切り替え、pull、ローカルブランチを削除する
+
+```bash
+git switch main
+git pull
+git branch -d <branch-name>
+```
+
+マージされていない場合はその旨をユーザーに伝え、クリーンアップを行わない。
 
 ## 注意事項
 
@@ -69,4 +83,3 @@ gh pr comment <pr-number-or-url> --body "@codex review"
 - 機密情報（.env、credentials等）がないか確認
 - `main` への直接 push は行わない
 - `gh` CLI で GitHub にログイン済みであることを確認する
-- `@codex review` を使うには、GitHub 側で Codex のレビュー機能が利用可能な状態であることを確認する
