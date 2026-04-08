@@ -94,7 +94,7 @@
 	</div>
 
 	<!-- AI consultation widget -->
-	<div class="mb-8 rounded-3xl bg-bg-secondary p-6 shadow-sm">
+	<div class="mb-8 rounded-3xl bg-bg-secondary p-6 shadow-md">
 		<div class="mb-3 flex items-center gap-2">
 			<MessageCircle size={20} class="text-accent" />
 			<h2 class="font-medium text-label">AI 献立相談</h2>

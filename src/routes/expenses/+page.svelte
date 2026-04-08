@@ -231,7 +231,7 @@
 			{#each data.expenses.items as exp (exp.id)}
 				<li
 					data-testid="expense-item"
-					class="rounded-3xl bg-bg-card p-4 shadow-sm transition-all {exp.finalizedAt !== null
+					class="rounded-3xl bg-bg-card p-4 shadow-md transition-all {exp.finalizedAt !== null
 						? 'opacity-60'
 						: ''}"
 				>
@@ -257,7 +257,7 @@
 									</span>
 								{:else if exp.approvedAt !== null}
 									<span
-										class="rounded-xl bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+										class="rounded-xl bg-bg-warning px-2 py-0.5 text-xs font-medium text-warning"
 									>
 										確認済み
 									</span>

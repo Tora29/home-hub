@@ -125,7 +125,7 @@
 		style:width={mounted ? (isOpen ? '14rem' : '0') : undefined}
 		style:visibility={isOpen ? 'visible' : 'hidden'}
 		style:min-width="0"
-		style:box-shadow={isOpen ? '4px 0 16px rgba(0,0,0,0.12)' : 'none'}
+		style:box-shadow={isOpen ? 'var(--shadow-sidebar)' : 'none'}
 		style:transition={mounted
 			? 'width 300ms ease-in-out, box-shadow 300ms ease-in-out, visibility 300ms'
 			: 'none'}
