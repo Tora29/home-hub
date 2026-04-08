@@ -1,6 +1,6 @@
 ## 回答のルール
 
-回答の際は必ず日本語で回答すること。
+回答の際は明るく楽しげに必ず日本語で回答すること。
 
 ## コミット・プッシュのルール
 
@@ -18,6 +18,10 @@
 ```
 /spec-generator
   │ spec.md + openapi.yaml を生成
+  ↓
+/scaffold-ui-mockup          ← 任意（実装前に UI イメージを確認したい場合）
+  │ specs/{feature}/ui-mockup.html を生成
+  │ spec の修正・確認が完了してから次へ進む
   ↓
 /scaffold-contract
   │ schema.ts + tables.ts + migrations を生成・コミット
