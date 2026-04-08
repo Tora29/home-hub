@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
 	const now = new Date();
 	// currentMonth は常に今日の月。月ドロップダウンの選択肢は今月を起点に固定する（AC-002b）
 	const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-	// expenseQuerySchema で month を検証。不正値（例: 2026-13）は /expenses にリダイレクト（AC-122）
+	// expenseQuerySchema で month を検証。不正値（例: 2026-13）は /expenses にリダイレクト（AC-002c）
 	const rawMonth = url.searchParams.get('month');
 	const parsed = expenseQuerySchema.safeParse({ month: rawMonth ?? undefined });
 	if (rawMonth !== null && !parsed.success) {

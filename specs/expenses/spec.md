@@ -48,7 +48,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-001: `/expenses` にアクセスすると、当月の支出一覧が登録日時の新しい順で表示される
 - AC-002: 月切り替えセレクトで別の月を選択すると、対象月の支出一覧が表示される
 - AC-002b: 月切り替えセレクトの選択肢は、選択中の月に関わらず常に「当月を起点とした過去 13 か月分」で固定される（過去月を選択後も当月を含む選択肢が表示され続ける）
-- AC-122: ページロード時に `?month=2026-13` など不正な月パラメータが渡された場合、400 エラーにせず `/expenses` にリダイレクトして当月の支出一覧を表示する（`expenseQuerySchema` で検証し、失敗時は 302 リダイレクト）
+- AC-002c: ページロード時に `?month=2026-13` など不正な月パラメータが渡された場合、400 エラーにせず `/expenses` にリダイレクトして当月の支出一覧を表示する（`expenseQuerySchema` で検証し、失敗時は 302 リダイレクト）
 - AC-003: 金額・カテゴリ・支払者を入力して「確定」ボタンを押すと 201 が返り、一覧の先頭に支出が追加される（登録日は自動セット）
 - AC-004: 未承認の支出の行メニュー（`expense-menu-button`）を開き「確認済みにする」を選択すると `POST /expenses/[id]/approve` が呼ばれ 200 が返り、承認状態が「確認済み」に更新される
 - AC-005: 確認済み（未確定）の支出の行メニューを開き「未承認に戻す」を選択すると `POST /expenses/[id]/unapprove` が呼ばれ 200 が返り、承認状態が「未承認」に戻る
@@ -295,13 +295,16 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 | AC             | 種別        | 対象ファイル                                              | 備考                                                        |
 | -------------- | ----------- | --------------------------------------------------------- | ----------------------------------------------------------- |
 | AC-001〜002    | Integration | `page.server.integration.test.ts`                         | load 関数の月フィルタ動作を実 D1 で検証                     |
+| AC-002b        | E2E         | `e2e/expense.e2e.ts`                                      | 月選択肢は常に当月を含む固定リストであることを検証          |
+| AC-002c        | E2E         | `e2e/expense.e2e.ts`                                      | 不正な月パラメータは /expenses にリダイレクトされることを検証 |
 | AC-001〜007    | Integration | `service.integration.test.ts`                             | 支出 CRUD・承認操作を実 D1 で検証                           |
 | AC-014〜015    | Integration | `service.integration.test.ts`                             | 確定操作・確定後ロックを実 D1 で検証                        |
 | AC-010〜012    | Integration | `categories/service.integration.test.ts`                  | カテゴリ CRUD を実 D1 で検証                                |
 | AC-013         | Integration | `service.integration.test.ts`                             | 月間合計算出（全件）を実 D1 で検証                          |
 | AC-035〜038    | Integration | `payers/service.integration.test.ts`                      | 支払者 CRUD を実 D1 で検証                                  |
 | AC-035         | Integration | `payers/page.server.integration.test.ts`                  | 支払者管理ページの load 関数を実 D1 で検証                  |
-| AC-039〜041    | Integration | `service.integration.test.ts`                             | 支払者付き支出 CRUD を実 D1 で検証                          |
+| AC-039         | Integration | `service.integration.test.ts`                             | 支払者付き支出 CRUD を実 D1 で検証                          |
+| AC-040〜041    | E2E         | `e2e/expense.e2e.ts`                                      | 支払者選択・保存・フォーム表示はブラウザ全体で検証（AC-003 E2E に内包） |
 | AC-101〜109    | Unit        | `schema.test.ts`, `categories/schema.test.ts`             | Zod バリデーション検証                                      |
 | AC-115〜117    | Unit        | `payers/schema.test.ts`                                   | 支払者 Zod バリデーション検証                               |
 | AC-101〜109    | Unit        | `+server.test.ts`, `categories/+server.test.ts`           | API ハンドラが VALIDATION_ERROR 形式の 400 を返すことを検証 |
@@ -311,6 +314,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 | AC-110         | Unit        | `categories/[id]/+server.test.ts`                         | CONFLICT 形式の 409 を検証                                  |
 | AC-119         | Unit        | `payers/[id]/+server.test.ts`                             | 支払者 CONFLICT 形式の 409 を検証                           |
 | AC-035〜038    | Unit        | `payers/page.svelte.test.ts`                              | 支払者管理ページのリスト表示・空状態を検証                  |
+| AC-004〜005    | Unit        | `[id]/approve/+server.test.ts`, `[id]/unapprove/+server.test.ts` | approve/unapprove ハンドラの NOT_FOUND・CONFLICT を検証 |
 | AC-113〜114    | Unit        | `[id]/+server.test.ts`, `[id]/finalize/+server.test.ts`   | 確定済みロック・未承認確定の 409 を検証                     |
 | AC-015         | Unit        | `page.svelte.test.ts`                                     | 確定済み行の操作ボタン非表示・グレーアウトを検証            |
 | AC-016〜020    | E2E         | `e2e/expense.e2e.ts`                                      | モバイル viewport 依存のため E2E で検証（testing.md 参照）  |
