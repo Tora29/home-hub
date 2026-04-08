@@ -4,10 +4,11 @@
  * @testType e2e
  *
  * @spec specs/expenses/spec.md
- * @covers AC-001, AC-002, AC-002b, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009,
+ * @covers AC-001, AC-002, AC-002b, AC-002c, AC-003, AC-004, AC-005, AC-006, AC-007,
  *         AC-010, AC-011, AC-012, AC-013, AC-014, AC-015, AC-016, AC-017, AC-018, AC-019, AC-020,
- *         AC-035, AC-036, AC-037, AC-038, AC-039,
- *         AC-111, AC-112, AC-120, AC-122, AC-204, AC-205
+ *         AC-035, AC-036, AC-037, AC-038, AC-039, AC-040, AC-041,
+ *         AC-111, AC-112, AC-120, AC-122, AC-204, AC-205,
+ *         dashboard/AC-008, dashboard/AC-009
  *
  * @scenarios
  * - 支出一覧の初期表示（当月フィルタ・登録日時降順）
@@ -215,7 +216,7 @@ test.describe('支出一覧画面 - 月切り替え', () => {
 		await expect(page.getByTestId('expense-month-select')).toHaveValue(currentMonth);
 	});
 
-	test('[SPEC: AC-122] 不正な月パラメータ（?month=2026-13）でアクセスすると /expenses にリダイレクトされ当月の支出一覧が表示される', async ({
+	test('[SPEC: AC-002c] 不正な月パラメータ（?month=2026-13）でアクセスすると /expenses にリダイレクトされ当月の支出一覧が表示される', async ({
 		page
 	}) => {
 		await page.goto('/expenses?month=2026-13');
@@ -610,7 +611,7 @@ test.describe('ダッシュボード - 未承認警告バナー', () => {
 		await deletePayer(page, payerId);
 	});
 
-	test('[SPEC: AC-008] 全期間の未承認支出が1件以上ある場合、ダッシュボードに件数付き警告バナーが表示される', async ({
+	test('[SPEC: dashboard/AC-008] 全期間の未承認支出が1件以上ある場合、ダッシュボードに件数付き警告バナーが表示される', async ({
 		page
 	}) => {
 		expenseId = await createExpense(page, 1000, categoryId, payerId);
@@ -623,7 +624,7 @@ test.describe('ダッシュボード - 未承認警告バナー', () => {
 		await expect(alert.getByRole('link', { name: '確認する' })).toBeVisible();
 	});
 
-	test('[SPEC: AC-009] 全支出が承認済みになると、ダッシュボードの警告バナーが消える', async ({
+	test('[SPEC: dashboard/AC-009] 全支出が承認済みになると、ダッシュボードの警告バナーが消える', async ({
 		page
 	}) => {
 		expenseId = await createExpense(page, 1000, categoryId, payerId);

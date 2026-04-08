@@ -63,7 +63,7 @@ export const recipeUpdateSchema = z.object({
 });
 
 export const askSchema = z.object({
-	question: z.string().min(1, '質問は必須です').max(500, '500 文字以内で入力してください')
+	question: z.string().min(1, '質問を入力してください').max(500, '500 文字以内で入力してください')
 });
 
 export const extractSchema = z.object({
