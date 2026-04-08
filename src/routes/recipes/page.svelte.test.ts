@@ -9,6 +9,7 @@
  */
 
 import { describe, test, expect, vi } from 'vitest';
+import { flushSync } from 'svelte';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import Page from './+page.svelte';
@@ -34,7 +35,8 @@ describe('+page.svelte - AI 献立相談ウィジェット', () => {
 		render(Page, { data: mockData });
 
 		// 入力欄を空のままボタンをクリック
-		await page.getByRole('button', { name: '送信' }).click();
+		(page.getByRole('button', { name: '送信' }).element() as HTMLElement).click();
+		flushSync();
 
 		await expect.element(page.getByText('質問を入力してください')).toBeVisible();
 	});

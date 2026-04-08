@@ -6,7 +6,7 @@
  *
  * @target ./service.ts
  * @spec specs/expenses/spec.md
- * @covers AC-010, AC-011, AC-012
+ * @covers AC-010, AC-011, AC-012, AC-104
  */
 
 import { describe, test, expect } from 'vitest';
@@ -15,6 +15,7 @@ import { createDb } from '$lib/server/db';
 import { AppError } from '$lib/server/errors';
 import { getCategories, createCategory, updateCategory, deleteCategory } from './service';
 import { createExpense } from '../service';
+import { createPayer } from '../payers/service';
 
 function makeUserId() {
 	return crypto.randomUUID();
@@ -162,12 +163,51 @@ describe('deleteCategory', () => {
 		await expect(deleteCategory(db, userId, otherCategory.id)).rejects.toThrow(AppError);
 	});
 
+	test('[SPEC: AC-104] 他ユーザーの支出が存在しても自分のカテゴリを削除できる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+		const otherUserId = makeUserId();
+
+		// 自分のカテゴリと支払者
+		const myCategory = await createCategory(db, userId, { name: '食費' });
+		const myPayer = await createPayer(db, userId, { name: '田中' });
+
+		// 他ユーザーが自分と同じ categoryId を紐付けた支出は作れないが、
+		// 削除チェック関数が userId フィルタなしだと他ユーザーの支出でブロックされる。
+		// ここでは自分のカテゴリが支出 0 件のときに削除できることを確認する。
+		// （他ユーザーが同名カテゴリを持っていても影響しない）
+		const otherCategory = await createCategory(db, otherUserId, { name: '食費' });
+		const otherPayer = await createPayer(db, otherUserId, { name: '他人' });
+		await createExpense(db, otherUserId, {
+			amount: 500,
+			categoryId: otherCategory.id,
+			payerId: otherPayer.id
+		});
+
+		// 自分の myCategory には支出がないので削除できる
+		await expect(deleteCategory(db, userId, myCategory.id)).resolves.toBeUndefined();
+		const result = await getCategories(db, userId);
+		expect(result.items.find((c) => c.id === myCategory.id)).toBeUndefined();
+
+		// 自分の支出が存在する場合は CONFLICT になることも確認
+		const myCategory2 = await createCategory(db, userId, { name: '交通費' });
+		await createExpense(db, userId, {
+			amount: 1000,
+			categoryId: myCategory2.id,
+			payerId: myPayer.id
+		});
+		await expect(deleteCategory(db, userId, myCategory2.id)).rejects.toMatchObject({
+			code: 'CONFLICT'
+		});
+	});
+
 	test('[SPEC: AC-012] 支出に紐付くカテゴリは削除できず CONFLICT エラーになる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		await createExpense(db, userId, { amount: 1000, categoryId: category.id });
+		const payer = await createPayer(db, userId, { name: '田中' });
+		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerId: payer.id });
 
 		await expect(deleteCategory(db, userId, category.id)).rejects.toThrow(AppError);
 

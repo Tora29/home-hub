@@ -4,9 +4,10 @@
  * @testType e2e
  *
  * @spec specs/expenses/spec.md
- * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009,
+ * @covers AC-001, AC-002, AC-002b, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009,
  *         AC-010, AC-011, AC-012, AC-013, AC-014, AC-015, AC-016, AC-017, AC-018, AC-019, AC-020,
- *         AC-111, AC-112, AC-204, AC-205
+ *         AC-035, AC-036, AC-037, AC-038, AC-039,
+ *         AC-111, AC-112, AC-120, AC-122, AC-204, AC-205
  *
  * @scenarios
  * - 支出一覧の初期表示（当月フィルタ・登録日時降順）
@@ -18,14 +19,16 @@
  * - 支出の削除フロー
  * - ダッシュボードの未承認警告バナー表示・非表示
  * - カテゴリ管理（追加・編集・削除）
+ * - 支払者管理（追加・編集・削除・フォームへの反映）
  * - 月間合計金額の表示
- * - FE バリデーション（金額未入力・カテゴリ未選択）
+ * - FE バリデーション（金額未入力・カテゴリ未選択・支払者未選択）
  * - モバイル行メニューの開閉・表示切り替え（viewport: 375x812）
  * - 空状態・合計¥0 表示
  *
  * @pages
  * - /expenses - 支出一覧画面
  * - /expenses/categories - カテゴリ管理画面
+ * - /expenses/payers - 支払者管理画面
  * - / - ダッシュボード
  */
 import { test, expect, type Page } from '@playwright/test';
@@ -62,9 +65,26 @@ async function deleteCategory(page: Page, id: string): Promise<void> {
 	await page.request.delete(`/expenses/categories/${id}`);
 }
 
-async function createExpense(page: Page, amount: number, categoryId: string): Promise<string> {
+async function createPayer(page: Page, name: string): Promise<string> {
+	const res = await page.request.post('/expenses/payers', {
+		data: { name }
+	});
+	const data = (await res.json()) as { id: string };
+	return data.id;
+}
+
+async function deletePayer(page: Page, id: string): Promise<void> {
+	await page.request.delete(`/expenses/payers/${id}`);
+}
+
+async function createExpense(
+	page: Page,
+	amount: number,
+	categoryId: string,
+	payerId: string
+): Promise<string> {
 	const res = await page.request.post('/expenses', {
-		data: { amount, categoryId }
+		data: { amount, categoryId, payerId }
 	});
 	const data = (await res.json()) as { id: string };
 	return data.id;
@@ -72,6 +92,10 @@ async function createExpense(page: Page, amount: number, categoryId: string): Pr
 
 async function deleteExpense(page: Page, id: string): Promise<void> {
 	await page.request.delete(`/expenses/${id}`);
+}
+
+async function approveExpense(page: Page, expenseId: string): Promise<void> {
+	await page.request.post(`/expenses/${expenseId}/approve`);
 }
 
 async function getCurrentMonthExpenseIds(page: Page): Promise<string[]> {
@@ -99,17 +123,20 @@ async function clearCurrentMonthExpenses(page: Page): Promise<void> {
 
 test.describe('支出一覧画面 - 初期表示', () => {
 	let categoryId: string;
+	let payerId: string;
 	let expenseId: string;
 
 	test.beforeEach(async ({ page }) => {
 		await login(page);
 		categoryId = await createCategory(page, 'E2Eテスト用カテゴリ');
-		expenseId = await createExpense(page, 1500, categoryId);
+		payerId = await createPayer(page, 'E2Eテスト用支払者');
+		expenseId = await createExpense(page, 1500, categoryId, payerId);
 	});
 
 	test.afterEach(async ({ page }) => {
 		await deleteExpense(page, expenseId);
 		await deleteCategory(page, categoryId);
+		await deletePayer(page, payerId);
 	});
 
 	test('[SPEC: AC-001] /expenses にアクセスすると当月の支出一覧が表示される', async ({ page }) => {
@@ -163,6 +190,45 @@ test.describe('支出一覧画面 - 月切り替え', () => {
 		// 空状態か一覧のどちらかが表示される（月によって異なるが URL は確認可能）
 		await expect(page.getByTestId('expense-month-select')).toHaveValue(oldMonth);
 	});
+
+	test('[SPEC: AC-002b] 過去月を選択しても選択肢に当月が含まれたまま', async ({ page }) => {
+		await page.goto('/expenses');
+
+		const currentMonth = getCurrentMonth();
+
+		// 2か月前に移動
+		const now = new Date();
+		const oldDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+		const oldMonth = `${oldDate.getFullYear()}-${String(oldDate.getMonth() + 1).padStart(2, '0')}`;
+
+		await page.getByTestId('expense-month-select').selectOption(oldMonth);
+		await page.waitForURL(new RegExp(`month=${oldMonth}`));
+
+		// ページリロード後（load 再実行）も当月が選択肢に存在すること
+		const options = await page.getByTestId('expense-month-select').locator('option').all();
+		const optionValues = await Promise.all(options.map((o) => o.getAttribute('value')));
+		expect(optionValues).toContain(currentMonth);
+
+		// 当月に戻せることを確認
+		await page.getByTestId('expense-month-select').selectOption(currentMonth);
+		await page.waitForURL(new RegExp(`month=${currentMonth}`));
+		await expect(page.getByTestId('expense-month-select')).toHaveValue(currentMonth);
+	});
+
+	test('[SPEC: AC-122] 不正な月パラメータ（?month=2026-13）でアクセスすると /expenses にリダイレクトされ当月の支出一覧が表示される', async ({
+		page
+	}) => {
+		await page.goto('/expenses?month=2026-13');
+
+		// /expenses（month パラメータなし）にリダイレクトされる
+		await page.waitForURL(/\/expenses($|\?(?!month=2026-13))/);
+
+		// エラーページにならず、月切り替えセレクトが表示される
+		await expect(page.getByTestId('expense-month-select')).toBeVisible();
+
+		// 当月が選択されている
+		await expect(page.getByTestId('expense-month-select')).toHaveValue(getCurrentMonth());
+	});
 });
 
 // ============================================================
@@ -171,19 +237,22 @@ test.describe('支出一覧画面 - 月切り替え', () => {
 
 test.describe('支出登録', () => {
 	let categoryId: string;
+	let payerId: string;
 
 	test.beforeEach(async ({ page }) => {
 		await login(page);
 		categoryId = await createCategory(page, 'E2E登録テスト');
+		payerId = await createPayer(page, 'E2E登録テスト支払者');
 	});
 
 	test.afterEach(async ({ page }) => {
-		// 当月の支出をクリーンアップしてからカテゴリ削除
+		// 当月の支出をクリーンアップしてからカテゴリ・支払者削除
 		await clearCurrentMonthExpenses(page);
 		await deleteCategory(page, categoryId);
+		await deletePayer(page, payerId);
 	});
 
-	test('[SPEC: AC-003] 金額とカテゴリを入力して確定すると一覧の先頭に支出が追加される', async ({
+	test('[SPEC: AC-003] 金額・カテゴリ・支払者を入力して確定すると一覧の先頭に支出が追加される', async ({
 		page
 	}) => {
 		await page.goto('/expenses');
@@ -198,6 +267,7 @@ test.describe('支出登録', () => {
 		// フォームに入力
 		await page.getByTestId('expense-amount-input').fill('3000');
 		await page.getByTestId('expense-category-select').selectOption({ value: categoryId });
+		await page.getByTestId('expense-payer-select').selectOption({ value: payerId });
 
 		// 送信
 		await page.getByTestId('expense-submit-button').click();
@@ -218,14 +288,17 @@ test.describe('支出登録', () => {
 
 test.describe('支出登録 - FE バリデーション', () => {
 	let categoryId: string;
+	let payerId: string;
 
 	test.beforeEach(async ({ page }) => {
 		await login(page);
 		categoryId = await createCategory(page, 'E2Eバリデーションテスト');
+		payerId = await createPayer(page, 'E2Eバリデーション支払者');
 	});
 
 	test.afterEach(async ({ page }) => {
 		await deleteCategory(page, categoryId);
+		await deletePayer(page, payerId);
 	});
 
 	test('[SPEC: AC-111] 金額が空のまま確定を押すと「金額は必須です」とインライン表示される', async ({
@@ -238,6 +311,7 @@ test.describe('支出登録 - FE バリデーション', () => {
 
 		// 金額を入力しないで確定
 		await page.getByTestId('expense-category-select').selectOption({ value: categoryId });
+		await page.getByTestId('expense-payer-select').selectOption({ value: payerId });
 		await page.getByTestId('expense-submit-button').click();
 
 		// フォームは閉じない（サーバー非通信）
@@ -256,12 +330,32 @@ test.describe('支出登録 - FE バリデーション', () => {
 
 		// カテゴリを選択しないで確定
 		await page.getByTestId('expense-amount-input').fill('1000');
+		await page.getByTestId('expense-payer-select').selectOption({ value: payerId });
 		await page.getByTestId('expense-submit-button').click();
 
 		// フォームは閉じない（サーバー非通信）
 		await expect(page.getByTestId('expense-form')).toBeVisible();
 		await expect(page.getByTestId('expense-category-error')).toBeVisible();
 		await expect(page.getByTestId('expense-category-error')).toHaveText('カテゴリは必須です');
+	});
+
+	test('[SPEC: AC-120] 支払者が未選択のまま確定を押すと「支払者は必須です」とインライン表示される', async ({
+		page
+	}) => {
+		await page.goto('/expenses');
+
+		await page.getByTestId('expense-create-button').click();
+		await expect(page.getByTestId('expense-form')).toBeVisible();
+
+		// 支払者を選択しないで確定
+		await page.getByTestId('expense-amount-input').fill('1000');
+		await page.getByTestId('expense-category-select').selectOption({ value: categoryId });
+		await page.getByTestId('expense-submit-button').click();
+
+		// フォームは閉じない（サーバー非通信）
+		await expect(page.getByTestId('expense-form')).toBeVisible();
+		await expect(page.getByTestId('expense-payer-error')).toBeVisible();
+		await expect(page.getByTestId('expense-payer-error')).toHaveText('支払者は必須です');
 	});
 });
 
@@ -271,17 +365,20 @@ test.describe('支出登録 - FE バリデーション', () => {
 
 test.describe('支出 - 承認操作', () => {
 	let categoryId: string;
+	let payerId: string;
 	let expenseId: string;
 
 	test.beforeEach(async ({ page }) => {
 		await login(page);
 		categoryId = await createCategory(page, 'E2E承認テスト');
-		expenseId = await createExpense(page, 2000, categoryId);
+		payerId = await createPayer(page, 'E2E承認テスト支払者');
+		expenseId = await createExpense(page, 2000, categoryId, payerId);
 	});
 
 	test.afterEach(async ({ page }) => {
 		await deleteExpense(page, expenseId);
 		await deleteCategory(page, categoryId);
+		await deletePayer(page, payerId);
 	});
 
 	test('[SPEC: AC-004] 未承認の支出の「確認済み」ボタンを押すと承認状態が「確認済み」に更新される', async ({
@@ -307,9 +404,7 @@ test.describe('支出 - 承認操作', () => {
 		page
 	}) => {
 		// まず承認済みにする
-		await page.request.put(`/expenses/${expenseId}`, {
-			data: { amount: 2000, categoryId, approved: true }
-		});
+		await approveExpense(page, expenseId);
 
 		await page.goto('/expenses');
 
@@ -335,19 +430,22 @@ test.describe('支出 - 承認操作', () => {
 test.describe('支出 - 編集', () => {
 	let categoryId: string;
 	let category2Id: string;
+	let payerId: string;
 	let expenseId: string;
 
 	test.beforeEach(async ({ page }) => {
 		await login(page);
 		categoryId = await createCategory(page, 'E2E編集テスト元');
 		category2Id = await createCategory(page, 'E2E編集テスト先');
-		expenseId = await createExpense(page, 1000, categoryId);
+		payerId = await createPayer(page, 'E2E編集テスト支払者');
+		expenseId = await createExpense(page, 1000, categoryId, payerId);
 	});
 
 	test.afterEach(async ({ page }) => {
 		await deleteExpense(page, expenseId);
 		await deleteCategory(page, categoryId);
 		await deleteCategory(page, category2Id);
+		await deletePayer(page, payerId);
 	});
 
 	test('[SPEC: AC-006] 編集ボタンをクリックして金額・カテゴリを変更すると一覧が更新される', async ({
@@ -386,12 +484,14 @@ test.describe('支出 - 編集', () => {
 
 test.describe('支出 - 削除', () => {
 	let categoryId: string;
+	let payerId: string;
 	let expenseId: string;
 
 	test.beforeEach(async ({ page }) => {
 		await login(page);
 		categoryId = await createCategory(page, 'E2E削除テスト');
-		expenseId = await createExpense(page, 800, categoryId);
+		payerId = await createPayer(page, 'E2E削除テスト支払者');
+		expenseId = await createExpense(page, 800, categoryId, payerId);
 	});
 
 	test.afterEach(async ({ page }) => {
@@ -402,6 +502,7 @@ test.describe('支出 - 削除', () => {
 			// 削除済みの場合は無視
 		}
 		await deleteCategory(page, categoryId);
+		await deletePayer(page, payerId);
 	});
 
 	test('[SPEC: AC-007] 削除ボタンをクリックし確認ダイアログで確定すると一覧から消える', async ({
@@ -439,12 +540,14 @@ test.describe('支出 - 削除', () => {
 
 test.describe('支出一覧 - 月間合計金額', () => {
 	let categoryId: string;
+	let payerId: string;
 	let expense1Id: string;
 	let expense2Id: string;
 
 	test.beforeEach(async ({ page }) => {
 		await login(page);
 		categoryId = await createCategory(page, 'E2E合計テスト');
+		payerId = await createPayer(page, 'E2E合計テスト支払者');
 	});
 
 	test.afterEach(async ({ page }) => {
@@ -459,6 +562,7 @@ test.describe('支出一覧 - 月間合計金額', () => {
 			// ignore
 		}
 		await deleteCategory(page, categoryId);
+		await deletePayer(page, payerId);
 	});
 
 	test('[SPEC: AC-013] 月間合計金額が承認状態問わず全件の合計でカンマ区切りで表示される', async ({
@@ -470,8 +574,8 @@ test.describe('支出一覧 - 月間合計金額', () => {
 		const baseline = parseInt((baselineText ?? '¥0').replace(/[¥,]/g, ''), 10);
 
 		// 2件の支出を作成（3000 + 2000 = 5000）
-		expense1Id = await createExpense(page, 3000, categoryId);
-		expense2Id = await createExpense(page, 2000, categoryId);
+		expense1Id = await createExpense(page, 3000, categoryId, payerId);
+		expense2Id = await createExpense(page, 2000, categoryId, payerId);
 
 		await page.reload();
 
@@ -487,11 +591,13 @@ test.describe('支出一覧 - 月間合計金額', () => {
 
 test.describe('ダッシュボード - 未承認警告バナー', () => {
 	let categoryId: string;
+	let payerId: string;
 	let expenseId: string;
 
 	test.beforeEach(async ({ page }) => {
 		await login(page);
 		categoryId = await createCategory(page, 'E2Eダッシュボードテスト');
+		payerId = await createPayer(page, 'E2Eダッシュボードテスト支払者');
 	});
 
 	test.afterEach(async ({ page }) => {
@@ -501,12 +607,13 @@ test.describe('ダッシュボード - 未承認警告バナー', () => {
 			// 削除済みの場合は無視
 		}
 		await deleteCategory(page, categoryId);
+		await deletePayer(page, payerId);
 	});
 
 	test('[SPEC: AC-008] 全期間の未承認支出が1件以上ある場合、ダッシュボードに件数付き警告バナーが表示される', async ({
 		page
 	}) => {
-		expenseId = await createExpense(page, 1000, categoryId);
+		expenseId = await createExpense(page, 1000, categoryId, payerId);
 
 		await page.goto('/');
 
@@ -519,16 +626,27 @@ test.describe('ダッシュボード - 未承認警告バナー', () => {
 	test('[SPEC: AC-009] 全支出が承認済みになると、ダッシュボードの警告バナーが消える', async ({
 		page
 	}) => {
-		expenseId = await createExpense(page, 1000, categoryId);
+		expenseId = await createExpense(page, 1000, categoryId, payerId);
+
+		// バナーが表示されていることを確認し、承認前の未承認件数を記録
+		await page.goto('/');
+		await expect(page.getByTestId('expense-pending-alert')).toBeVisible();
+		const alertText = (await page.getByTestId('expense-pending-alert').textContent()) ?? '';
+		const countBefore = parseInt(alertText.match(/(\d+)/)?.[1] ?? '0');
 
 		// 支出を承認済みにする
-		await page.request.put(`/expenses/${expenseId}`, {
-			data: { amount: 1000, categoryId, approved: true }
-		});
+		await approveExpense(page, expenseId);
+		await page.reload();
 
-		await page.goto('/');
-
-		await expect(page.getByTestId('expense-pending-alert')).not.toBeVisible();
+		if (countBefore === 1) {
+			// この1件のみが未承認だったため、バナーが非表示になる（AC-009 メインシナリオ）
+			await expect(page.getByTestId('expense-pending-alert')).not.toBeVisible();
+		} else {
+			// 他に未承認支出が存在するため、件数が1減ったことを確認
+			await expect(page.getByTestId('expense-pending-alert')).toContainText(
+				`${countBefore - 1} 件`
+			);
+		}
 	});
 });
 
@@ -594,13 +712,12 @@ test.describe('カテゴリ管理 - 編集', () => {
 		await item.getByTestId('expense-category-edit-button').click();
 
 		// インライン編集モードに切り替わる
-		// 編集後は名前がinputのvalueに移るため、リスト全体からtextboxを取得する
 		const editInput = page.getByTestId('expense-category-list').getByRole('textbox');
 		await expect(editInput).toBeVisible();
 		await editInput.clear();
 		await editInput.fill(updatedName);
 
-		// 保存ボタンをクリック（aria-label="保存"で特定）
+		// 保存ボタンをクリック
 		await page.getByTestId('expense-category-list').getByRole('button', { name: '保存' }).click();
 
 		// カテゴリ名が更新される
@@ -652,21 +769,172 @@ test.describe('カテゴリ管理 - 削除', () => {
 });
 
 // ============================================================
+// 支払者管理
+// ============================================================
+
+test.describe('支払者管理 - 一覧表示', () => {
+	let payerId: string;
+
+	test.beforeEach(async ({ page }) => {
+		await login(page);
+		payerId = await createPayer(page, 'E2E支払者一覧テスト');
+	});
+
+	test.afterEach(async ({ page }) => {
+		await deletePayer(page, payerId);
+	});
+
+	test('[SPEC: AC-035] /expenses/payers にアクセスすると登録済みの支払者一覧が表示される', async ({
+		page
+	}) => {
+		await page.goto('/expenses/payers');
+
+		await expect(page.getByTestId('expense-payer-list')).toBeVisible();
+		await expect(
+			page.getByTestId('expense-payer-item').filter({ hasText: 'E2E支払者一覧テスト' })
+		).toBeVisible();
+	});
+});
+
+test.describe('支払者管理 - 追加', () => {
+	let createdPayerName: string;
+
+	test.afterEach(async ({ page }) => {
+		// 作成した支払者を削除
+		const res = await page.request.get('/expenses/payers');
+		const data = (await res.json()) as { items: { id: string; name: string }[] };
+		const payer = data.items.find((p) => p.name === createdPayerName);
+		if (payer) await deletePayer(page, payer.id);
+	});
+
+	test('[SPEC: AC-036] 支払者名を入力して「追加」を押すと支払者が一覧に追加される', async ({
+		page
+	}) => {
+		createdPayerName = 'E2E新規支払者';
+
+		await login(page);
+		await page.goto('/expenses/payers');
+
+		await page.getByTestId('expense-payer-name-input').fill(createdPayerName);
+		await page.getByTestId('expense-payer-add-button').click();
+
+		await expect(page.getByTestId('expense-payer-list')).toContainText(createdPayerName);
+	});
+
+	test('[SPEC: AC-039] 支払者を追加すると支出登録フォームの支払者セレクトに反映される', async ({
+		page
+	}) => {
+		createdPayerName = 'E2Eフォーム反映支払者';
+
+		await login(page);
+		await page.goto('/expenses/payers');
+
+		await page.getByTestId('expense-payer-name-input').fill(createdPayerName);
+		await page.getByTestId('expense-payer-add-button').click();
+
+		// 支払者一覧に追加される
+		await expect(page.getByTestId('expense-payer-list')).toContainText(createdPayerName);
+
+		// 支出一覧に遷移して登録フォームを開く
+		await page.goto('/expenses');
+		await page.getByTestId('expense-create-button').click();
+		await expect(page.getByTestId('expense-form')).toBeVisible();
+
+		// 支払者セレクトに新支払者が表示される
+		await expect(page.getByTestId('expense-payer-select')).toContainText(createdPayerName);
+	});
+});
+
+test.describe('支払者管理 - 編集', () => {
+	let payerId: string;
+	const originalName = 'E2E編集前支払者';
+	const updatedName = 'E2E編集後支払者';
+
+	test.beforeEach(async ({ page }) => {
+		await login(page);
+		payerId = await createPayer(page, originalName);
+	});
+
+	test.afterEach(async ({ page }) => {
+		await deletePayer(page, payerId);
+	});
+
+	test('[SPEC: AC-037] 支払者を編集するとインライン編集で名前が更新される', async ({ page }) => {
+		await page.goto('/expenses/payers');
+
+		// 対象支払者の編集ボタンをクリック
+		const item = page.getByTestId('expense-payer-item').filter({ hasText: originalName });
+		await item.getByTestId('expense-payer-edit-button').click();
+
+		// インライン編集モードに切り替わる
+		const editInput = page.getByTestId('expense-payer-list').getByRole('textbox');
+		await expect(editInput).toBeVisible();
+		await editInput.clear();
+		await editInput.fill(updatedName);
+
+		// 保存ボタンをクリック
+		await page.getByTestId('expense-payer-list').getByRole('button', { name: '保存' }).click();
+
+		// 支払者名が更新される
+		await expect(page.getByTestId('expense-payer-list')).toContainText(updatedName);
+		await expect(page.getByTestId('expense-payer-list')).not.toContainText(originalName);
+	});
+});
+
+test.describe('支払者管理 - 削除', () => {
+	let payerId: string;
+
+	test.beforeEach(async ({ page }) => {
+		await login(page);
+		payerId = await createPayer(page, 'E2E削除対象支払者');
+	});
+
+	test.afterEach(async ({ page }) => {
+		// テストが失敗した場合のクリーンアップ
+		try {
+			await deletePayer(page, payerId);
+		} catch {
+			// 削除済みの場合は無視
+		}
+	});
+
+	test('[SPEC: AC-038] 支出が0件の支払者を削除すると一覧から消える', async ({ page }) => {
+		await page.goto('/expenses/payers');
+
+		const item = page.getByTestId('expense-payer-item').filter({ hasText: 'E2E削除対象支払者' });
+		await expect(item).toBeVisible();
+
+		// 削除ボタンをクリック
+		await item.getByTestId('expense-payer-delete-button').click();
+
+		// 削除確認ダイアログが表示される
+		await expect(page.getByTestId('expense-payer-delete-dialog')).toBeVisible();
+
+		// 確定ボタンをクリック
+		await page.getByTestId('expense-payer-delete-confirm-button').click();
+
+		// ダイアログが閉じて支払者が消える
+		await expect(page.getByTestId('expense-payer-delete-dialog')).not.toBeVisible();
+		await expect(page.getByTestId('expense-payer-list')).not.toContainText('E2E削除対象支払者');
+	});
+});
+
+// ============================================================
 // 支出確定
 // ============================================================
 
 test.describe('支出 - 確定操作', () => {
 	let categoryId: string;
+	let payerId: string;
 	let expenseId: string;
 
 	test.beforeEach(async ({ page }) => {
 		await login(page);
 		categoryId = await createCategory(page, 'E2E確定テスト');
-		expenseId = await createExpense(page, 4500, categoryId);
+		payerId = await createPayer(page, 'E2E確定テスト支払者');
+		expenseId = await createExpense(page, 4500, categoryId, payerId);
 		// 確認済みにしてから確定できる状態にする
-		await page.request.put(`/expenses/${expenseId}`, {
-			data: { amount: 4500, categoryId, approved: true }
-		});
+		await approveExpense(page, expenseId);
 	});
 
 	test.afterEach(async ({ page }) => {
@@ -677,6 +945,7 @@ test.describe('支出 - 確定操作', () => {
 			// 確定済みの場合は削除不可
 		}
 		await deleteCategory(page, categoryId);
+		await deletePayer(page, payerId);
 	});
 
 	test('[SPEC: AC-014] 確認済みの支出がある状態で「まとめて確定」ボタンを押し、確認ダイアログで確定すると「確定済み」に更新される', async ({
@@ -733,13 +1002,15 @@ test.describe('支出 - 確定操作', () => {
 
 test.describe('支出一覧 - モバイル行メニュー', () => {
 	let categoryId: string;
+	let payerId: string;
 	let expenseId: string;
 
 	test.beforeEach(async ({ page }) => {
 		await page.setViewportSize({ width: 375, height: 812 });
 		await login(page);
 		categoryId = await createCategory(page, 'E2Eモバイルテスト');
-		expenseId = await createExpense(page, 1200, categoryId);
+		payerId = await createPayer(page, 'E2Eモバイルテスト支払者');
+		expenseId = await createExpense(page, 1200, categoryId, payerId);
 	});
 
 	test.afterEach(async ({ page }) => {
@@ -749,6 +1020,7 @@ test.describe('支出一覧 - モバイル行メニュー', () => {
 			// 確定済みの場合は削除不可
 		}
 		await deleteCategory(page, categoryId);
+		await deletePayer(page, payerId);
 	});
 
 	test('[SPEC: AC-016] 未承認の行メニューボタンをタップするとメニューが表示される', async ({
@@ -801,9 +1073,7 @@ test.describe('支出一覧 - モバイル行メニュー', () => {
 		page
 	}) => {
 		// 確認済みにする
-		await page.request.put(`/expenses/${expenseId}`, {
-			data: { amount: 1200, categoryId, approved: true }
-		});
+		await approveExpense(page, expenseId);
 
 		await page.goto('/expenses');
 
@@ -818,9 +1088,7 @@ test.describe('支出一覧 - モバイル行メニュー', () => {
 
 	test('[SPEC: AC-020] 確定済みの行にはメニューボタンが表示されない', async ({ page }) => {
 		// 確認済みにしてから確定
-		await page.request.put(`/expenses/${expenseId}`, {
-			data: { amount: 1200, categoryId, approved: true }
-		});
+		await approveExpense(page, expenseId);
 		await page.request.post(`/expenses/${expenseId}/finalize`);
 
 		await page.goto('/expenses');

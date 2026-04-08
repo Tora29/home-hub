@@ -5,7 +5,10 @@
  *
  * @target ./+server.ts
  * @spec specs/expenses/spec.md
- * @covers AC-101, AC-102, AC-103, AC-104, AC-105
+ * @covers AC-001, AC-002, AC-101, AC-102, AC-103, AC-104, AC-105, AC-115
+ *
+ * @note AC-001/AC-002 はハンドラ層（URLパラメータ読取・json返却）の unit テスト。
+ *       データ層の正しさは service.integration.test.ts で実 D1 を使って別途検証済み。
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
@@ -74,6 +77,11 @@ describe('GET /expense', () => {
 		} as Parameters<typeof GET>[0]);
 
 		expect(response.status).toBe(200);
+		expect(vi.mocked(service.getExpenses)).toHaveBeenCalledWith(
+			expect.anything(),
+			'user-1',
+			expect.objectContaining({ month: '2026-01' })
+		);
 	});
 });
 
@@ -174,12 +182,39 @@ describe('POST /expense', () => {
 		expect(body.fields).toContainEqual({ field: 'categoryId', message: 'カテゴリは必須です' });
 	});
 
+	test('[SPEC: AC-115] 支払者IDが未指定の場合、400 VALIDATION_ERROR を返す', async () => {
+		const response = await POST({
+			request: makePostRequest({ amount: 1000, categoryId: 'cat-1' }),
+			locals: mockLocals,
+			platform: mockPlatform
+		} as Parameters<typeof GET>[0]);
+
+		expect(response.status).toBe(400);
+		const body = await response.json();
+		expect(body.code).toBe('VALIDATION_ERROR');
+		expect(body.fields).toContainEqual({ field: 'payerId', message: '支払者は必須です' });
+	});
+
+	test('[SPEC: AC-115] 支払者IDが空文字の場合、400 VALIDATION_ERROR を返す', async () => {
+		const response = await POST({
+			request: makePostRequest({ amount: 1000, categoryId: 'cat-1', payerId: '' }),
+			locals: mockLocals,
+			platform: mockPlatform
+		} as Parameters<typeof GET>[0]);
+
+		expect(response.status).toBe(400);
+		const body = await response.json();
+		expect(body.code).toBe('VALIDATION_ERROR');
+		expect(body.fields).toContainEqual({ field: 'payerId', message: '支払者は必須です' });
+	});
+
 	test('[SPEC: AC-003] 正しいデータの場合、201 を返す', async () => {
 		const mockCreated = {
 			id: 'exp-1',
 			userId: 'user-1',
 			amount: 1000,
 			categoryId: 'cat-1',
+			payerId: 'payer-1',
 			approvedAt: null,
 			finalizedAt: null,
 			createdAt: new Date('2026-03-28T00:00:00.000Z'),
@@ -188,12 +223,18 @@ describe('POST /expense', () => {
 				userId: 'user-1',
 				name: '食費',
 				createdAt: new Date('2026-03-01T00:00:00.000Z')
+			},
+			payer: {
+				id: 'payer-1',
+				userId: 'user-1',
+				name: '田中',
+				createdAt: new Date('2026-03-01T00:00:00.000Z')
 			}
 		};
 		vi.mocked(service.createExpense).mockResolvedValueOnce(mockCreated);
 
 		const response = await POST({
-			request: makePostRequest({ amount: 1000, categoryId: 'cat-1' }),
+			request: makePostRequest({ amount: 1000, categoryId: 'cat-1', payerId: 'payer-1' }),
 			locals: mockLocals,
 			platform: mockPlatform
 		} as Parameters<typeof GET>[0]);
