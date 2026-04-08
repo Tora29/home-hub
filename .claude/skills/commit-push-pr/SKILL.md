@@ -1,6 +1,7 @@
 ---
 name: commit-push-pr
 description: Git ワークフロー（ブランチ作成、コミット、PR 作成）を自動化する。マージ後のクリーンアップも対応。
+effort: low
 ---
 
 # Git ワークフロー自動化
@@ -53,7 +54,7 @@ git push -u origin <branch-name>
 gh pr create --base main --head <branch-name> --title "<title>" --body "<body>"
 ```
 
-PR タイトルはコミットメッセージと整合する内容にすること。本文には変更概要と確認内容を簡潔に含めること。
+PR タイトルはコミットメッセージと整合する内容にすること。本文には変更概要を簡潔に含めること。
 
 PR URL を表示してユーザーに伝える。Codex レビューはユーザーが必要に応じて手動で行う。
 

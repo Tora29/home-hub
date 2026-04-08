@@ -23,19 +23,28 @@ scaffold-fe スキルがコード生成時に参照する。
 
 ### ライトモード実値（参考）
 
-| トークン（Tailwindクラス）  | 実値                    | 用途                               |
-| --------------------------- | ----------------------- | ---------------------------------- |
-| `bg-bg` / `bg-bg-tertiary`  | `#fdfaf6`               | ページ背景                         |
-| `bg-bg-secondary`           | `#f5efe6`               | セクション背景                     |
-| `bg-bg-grouped`             | `#f0e9de`               | グループ背景                       |
-| `bg-bg-card`                | `#ffffff`               | カード背景                         |
-| `text-label`                | `#3d3530`               | 本文テキスト                       |
-| `text-secondary`            | `rgba(61,53,48,.6)`     | 補助テキスト                       |
-| `text-tertiary`             | `rgba(61,53,48,.3)`     | プレースホルダー                   |
-| `bg-accent` / `text-accent` | `#c4705a`               | プライマリアクション（テラコッタ） |
-| `bg-success`                | `#5a9e65`               | 成功（セージグリーン）             |
-| `bg-destructive`            | `#c94b4b`               | エラー                             |
-| `border-separator`          | `rgba(180,155,135,.35)` | 区切り線                           |
+| トークン（Tailwindクラス）       | 実値                    | 用途                               |
+| -------------------------------- | ----------------------- | ---------------------------------- |
+| `bg-bg` / `bg-bg-tertiary`       | `#fdfaf6`               | ページ背景                         |
+| `bg-bg-secondary`                | `#f5efe6`               | セクション背景                     |
+| `bg-bg-grouped`                  | `#f0e9de`               | グループ背景                       |
+| `bg-bg-card`                     | `#ffffff`               | カード背景                         |
+| `text-label`                     | `#3d3530`               | 本文テキスト                       |
+| `text-secondary`                 | `rgba(61,53,48,.6)`     | 補助テキスト                       |
+| `text-tertiary`                  | `rgba(61,53,48,.3)`     | プレースホルダー                   |
+| `bg-accent` / `text-accent`      | `#c4705a`               | プライマリアクション（テラコッタ） |
+| `bg-success`                     | `#5a9e65`               | 成功（セージグリーン）             |
+| `bg-destructive`                 | `#c94b4b`               | エラー                             |
+| `border-separator`               | `rgba(180,155,135,.35)` | 区切り線                           |
+| `bg-bg-warning` / `text-warning` | `#fef3c7` / `#b45309`   | 保留・確認済みバッジ（アンバー）   |
+| `bg-bg-dot`（CSS変数のみ）       | `rgba(180,155,135,.2)`  | 背景テクスチャのドット色           |
+
+> ダークモード対応: `src/app.css` の `.dark {}` ブロックで上書き定義済み。
+
+### 不透明度バリエーション
+
+Tailwindの `/` 記法による不透明度バリエーション（例: `bg-success/10`、`bg-destructive/10`）は許容する。
+セマンティック用途（エラー背景・成功背景など）に限定して使用し、任意の箇所に多用しない。
 
 ## フォント
 

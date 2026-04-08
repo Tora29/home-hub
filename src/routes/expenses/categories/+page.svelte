@@ -159,7 +159,7 @@
 	</div>
 
 	<!-- Add form -->
-	<div class="mb-6 rounded-3xl bg-bg-card p-5 shadow-sm">
+	<div class="mb-6 rounded-3xl bg-bg-card p-6 shadow-md">
 		<h2 class="mb-3 text-sm font-medium text-secondary">新しいカテゴリを追加</h2>
 		<div class="flex items-start gap-2">
 			<div class="min-w-0 flex-1">
@@ -199,7 +199,7 @@
 	{:else}
 		<ul data-testid="expense-category-list" class="flex flex-col gap-2">
 			{#each data.categories.items as cat (cat.id)}
-				<li data-testid="expense-category-item" class="rounded-3xl bg-bg-card px-4 py-3 shadow-sm">
+				<li data-testid="expense-category-item" class="rounded-3xl bg-bg-card px-4 py-3 shadow-md">
 					{#if editingId === cat.id}
 						<!-- Inline edit mode -->
 						<div class="flex items-start gap-2">

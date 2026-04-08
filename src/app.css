@@ -26,6 +26,18 @@
 
 	/* Border */
 	--color-separator: rgba(180, 155, 135, 0.35);
+
+	/* Warning / Pending（確認済み・保留状態） */
+	--color-warning: #b45309;
+	--color-bg-warning: #fef3c7;
+
+	/* Background texture dot */
+	--color-bg-dot: rgba(180, 155, 135, 0.2);
+}
+
+:root {
+	/* Sidebar directional shadow（Tailwind shadow-* では方向指定不可のため個別定義） */
+	--shadow-sidebar: 4px 0 16px rgba(0, 0, 0, 0.12);
 }
 
 .dark {
@@ -37,6 +49,8 @@
 	--color-secondary: rgba(240, 235, 228, 0.6);
 	--color-tertiary: rgba(240, 235, 228, 0.3);
 	--color-separator: rgba(120, 100, 85, 0.35);
+	--color-warning: #d97706;
+	--color-bg-warning: rgba(217, 119, 6, 0.2);
 }
 
 @media (min-width: 768px) {

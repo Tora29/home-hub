@@ -61,7 +61,7 @@
 
 <div
 	class="flex min-h-screen items-center justify-center bg-bg-grouped p-4"
-	style="background-image: radial-gradient(circle, rgba(180,155,135,.2) 1px, transparent 1px); background-size: 20px 20px;"
+	style="background-image: radial-gradient(circle, var(--color-bg-dot) 1px, transparent 1px); background-size: 20px 20px;"
 >
 	<div class="w-full max-w-sm rounded-3xl bg-bg-card p-8 shadow-md">
 		<div class="mb-8 text-center">
