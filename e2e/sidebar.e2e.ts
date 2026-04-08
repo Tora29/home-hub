@@ -58,23 +58,6 @@ test.describe('サイドバー（デスクトップ）', () => {
 		await expect(page).toHaveURL('/recipes');
 	});
 
-	test('[SPEC: AC-001] タグメニュー項目をクリックすると /recipes/tags へ遷移する', async ({
-		page
-	}) => {
-		await page.getByTestId('sidebar-category-meal').click();
-		await expect(page.getByTestId('sidebar-category-meal')).toHaveAttribute(
-			'aria-expanded',
-			'false'
-		);
-		await page.getByTestId('sidebar-category-meal').click();
-		await expect(page.getByTestId('sidebar-category-meal')).toHaveAttribute(
-			'aria-expanded',
-			'true'
-		);
-		await page.getByTestId('sidebar-item-recipes-tags').click();
-		await expect(page).toHaveURL('/recipes/tags');
-	});
-
 	test('[SPEC: AC-001] 家計簿メニュー項目をクリックすると /expenses へ遷移する', async ({
 		page
 	}) => {

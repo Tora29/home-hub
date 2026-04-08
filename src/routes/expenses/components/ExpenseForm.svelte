@@ -9,12 +9,13 @@
   FE バリデーションで空入力・未選択を即時フィードバックする。
 
   @spec specs/expenses/spec.md
-  @acceptance AC-003, AC-006, AC-111, AC-112
+  @acceptance AC-003, AC-006, AC-038, AC-039, AC-111, AC-112, AC-120
 
   @props
   - mode: 'create' | 'edit' - フォームモード
   - expense?: ExpenseWithCategory - 編集対象（edit mode のみ）
   - categories: Category[] - カテゴリ一覧
+  - payers: Payer[] - 支払者一覧
   - onSuccess: () => void | Promise<void> - 送信成功時コールバック
   - onCancel: () => void - キャンセル時コールバック
 -->
@@ -24,29 +25,20 @@
 	import Input from '$lib/components/Input.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import Button from '$lib/components/Button.svelte';
-
-	type Category = { id: string; userId: string; name: string; createdAt: Date };
-	type ExpenseWithCategory = {
-		id: string;
-		userId: string;
-		amount: number;
-		categoryId: string;
-		approvedAt: Date | null;
-		finalizedAt: Date | null;
-		createdAt: Date;
-		category: Category;
-	};
+	import type { ExpenseCategory, ExpensePayer, ExpenseWithRelations } from '../types';
 
 	let {
 		mode,
 		expense,
 		categories,
+		payers = [],
 		onSuccess,
 		onCancel
 	}: {
 		mode: 'create' | 'edit';
-		expense?: ExpenseWithCategory;
-		categories: Category[];
+		expense?: ExpenseWithRelations;
+		categories: ExpenseCategory[];
+		payers: ExpensePayer[];
 		onSuccess: () => void | Promise<void>;
 		onCancel: () => void;
 	} = $props();
@@ -54,8 +46,10 @@
 	// 内部値はカンマなしの半角数字文字列
 	let amountRaw = $state(untrack(() => (expense ? String(expense.amount) : '')));
 	let categoryId = $state(untrack(() => expense?.categoryId ?? ''));
+	let payerId = $state(untrack(() => expense?.payerId ?? ''));
 	let amountError = $state('');
 	let categoryError = $state('');
+	let payerError = $state('');
 	let serverError = $state('');
 	let isSubmitting = $state(false);
 
@@ -73,6 +67,7 @@
 	function validate(): boolean {
 		amountError = '';
 		categoryError = '';
+		payerError = '';
 		let valid = true;
 
 		if (!amountRaw) {
@@ -94,6 +89,11 @@
 			valid = false;
 		}
 
+		if (!payerId) {
+			payerError = '支払者は必須です';
+			valid = false;
+		}
+
 		return valid;
 	}
 
@@ -104,8 +104,7 @@
 		serverError = '';
 
 		const amount = Number(amountRaw);
-		const approved = expense?.approvedAt !== null && expense?.approvedAt !== undefined;
-		const body = mode === 'create' ? { amount, categoryId } : { amount, categoryId, approved };
+		const body = { amount, categoryId, payerId };
 
 		const url = mode === 'create' ? '/expenses' : `/expenses/${expense!.id}`;
 		const method = mode === 'create' ? 'POST' : 'PUT';
@@ -127,6 +126,7 @@
 					for (const f of err.fields) {
 						if (f.field === 'amount') amountError = f.message;
 						if (f.field === 'categoryId') categoryError = f.message;
+						if (f.field === 'payerId') payerError = f.message;
 					}
 				} else {
 					serverError = err.message ?? 'エラーが発生しました';
@@ -178,7 +178,7 @@
 		</div>
 
 		<!-- カテゴリ -->
-		<div class="mb-6">
+		<div class="mb-4">
 			<label for="expense-category" class="mb-1 block text-sm font-medium text-label">
 				カテゴリ<span class="ml-1 text-destructive">*</span>
 			</label>
@@ -196,6 +196,29 @@
 			{#if categoryError}
 				<p data-testid="expense-category-error" class="mt-1 text-xs text-destructive">
 					{categoryError}
+				</p>
+			{/if}
+		</div>
+
+		<!-- 支払者 -->
+		<div class="mb-6">
+			<label for="expense-payer" class="mb-1 block text-sm font-medium text-label">
+				支払者<span class="ml-1 text-destructive">*</span>
+			</label>
+			<Select
+				id="expense-payer"
+				data-testid="expense-payer-select"
+				bind:value={payerId}
+				class="w-full"
+			>
+				<option value="">選択してください</option>
+				{#each payers as payer (payer.id)}
+					<option value={payer.id}>{payer.name}</option>
+				{/each}
+			</Select>
+			{#if payerError}
+				<p data-testid="expense-payer-error" class="mt-1 text-xs text-destructive">
+					{payerError}
 				</p>
 			{/if}
 		</div>

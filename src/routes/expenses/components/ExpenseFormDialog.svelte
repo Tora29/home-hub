@@ -16,37 +16,29 @@
   - mode: 'create' | 'edit' - フォームモード
   - expense: ExpenseWithCategory | null - 編集対象（edit mode のみ）
   - categories: Category[] - カテゴリ一覧
+  - payers: Payer[] - 支払者一覧
   - onSuccess: () => void | Promise<void> - 送信成功時コールバック
   - onCancel: () => void - キャンセル時コールバック
 -->
 <script lang="ts">
 	import Dialog from '$lib/components/Dialog.svelte';
 	import ExpenseForm from './ExpenseForm.svelte';
-
-	type Category = { id: string; userId: string; name: string; createdAt: Date };
-	type ExpenseWithCategory = {
-		id: string;
-		userId: string;
-		amount: number;
-		categoryId: string;
-		approvedAt: Date | null;
-		finalizedAt: Date | null;
-		createdAt: Date;
-		category: Category;
-	};
+	import type { ExpenseCategory, ExpensePayer, ExpenseWithRelations } from '../types';
 
 	let {
 		open,
 		mode,
 		expense = null,
 		categories,
+		payers,
 		onSuccess,
 		onCancel
 	}: {
 		open: boolean;
 		mode: 'create' | 'edit';
-		expense?: ExpenseWithCategory | null;
-		categories: Category[];
+		expense?: ExpenseWithRelations | null;
+		categories: ExpenseCategory[];
+		payers: ExpensePayer[];
 		onSuccess: () => void | Promise<void>;
 		onCancel: () => void;
 	} = $props();
@@ -59,6 +51,13 @@
 	aria-label={mode === 'create' ? '支出を登録' : '支出を編集'}
 >
 	<div class="w-full max-w-md rounded-3xl bg-bg-card shadow-md">
-		<ExpenseForm {mode} expense={expense ?? undefined} {categories} {onSuccess} {onCancel} />
+		<ExpenseForm
+			{mode}
+			expense={expense ?? undefined}
+			{categories}
+			{payers}
+			{onSuccess}
+			{onCancel}
+		/>
 	</div>
 </Dialog>

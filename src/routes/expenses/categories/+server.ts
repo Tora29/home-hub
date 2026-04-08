@@ -20,8 +20,8 @@
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { AppError } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
+import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { categoryCreateSchema } from './schema';
 import { createCategory, getCategories } from './service';
 
@@ -36,14 +36,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 		const result = await getCategories(db, locals.user!.id);
 		return json(result);
 	} catch (e) {
-		if (e instanceof AppError) {
-			return json({ code: e.code, message: e.message, fields: e.fields }, { status: e.status });
-		}
-		console.error(e);
-		return json(
-			{ code: 'INTERNAL_SERVER_ERROR', message: 'サーバーエラーが発生しました' },
-			{ status: 500 }
-		);
+		return handleApiError(e);
 	}
 };
 
@@ -54,34 +47,17 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
  * @throws VALIDATION_ERROR - 入力値が不正な場合
  */
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
-	const body = await request.json();
-	const result = categoryCreateSchema.safeParse(body);
-	if (!result.success) {
-		return json(
-			{
-				code: 'VALIDATION_ERROR',
-				message: '入力値が正しくありません',
-				fields: result.error.issues.map((i) => ({
-					field: i.path.join('.'),
-					message: i.message
-				}))
-			},
-			{ status: 400 }
-		);
-	}
+	const bodyResult = await parseJsonBody(request);
+	if (!bodyResult.ok) return bodyResult.response;
+
+	const result = categoryCreateSchema.safeParse(bodyResult.data);
+	if (!result.success) return validationErrorResponse(result.error.issues);
 
 	try {
 		const db = createDb(platform!.env.DB);
 		const created = await createCategory(db, locals.user!.id, result.data);
 		return json(created, { status: 201 });
 	} catch (e) {
-		if (e instanceof AppError) {
-			return json({ code: e.code, message: e.message, fields: e.fields }, { status: e.status });
-		}
-		console.error(e);
-		return json(
-			{ code: 'INTERNAL_SERVER_ERROR', message: 'サーバーエラーが発生しました' },
-			{ status: 500 }
-		);
+		return handleApiError(e);
 	}
 };

@@ -11,15 +11,15 @@
  * @acceptance AC-014, AC-113, AC-114
  *
  * @endpoints
- * - POST /expenses/[id]/finalize → 200 ExpenseWithCategory - 支出確定
+ * - POST /expenses/[id]/finalize → 200 ExpenseWithRelations - 支出確定
  *   @errors 404(NOT_FOUND), 409(CONFLICT)
  *
  * @service ../../service.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { AppError } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
+import { handleApiError } from '$lib/server/api-helpers';
 import { finalizeExpense } from '../../service';
 
 /**
@@ -35,13 +35,6 @@ export const POST: RequestHandler = async ({ params, locals, platform }) => {
 		const finalized = await finalizeExpense(db, locals.user!.id, params.id);
 		return json(finalized);
 	} catch (e) {
-		if (e instanceof AppError) {
-			return json({ code: e.code, message: e.message, fields: e.fields }, { status: e.status });
-		}
-		console.error(e);
-		return json(
-			{ code: 'INTERNAL_SERVER_ERROR', message: 'サーバーエラーが発生しました' },
-			{ status: 500 }
-		);
+		return handleApiError(e);
 	}
 };

@@ -46,10 +46,7 @@
 			id: 'meal',
 			label: '献立系',
 			icon: UtensilsCrossed,
-			items: [
-				{ testid: 'sidebar-item-recipes', href: '/recipes', label: 'レシピ一覧' },
-				{ testid: 'sidebar-item-recipes-tags', href: '/recipes/tags', label: 'タグ' }
-			]
+			items: [{ testid: 'sidebar-item-recipes', href: '/recipes', label: 'レシピ一覧' }]
 		},
 		{
 			id: 'expense',

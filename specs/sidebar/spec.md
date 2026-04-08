@@ -18,7 +18,7 @@
 - AC-003: サイドバー開閉ボタンをクリックすると、サイドバー全体が表示/非表示に切り替わる
 - AC-007: サイドバー開閉状態が localStorage に保存され、ページリロード後も維持される
 - AC-004: 現在表示中のページに対応するメニュー項目がアクティブ状態（アンダーライン）で表示される
-- AC-005: モバイル幅（`< md`）ではサイドバーはデフォルト非表示で、ハンバーガーボタンから開くことができる
+- AC-005: モバイル幅（`< md`）ではサイドバーはデフォルト非表示で、ハンバーガーボタンから開くことができる。また、オーバーレイをクリックするとサイドバーが閉じる
 - AC-006: デスクトップ幅（`>= md`）ではサイドバーはデフォルト表示される
 
 ### 異常系
@@ -43,7 +43,6 @@
   ```
   献立系（UtensilsCrossed アイコン）
     └ レシピ一覧（/recipes）
-    └ タグ（/recipes/tags）
   収支系（Wallet アイコン）
     └ 家計簿（/expenses）
   ```
@@ -64,17 +63,16 @@
 
 ## data-testid
 
-| testid                      | 要素種別   | 説明                               |
-| --------------------------- | ---------- | ---------------------------------- |
-| `sidebar`                   | `<nav>`    | サイドバー全体                     |
-| `sidebar-toggle`            | `<button>` | デスクトップ用サイドバー開閉ボタン |
-| `sidebar-hamburger`         | `<button>` | モバイル用ハンバーガーボタン       |
-| `sidebar-overlay`           | `<div>`    | モバイル用オーバーレイ             |
-| `sidebar-category-meal`     | `<button>` | 献立系カテゴリ見出し               |
-| `sidebar-category-expense`  | `<button>` | 収支系カテゴリ見出し               |
-| `sidebar-item-recipes`      | `<a>`      | レシピ一覧メニュー項目             |
-| `sidebar-item-recipes-tags` | `<a>`      | タグメニュー項目                   |
-| `sidebar-item-expenses`     | `<a>`      | 家計簿メニュー項目                 |
+| testid                     | 要素種別   | 説明                               |
+| -------------------------- | ---------- | ---------------------------------- |
+| `sidebar`                  | `<nav>`    | サイドバー全体                     |
+| `sidebar-toggle`           | `<button>` | デスクトップ用サイドバー開閉ボタン |
+| `sidebar-hamburger`        | `<button>` | モバイル用ハンバーガーボタン       |
+| `sidebar-overlay`          | `<div>`    | モバイル用オーバーレイ             |
+| `sidebar-category-meal`    | `<button>` | 献立系カテゴリ見出し               |
+| `sidebar-category-expense` | `<button>` | 収支系カテゴリ見出し               |
+| `sidebar-item-recipes`     | `<a>`      | レシピ一覧メニュー項目             |
+| `sidebar-item-expenses`    | `<a>`      | 家計簿メニュー項目                 |
 
 ## テスト戦略
 

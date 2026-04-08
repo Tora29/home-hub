@@ -33,7 +33,15 @@ import { getAllRecipes } from '../service';
  * @throws VALIDATION_ERROR - 入力値が不正な場合
  */
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
-	const body = await request.json();
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		return json(
+			{ code: 'VALIDATION_ERROR', message: 'リクエストボディが不正です', fields: [] },
+			{ status: 400 }
+		);
+	}
 	const result = askSchema.safeParse(body);
 	if (!result.success) {
 		return json(

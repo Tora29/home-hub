@@ -32,6 +32,7 @@
 		Pencil,
 		Trash2,
 		Tag,
+		Users,
 		Check,
 		MoreVertical
 	} from '@lucide/svelte';
@@ -39,28 +40,20 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import ExpenseFormDialog from './components/ExpenseFormDialog.svelte';
-
-	type Category = { id: string; userId: string; name: string; createdAt: Date };
-	type ExpenseWithCategory = {
-		id: string;
-		userId: string;
-		amount: number;
-		categoryId: string;
-		approvedAt: Date | null;
-		finalizedAt: Date | null;
-		createdAt: Date;
-		category: Category;
-	};
+	import { generateMonthOptions } from '$lib/utils/date';
+	import type { ExpenseWithRelations } from './types';
 
 	let { data } = $props();
 
 	let showCreateDialog = $state(false);
-	let editingExpense = $state<ExpenseWithCategory | null>(null);
-	let deletingExpense = $state<ExpenseWithCategory | null>(null);
+	let editingExpense = $state<ExpenseWithRelations | null>(null);
+	let deletingExpense = $state<ExpenseWithRelations | null>(null);
 	let isDeleting = $state(false);
 
 	// 行メニューの開閉管理（開いている行の ID を保持）
 	let openMenuId = $state<string | null>(null);
+
+	let actionError = $state<string | null>(null);
 
 	// 確認済み（未確定）の支出を自動で確定対象にする
 	let finalizeTargets = $derived(
@@ -68,26 +61,9 @@
 	);
 	let showFinalizeDialog = $state(false);
 	let isFinalizing = $state(false);
+	let finalizeError = $state<string | null>(null);
 
-	let currentMonth = $derived(
-		page.url.searchParams.get('month') ??
-			(() => {
-				const now = new Date();
-				return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-			})()
-	);
-
-	function getMonthOptions() {
-		const options = [];
-		const now = new Date();
-		for (let i = 0; i < 13; i++) {
-			const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-			const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-			const label = `${d.getFullYear()}年${d.getMonth() + 1}月`;
-			options.push({ value, label });
-		}
-		return options;
-	}
+	let currentMonth = $derived(page.url.searchParams.get('month') ?? data.currentMonth);
 
 	function formatAmount(amount: number): string {
 		return `¥${amount.toLocaleString('ja-JP')}`;
@@ -106,33 +82,44 @@
 	// まとめて確定（確認済み未確定を全件）
 	async function handleBulkFinalize() {
 		isFinalizing = true;
+		finalizeError = null;
 		try {
-			await Promise.all(
+			const results = await Promise.all(
 				finalizeTargets.map((e) => fetch(`/expenses/${e.id}/finalize`, { method: 'POST' }))
 			);
-			showFinalizeDialog = false;
-			await invalidateAll();
+			const failCount = results.filter((r) => !r.ok).length;
+			if (failCount > 0) {
+				finalizeError = `${failCount}件の確定に失敗しました。再度お試しください。`;
+				await invalidateAll();
+			} else {
+				showFinalizeDialog = false;
+				await invalidateAll();
+			}
 		} finally {
 			isFinalizing = false;
 		}
 	}
 
-	async function handleApprove(exp: ExpenseWithCategory) {
-		const res = await fetch(`/expenses/${exp.id}`, {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ amount: exp.amount, categoryId: exp.categoryId, approved: true })
-		});
-		if (res.ok) await invalidateAll();
+	async function handleApprove(exp: ExpenseWithRelations) {
+		actionError = null;
+		const res = await fetch(`/expenses/${exp.id}/approve`, { method: 'POST' });
+		if (res.ok) {
+			await invalidateAll();
+		} else {
+			const err = await res.json().catch(() => null);
+			actionError = err?.message ?? '確認済みへの更新に失敗しました';
+		}
 	}
 
-	async function handleUnapprove(exp: ExpenseWithCategory) {
-		const res = await fetch(`/expenses/${exp.id}`, {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ amount: exp.amount, categoryId: exp.categoryId, approved: false })
-		});
-		if (res.ok) await invalidateAll();
+	async function handleUnapprove(exp: ExpenseWithRelations) {
+		actionError = null;
+		const res = await fetch(`/expenses/${exp.id}/unapprove`, { method: 'POST' });
+		if (res.ok) {
+			await invalidateAll();
+		} else {
+			const err = await res.json().catch(() => null);
+			actionError = err?.message ?? '未承認への戻しに失敗しました';
+		}
 	}
 
 	async function handleDeleteConfirm() {
@@ -155,7 +142,7 @@
 		await invalidateAll();
 	}
 
-	const monthOptions = getMonthOptions();
+	let monthOptions = $derived(generateMonthOptions(data.currentMonth));
 </script>
 
 <div class="mx-auto max-w-3xl" onclick={() => (openMenuId = null)} role="presentation">
@@ -170,6 +157,14 @@
 		>
 			<Tag size={14} />
 			<span class="hidden md:inline">カテゴリ管理</span>
+		</a>
+		<a
+			href="/expenses/payers"
+			class="inline-flex items-center gap-1.5 rounded-2xl border border-separator px-2 py-2 text-sm text-secondary hover:text-label md:px-3"
+			aria-label="支払者管理"
+		>
+			<Users size={14} />
+			<span class="hidden md:inline">支払者管理</span>
 		</a>
 		<!-- 確認済み（未確定）が1件以上あるときにまとめて確定ボタンを表示 -->
 		{#if finalizeTargets.length > 0}
@@ -195,6 +190,17 @@
 			<span class="hidden md:inline">登録</span>
 		</Button>
 	</div>
+
+	<!-- Action error -->
+	{#if actionError}
+		<p
+			data-testid="expense-action-error"
+			role="alert"
+			class="mb-4 rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive"
+		>
+			{actionError}
+		</p>
+	{/if}
 
 	<!-- Controls -->
 	<div class="mb-4 flex items-center justify-between gap-4">
@@ -237,6 +243,11 @@
 								<span class="rounded-xl bg-bg-secondary px-2 py-0.5 text-xs text-secondary">
 									{exp.category.name}
 								</span>
+								{#if exp.payer}
+									<span class="rounded-xl bg-bg-secondary px-2 py-0.5 text-xs text-secondary">
+										{exp.payer.name}
+									</span>
+								{/if}
 								<!-- Approval badge -->
 								{#if exp.finalizedAt !== null}
 									<span
@@ -400,6 +411,7 @@
 	open={showCreateDialog}
 	mode="create"
 	categories={data.categories.items}
+	payers={data.payers.items}
 	onSuccess={handleFormSuccess}
 	onCancel={() => (showCreateDialog = false)}
 />
@@ -408,6 +420,7 @@
 	mode="edit"
 	expense={editingExpense}
 	categories={data.categories.items}
+	payers={data.payers.items}
 	onSuccess={handleFormSuccess}
 	onCancel={() => (editingExpense = null)}
 />
@@ -435,8 +448,12 @@
 	description={`確認済みの支出 ${finalizeTargets.length} 件を確定します。確定後は編集・削除・承認状態の変更ができなくなります。`}
 	confirmLabel="確定する"
 	loading={isFinalizing}
+	error={finalizeError ?? undefined}
 	data-testid="expense-finalize-dialog"
 	confirmTestid="expense-finalize-confirm-button"
 	onConfirm={() => void handleBulkFinalize()}
-	onCancel={() => (showFinalizeDialog = false)}
+	onCancel={() => {
+		showFinalizeDialog = false;
+		finalizeError = null;
+	}}
 />

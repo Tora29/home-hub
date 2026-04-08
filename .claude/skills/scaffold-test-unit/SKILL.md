@@ -204,25 +204,34 @@ describe('{ComponentName}', () => {
 
 worktree で生成したテストファイルを main ブランチに取り込み、履歴管理のためにコミットする。
 
-```bash
-# main ブランチに戻る
-cd ../home-hub
+> **注意**: `git checkout BRANCH -- directory/` はディレクトリ内の実装ファイルも含めて丸ごとチェックアウトしてしまう。
+> テストファイルのみを取り込むため、**必ず `find + cp` を使うこと**。
 
-# worktree のテストファイルのみを取り込む
-git checkout worktree/scaffold-test-unit-{feature} -- src/routes/{feature}/
-git checkout worktree/scaffold-test-unit-{feature} -- e2e/{feature}.e2e.ts
+```bash
+# worktree のテストファイルのみを main にコピー（実装ファイルは除外）
+WORKTREE=../home-hub-test-{feature}
+find "$WORKTREE/src" -name "*.test.ts" -o -name "*.integration.test.ts" -o -name "*.svelte.test.ts" | while read f; do
+  dest="./src${f#$WORKTREE/src}"
+  mkdir -p "$(dirname "$dest")"
+  cp "$f" "$dest"
+done
+
+# E2E テストファイルをコピー
+[ -f "$WORKTREE/e2e/{feature}.e2e.ts" ] && cp "$WORKTREE/e2e/{feature}.e2e.ts" e2e/{feature}.e2e.ts
 
 # worktree を削除
-git worktree remove ../home-hub-test-{feature}
+git worktree remove --force "$WORKTREE"
 git branch -d worktree/scaffold-test-unit-{feature}
 
-# コミット（履歴管理のため。be / fe との依存関係はない）
-git add src/routes/{feature}/ e2e/{feature}.e2e.ts
+# テストファイルのみをステージ（実装ファイルが混入していないか確認してからコミット）
+git status --short  # *.test.ts 系のみであることを確認
+git add $(find src/routes -name "*.test.ts" -o -name "*.integration.test.ts" -o -name "*.svelte.test.ts")
+[ -f e2e/{feature}.e2e.ts ] && git add e2e/{feature}.e2e.ts
 git commit -m "test({feature}): unit / integration / e2e テスト生成"
 ```
 
 - コミットメッセージは Conventional Commits 形式
-- テストファイル以外（実装ファイル等）はこのコミットに含めない
+- `git status` でステージ内容を確認し、実装ファイル（`service.ts`, `+server.ts`, `+page.svelte` 等）が混入していないことを必ず確認してからコミットする
 
 ### Step 7: 次のステップ案内
 

@@ -10,6 +10,7 @@
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { flushSync } from 'svelte';
 import Header from './Header.svelte';
 
 vi.mock('$app/navigation', () => ({
@@ -60,7 +61,8 @@ describe('Header', () => {
 		test('[SPEC: AC-002] ライトモード時にボタンをクリックすると dark クラスが付与される', async () => {
 			render(Header);
 			const toggle = page.getByRole('button', { name: 'ダークモードに切り替える' });
-			await toggle.click();
+			(toggle.element() as HTMLElement).click();
+			flushSync();
 			expect(document.documentElement.classList.contains('dark')).toBe(true);
 		});
 
@@ -69,7 +71,8 @@ describe('Header', () => {
 			localStorage.setItem('theme', 'dark');
 			render(Header);
 			const toggle = page.getByRole('button', { name: 'ライトモードに切り替える' });
-			await toggle.click();
+			(toggle.element() as HTMLElement).click();
+			flushSync();
 			expect(document.documentElement.classList.contains('dark')).toBe(false);
 		});
 
@@ -89,7 +92,8 @@ describe('Header', () => {
 		test('[SPEC: AC-003] ダークモードに切り替えると localStorage に "dark" が保存される', async () => {
 			render(Header);
 			const toggle = page.getByRole('button', { name: 'ダークモードに切り替える' });
-			await toggle.click();
+			(toggle.element() as HTMLElement).click();
+			flushSync();
 			expect(localStorage.getItem('theme')).toBe('dark');
 		});
 
@@ -98,7 +102,8 @@ describe('Header', () => {
 			document.documentElement.classList.add('dark');
 			render(Header);
 			const toggle = page.getByRole('button', { name: 'ライトモードに切り替える' });
-			await toggle.click();
+			(toggle.element() as HTMLElement).click();
+			flushSync();
 			expect(localStorage.getItem('theme')).toBe('light');
 		});
 

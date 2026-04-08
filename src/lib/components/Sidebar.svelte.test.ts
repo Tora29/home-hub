@@ -174,22 +174,7 @@ describe('Sidebar', () => {
 			render(Sidebar);
 
 			await expect
-				.element(page.getByRole('link', { name: 'タグ' }))
-				.not.toHaveAttribute('aria-current');
-			await expect
 				.element(page.getByRole('link', { name: '家計簿' }))
-				.not.toHaveAttribute('aria-current');
-		});
-
-		test('[SPEC: AC-004] /recipes/tags アクセス時、タグリンクが aria-current="page" を持つ', async () => {
-			mockPage.url.pathname = '/recipes/tags';
-			render(Sidebar);
-
-			await expect
-				.element(page.getByRole('link', { name: 'タグ' }))
-				.toHaveAttribute('aria-current', 'page');
-			await expect
-				.element(page.getByRole('link', { name: 'レシピ一覧' }))
 				.not.toHaveAttribute('aria-current');
 		});
 
@@ -208,9 +193,6 @@ describe('Sidebar', () => {
 
 			await expect
 				.element(page.getByRole('link', { name: 'レシピ一覧' }))
-				.not.toHaveAttribute('aria-current');
-			await expect
-				.element(page.getByRole('link', { name: 'タグ' }))
 				.not.toHaveAttribute('aria-current');
 			await expect
 				.element(page.getByRole('link', { name: '家計簿' }))

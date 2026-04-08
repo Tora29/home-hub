@@ -14,6 +14,7 @@ import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { createExpense, getExpenses } from './service';
 import { createCategory } from './categories/service';
+import { createPayer } from './payers/service';
 
 function makeUserId() {
 	return crypto.randomUUID();
@@ -25,8 +26,9 @@ describe('load (expenses +page.server.ts)', () => {
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		await createExpense(db, userId, { amount: 800, categoryId: category.id });
-		await createExpense(db, userId, { amount: 1200, categoryId: category.id });
+		const payer = await createPayer(db, userId, { name: '田中' });
+		await createExpense(db, userId, { amount: 800, categoryId: category.id, payerId: payer.id });
+		await createExpense(db, userId, { amount: 1200, categoryId: category.id, payerId: payer.id });
 
 		const now = new Date();
 		const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -46,7 +48,8 @@ describe('load (expenses +page.server.ts)', () => {
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '外食費' });
-		await createExpense(db, userId, { amount: 3500, categoryId: category.id });
+		const payer = await createPayer(db, userId, { name: '田中' });
+		await createExpense(db, userId, { amount: 3500, categoryId: category.id, payerId: payer.id });
 
 		const now = new Date();
 		const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -62,8 +65,9 @@ describe('load (expenses +page.server.ts)', () => {
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
+		const payer = await createPayer(db, userId, { name: '田中' });
 		// 当月に支出を登録
-		await createExpense(db, userId, { amount: 1000, categoryId: category.id });
+		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerId: payer.id });
 
 		const now = new Date();
 		const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -88,9 +92,10 @@ describe('load (expenses +page.server.ts)', () => {
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
+		const payer = await createPayer(db, userId, { name: '田中' });
 		// 当月の支出
-		await createExpense(db, userId, { amount: 500, categoryId: category.id });
-		await createExpense(db, userId, { amount: 1500, categoryId: category.id });
+		await createExpense(db, userId, { amount: 500, categoryId: category.id, payerId: payer.id });
+		await createExpense(db, userId, { amount: 1500, categoryId: category.id, payerId: payer.id });
 
 		const now = new Date();
 		const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;

@@ -1,7 +1,7 @@
 /**
  * @file テスト: ExpenseFormDialog
  * @module src/routes/expenses/components/ExpenseFormDialog.svelte.test.ts
- * @testType unit
+ * @testType integration
  *
  * @target ./ExpenseFormDialog.svelte
  * @spec specs/expenses/spec.md
@@ -14,20 +14,24 @@ import { page } from 'vitest/browser';
 import ExpenseFormDialog from './ExpenseFormDialog.svelte';
 
 const mockCategory = { id: 'cat-1', userId: 'user-1', name: '食費', createdAt: new Date() };
+const mockPayer = { id: 'payer-1', userId: 'user-1', name: '田中', createdAt: new Date() };
 
 const mockExpense = {
 	id: 'exp-1',
 	userId: 'user-1',
 	amount: 1000,
 	categoryId: 'cat-1',
+	payerId: 'payer-1',
 	approvedAt: null,
 	finalizedAt: null,
 	createdAt: new Date(),
-	category: mockCategory
+	category: mockCategory,
+	payer: mockPayer
 };
 
 const baseProps = {
 	categories: [mockCategory],
+	payers: [mockPayer],
 	onSuccess: vi.fn(),
 	onCancel: vi.fn()
 };

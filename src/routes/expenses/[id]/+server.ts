@@ -10,7 +10,7 @@
  * @acceptance AC-004, AC-005, AC-006, AC-007, AC-101, AC-102, AC-103, AC-104, AC-105, AC-106, AC-113
  *
  * @endpoints
- * - PUT /expenses/[id] → 200 ExpenseWithCategory - 更新（金額・カテゴリ・承認状態）
+ * - PUT /expenses/[id] → 200 ExpenseWithRelations - 更新（金額・カテゴリ・承認状態）
  *   @body expenseUpdateSchema
  *   @errors 400(VALIDATION_ERROR), 404(NOT_FOUND), 409(CONFLICT)
  * - DELETE /expenses/[id] → 204 - 削除
@@ -21,8 +21,8 @@
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { AppError } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
+import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { expenseUpdateSchema } from '../schema';
 import { deleteExpense, updateExpense } from '../service';
 
@@ -35,35 +35,18 @@ import { deleteExpense, updateExpense } from '../service';
  * @throws CONFLICT - 確定済みの支出の場合
  */
 export const PUT: RequestHandler = async ({ request, params, locals, platform }) => {
-	const body = await request.json();
-	const result = expenseUpdateSchema.safeParse(body);
-	if (!result.success) {
-		return json(
-			{
-				code: 'VALIDATION_ERROR',
-				message: '入力値が正しくありません',
-				fields: result.error.issues.map((i) => ({
-					field: i.path.join('.'),
-					message: i.message
-				}))
-			},
-			{ status: 400 }
-		);
-	}
+	const bodyResult = await parseJsonBody(request);
+	if (!bodyResult.ok) return bodyResult.response;
+
+	const result = expenseUpdateSchema.safeParse(bodyResult.data);
+	if (!result.success) return validationErrorResponse(result.error.issues);
 
 	try {
 		const db = createDb(platform!.env.DB);
 		const updated = await updateExpense(db, locals.user!.id, params.id, result.data);
 		return json(updated);
 	} catch (e) {
-		if (e instanceof AppError) {
-			return json({ code: e.code, message: e.message, fields: e.fields }, { status: e.status });
-		}
-		console.error(e);
-		return json(
-			{ code: 'INTERNAL_SERVER_ERROR', message: 'サーバーエラーが発生しました' },
-			{ status: 500 }
-		);
+		return handleApiError(e);
 	}
 };
 
@@ -79,13 +62,6 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 		await deleteExpense(db, locals.user!.id, params.id);
 		return new Response(null, { status: 204 });
 	} catch (e) {
-		if (e instanceof AppError) {
-			return json({ code: e.code, message: e.message, fields: e.fields }, { status: e.status });
-		}
-		console.error(e);
-		return json(
-			{ code: 'INTERNAL_SERVER_ERROR', message: 'サーバーエラーが発生しました' },
-			{ status: 500 }
-		);
+		return handleApiError(e);
 	}
 };

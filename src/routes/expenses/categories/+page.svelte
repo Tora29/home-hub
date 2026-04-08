@@ -161,7 +161,7 @@
 	<!-- Add form -->
 	<div class="mb-6 rounded-3xl bg-bg-card p-5 shadow-sm">
 		<h2 class="mb-3 text-sm font-medium text-secondary">新しいカテゴリを追加</h2>
-		<div class="flex gap-2">
+		<div class="flex items-start gap-2">
 			<div class="min-w-0 flex-1">
 				<Input
 					data-testid="expense-category-name-input"
@@ -202,7 +202,7 @@
 				<li data-testid="expense-category-item" class="rounded-3xl bg-bg-card px-4 py-3 shadow-sm">
 					{#if editingId === cat.id}
 						<!-- Inline edit mode -->
-						<div class="flex items-center gap-2">
+						<div class="flex items-start gap-2">
 							<div class="min-w-0 flex-1">
 								<Input
 									type="text"

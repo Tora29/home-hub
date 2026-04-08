@@ -2,13 +2,15 @@ openapi: 3.0.3
 info:
   title: Expense API
   description: 収支管理 API
-  version: 1.0.0
+  version: 2.0.0
 
 tags:
   - name: expense
     description: 支出管理
   - name: expense-categories
     description: 支出カテゴリ管理
+  - name: expense-payers
+    description: 支出支払者管理
 
 paths:
   /expenses:
@@ -51,7 +53,7 @@ paths:
                   items:
                     type: array
                     items:
-                      $ref: '#/components/schemas/ExpenseWithCategory'
+                      $ref: '#/components/schemas/ExpenseWithCategoryAndPayer'
                   total:
                     type: integer
                     description: 当月の合計件数
@@ -78,7 +80,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExpenseWithCategory'
+                $ref: '#/components/schemas/ExpenseWithCategoryAndPayer'
         '400':
           $ref: '#/components/responses/ValidationError'
 
@@ -86,7 +88,7 @@ paths:
     put:
       tags: [expense]
       summary: 支出更新
-      description: 支出情報を更新する。「確認済み」ボタン押下時は approved=true を送信する。
+      description: 支出のデータ（金額・カテゴリ・支払者）を更新する。承認状態の変更は /approve・/unapprove エンドポイントを使う。
       parameters:
         - $ref: '#/components/parameters/Id'
       requestBody:
@@ -101,7 +103,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExpenseWithCategory'
+                $ref: '#/components/schemas/ExpenseWithCategoryAndPayer'
         '400':
           $ref: '#/components/responses/ValidationError'
         '404':
@@ -122,6 +124,44 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /expenses/{id}/approve:
+    post:
+      tags: [expense]
+      summary: 支出承認
+      description: 未承認の支出を確認済みに更新する（approvedAt に現在日時をセット）。確定済みの支出には操作不可。
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: 承認成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseWithCategoryAndPayer'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /expenses/{id}/unapprove:
+    post:
+      tags: [expense]
+      summary: 支出承認取消
+      description: 確認済み（未確定）の支出を未承認に戻す（approvedAt を null にリセット）。確定済みの支出には操作不可。
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: 承認取消成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseWithCategoryAndPayer'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /expenses/{id}/finalize:
     post:
       tags: [expense]
@@ -135,7 +175,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExpenseWithCategory'
+                $ref: '#/components/schemas/ExpenseWithCategoryAndPayer'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -222,6 +262,87 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /expenses/payers:
+    get:
+      tags: [expense-payers]
+      summary: 支払者一覧取得
+      responses:
+        '200':
+          description: 支払者一覧
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, limit]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Payer'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+
+    post:
+      tags: [expense-payers]
+      summary: 支払者登録
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayerCreate'
+      responses:
+        '201':
+          description: 登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payer'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /expenses/payers/{id}:
+    put:
+      tags: [expense-payers]
+      summary: 支払者更新
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayerUpdate'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payer'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [expense-payers]
+      summary: 支払者削除
+      description: 支払者に紐付く支出が 1 件以上ある場合は 409 を返す。
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: 削除成功
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
 components:
   parameters:
     Id:
@@ -235,7 +356,7 @@ components:
   schemas:
     Expense:
       type: object
-      required: [id, userId, amount, categoryId, approvedAt, finalizedAt, createdAt]
+      required: [id, userId, amount, categoryId, payerId, approvedAt, finalizedAt, createdAt]
       properties:
         id:
           type: string
@@ -251,6 +372,9 @@ components:
         categoryId:
           type: string
           description: カテゴリ ID
+        payerId:
+          type: string
+          description: 支払者 ID
         approvedAt:
           type: string
           format: date-time
@@ -266,18 +390,20 @@ components:
           format: date-time
           description: 登録日時（自動セット）
 
-    ExpenseWithCategory:
+    ExpenseWithCategoryAndPayer:
       allOf:
         - $ref: '#/components/schemas/Expense'
         - type: object
-          required: [category]
+          required: [category, payer]
           properties:
             category:
               $ref: '#/components/schemas/Category'
+            payer:
+              $ref: '#/components/schemas/Payer'
 
     ExpenseCreate:
       type: object
-      required: [amount, categoryId]
+      required: [amount, categoryId, payerId]
       properties:
         amount:
           type: integer
@@ -288,10 +414,14 @@ components:
           type: string
           minLength: 1
           description: カテゴリ ID
+        payerId:
+          type: string
+          minLength: 1
+          description: 支払者 ID
 
     ExpenseUpdate:
       type: object
-      required: [amount, categoryId, approved]
+      required: [amount, categoryId, payerId]
       properties:
         amount:
           type: integer
@@ -302,9 +432,10 @@ components:
           type: string
           minLength: 1
           description: カテゴリ ID
-        approved:
-          type: boolean
-          description: 承認フラグ。true にすると approvedAt に現在日時がセットされる
+        payerId:
+          type: string
+          minLength: 1
+          description: 支払者 ID
 
     Category:
       type: object
@@ -344,6 +475,44 @@ components:
           maxLength: 50
           description: カテゴリ名。1文字以上50文字以内
 
+    Payer:
+      type: object
+      required: [id, userId, name, createdAt]
+      properties:
+        id:
+          type: string
+          description: 支払者 ID
+        userId:
+          type: string
+          description: 登録ユーザー ID
+        name:
+          type: string
+          description: 支払者名
+        createdAt:
+          type: string
+          format: date-time
+          description: 登録日時
+
+    PayerCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 支払者名。1文字以上50文字以内
+
+    PayerUpdate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 支払者名。1文字以上50文字以内
+
   responses:
     ValidationError:
       description: バリデーションエラー
@@ -372,21 +541,6 @@ components:
                       type: string
                       example: フィールドは必須です
 
-    Conflict:
-      description: 競合エラー（使用中のリソースは削除不可）
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [code, message]
-            properties:
-              code:
-                type: string
-                example: CONFLICT
-              message:
-                type: string
-                example: このリソースは使用中のため削除できません
-
     NotFound:
       description: リソースが見つからない
       content:
@@ -401,3 +555,18 @@ components:
               message:
                 type: string
                 example: 該当データが見つかりません
+
+    Conflict:
+      description: 競合エラー（使用中のリソースは削除不可）
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message]
+            properties:
+              code:
+                type: string
+                example: CONFLICT
+              message:
+                type: string
+                example: このリソースは使用中のため削除できません
