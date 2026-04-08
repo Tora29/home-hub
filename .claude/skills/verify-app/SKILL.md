@@ -26,11 +26,15 @@ npm run check
 
 ### 2. フォーマット・Lint チェック
 
+必ずこの順序で実行する（format → lint）。
+
 ```bash
-npm run lint
+npm run format && npm run lint
 ```
 
-Prettier と ESLint の両方を検査する。フォーマットエラーがある場合は `npm run format` で自動修正してから再確認する。
+`npm run format` で自動修正してから `npm run lint` で検査する。
+`npm run lint` は ESLint の処理に時間がかかるためバックグラウンド実行になる場合がある。
+その場合は完了通知を待つ。**同じコマンドを再試行しない。**
 
 ### 3. 全テスト実行
 
