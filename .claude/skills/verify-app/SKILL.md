@@ -1,6 +1,7 @@
 ---
 name: verify-app
 description: アプリの動作を検証する。
+effort: low
 ---
 
 # アプリケーション検証
