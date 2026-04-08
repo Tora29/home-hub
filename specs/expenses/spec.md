@@ -292,42 +292,42 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 ## テスト戦略
 
-| AC             | 種別        | 対象ファイル                                              | 備考                                                        |
-| -------------- | ----------- | --------------------------------------------------------- | ----------------------------------------------------------- |
-| AC-001〜002    | Integration | `page.server.integration.test.ts`                         | load 関数の月フィルタ動作を実 D1 で検証                     |
-| AC-002b        | E2E         | `e2e/expense.e2e.ts`                                      | 月選択肢は常に当月を含む固定リストであることを検証          |
-| AC-002c        | E2E         | `e2e/expense.e2e.ts`                                      | 不正な月パラメータは /expenses にリダイレクトされることを検証 |
-| AC-001〜007    | Integration | `service.integration.test.ts`                             | 支出 CRUD・承認操作を実 D1 で検証                           |
-| AC-014〜015    | Integration | `service.integration.test.ts`                             | 確定操作・確定後ロックを実 D1 で検証                        |
-| AC-010〜012    | Integration | `categories/service.integration.test.ts`                  | カテゴリ CRUD を実 D1 で検証                                |
-| AC-013         | Integration | `service.integration.test.ts`                             | 月間合計算出（全件）を実 D1 で検証                          |
-| AC-035〜038    | Integration | `payers/service.integration.test.ts`                      | 支払者 CRUD を実 D1 で検証                                  |
-| AC-035         | Integration | `payers/page.server.integration.test.ts`                  | 支払者管理ページの load 関数を実 D1 で検証                  |
-| AC-039         | Integration | `service.integration.test.ts`                             | 支払者付き支出 CRUD を実 D1 で検証                          |
-| AC-040〜041    | E2E         | `e2e/expense.e2e.ts`                                      | 支払者選択・保存・フォーム表示はブラウザ全体で検証（AC-003 E2E に内包） |
-| AC-101〜109    | Unit        | `schema.test.ts`, `categories/schema.test.ts`             | Zod バリデーション検証                                      |
-| AC-115〜117    | Unit        | `payers/schema.test.ts`                                   | 支払者 Zod バリデーション検証                               |
-| AC-101〜109    | Unit        | `+server.test.ts`, `categories/+server.test.ts`           | API ハンドラが VALIDATION_ERROR 形式の 400 を返すことを検証 |
-| AC-115〜117    | Unit        | `payers/+server.test.ts`                                  | 支払者 API ハンドラの VALIDATION_ERROR 検証                 |
-| AC-106, AC-109 | Unit        | `[id]/+server.test.ts`, `categories/[id]/+server.test.ts` | NOT_FOUND 形式の 404 を検証                                 |
-| AC-118         | Unit        | `payers/[id]/+server.test.ts`                             | 支払者 NOT_FOUND 形式の 404 を検証                          |
-| AC-110         | Unit        | `categories/[id]/+server.test.ts`                         | CONFLICT 形式の 409 を検証                                  |
-| AC-119         | Unit        | `payers/[id]/+server.test.ts`                             | 支払者 CONFLICT 形式の 409 を検証                           |
-| AC-035〜038    | Unit        | `payers/page.svelte.test.ts`                              | 支払者管理ページのリスト表示・空状態を検証                  |
-| AC-004〜005    | Unit        | `[id]/approve/+server.test.ts`, `[id]/unapprove/+server.test.ts` | approve/unapprove ハンドラの NOT_FOUND・CONFLICT を検証 |
-| AC-113〜114    | Unit        | `[id]/+server.test.ts`, `[id]/finalize/+server.test.ts`   | 確定済みロック・未承認確定の 409 を検証                     |
-| AC-015         | Unit        | `page.svelte.test.ts`                                     | 確定済み行の操作ボタン非表示・グレーアウトを検証            |
-| AC-016〜020    | E2E         | `e2e/expense.e2e.ts`                                      | モバイル viewport 依存のため E2E で検証（testing.md 参照）  |
-| AC-021〜026    | Unit        | `src/lib/components/Dialog.svelte.test.ts`                | Dialog の基本動作（open/close/Escape/backdrop）を検証       |
-| AC-027〜031    | Unit        | `src/lib/components/ConfirmDialog.svelte.test.ts`         | ConfirmDialog の表示・ボタン・loading・error を検証         |
-| AC-032〜034    | Unit        | `components/ExpenseFormDialog.svelte.test.ts`             | ExpenseFormDialog の open/mode 別表示を検証                 |
-| AC-111〜112    | Unit        | `page.svelte.test.ts`                                     | フロントのインラインバリデーション表示を検証（ページ統合）  |
-| AC-111〜112    | Unit        | `components/ExpenseForm.svelte.test.ts`                   | ExpenseForm コンポーネント直接のバリデーション検証          |
-| AC-120         | Unit        | `components/ExpenseForm.svelte.test.ts`                   | 支払者未選択のインラインバリデーション表示を検証            |
-| AC-201〜203    | Unit        | `schema.test.ts`, `categories/schema.test.ts`             | Zod 境界値検証                                              |
-| AC-208         | Unit        | `payers/schema.test.ts`                                   | 支払者名 50 文字境界値を検証                                |
-| AC-206〜207    | Unit        | `components/ExpenseForm.svelte.test.ts`                   | 金額欄の全角変換・カンマ整形を検証                          |
-| AC-204〜205    | E2E         | `e2e/expense.e2e.ts`                                      | 空状態・合計¥0 表示はブラウザ全体が必要                     |
+| AC             | 種別        | 対象ファイル                                                     | 備考                                                                    |
+| -------------- | ----------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| AC-001〜002    | Integration | `page.server.integration.test.ts`                                | load 関数の月フィルタ動作を実 D1 で検証                                 |
+| AC-002b        | E2E         | `e2e/expense.e2e.ts`                                             | 月選択肢は常に当月を含む固定リストであることを検証                      |
+| AC-002c        | E2E         | `e2e/expense.e2e.ts`                                             | 不正な月パラメータは /expenses にリダイレクトされることを検証           |
+| AC-001〜007    | Integration | `service.integration.test.ts`                                    | 支出 CRUD・承認操作を実 D1 で検証                                       |
+| AC-014〜015    | Integration | `service.integration.test.ts`                                    | 確定操作・確定後ロックを実 D1 で検証                                    |
+| AC-010〜012    | Integration | `categories/service.integration.test.ts`                         | カテゴリ CRUD を実 D1 で検証                                            |
+| AC-013         | Integration | `service.integration.test.ts`                                    | 月間合計算出（全件）を実 D1 で検証                                      |
+| AC-035〜038    | Integration | `payers/service.integration.test.ts`                             | 支払者 CRUD を実 D1 で検証                                              |
+| AC-035         | Integration | `payers/page.server.integration.test.ts`                         | 支払者管理ページの load 関数を実 D1 で検証                              |
+| AC-039         | Integration | `service.integration.test.ts`                                    | 支払者付き支出 CRUD を実 D1 で検証                                      |
+| AC-040〜041    | E2E         | `e2e/expense.e2e.ts`                                             | 支払者選択・保存・フォーム表示はブラウザ全体で検証（AC-003 E2E に内包） |
+| AC-101〜109    | Unit        | `schema.test.ts`, `categories/schema.test.ts`                    | Zod バリデーション検証                                                  |
+| AC-115〜117    | Unit        | `payers/schema.test.ts`                                          | 支払者 Zod バリデーション検証                                           |
+| AC-101〜109    | Unit        | `+server.test.ts`, `categories/+server.test.ts`                  | API ハンドラが VALIDATION_ERROR 形式の 400 を返すことを検証             |
+| AC-115〜117    | Unit        | `payers/+server.test.ts`                                         | 支払者 API ハンドラの VALIDATION_ERROR 検証                             |
+| AC-106, AC-109 | Unit        | `[id]/+server.test.ts`, `categories/[id]/+server.test.ts`        | NOT_FOUND 形式の 404 を検証                                             |
+| AC-118         | Unit        | `payers/[id]/+server.test.ts`                                    | 支払者 NOT_FOUND 形式の 404 を検証                                      |
+| AC-110         | Unit        | `categories/[id]/+server.test.ts`                                | CONFLICT 形式の 409 を検証                                              |
+| AC-119         | Unit        | `payers/[id]/+server.test.ts`                                    | 支払者 CONFLICT 形式の 409 を検証                                       |
+| AC-035〜038    | Unit        | `payers/page.svelte.test.ts`                                     | 支払者管理ページのリスト表示・空状態を検証                              |
+| AC-004〜005    | Unit        | `[id]/approve/+server.test.ts`, `[id]/unapprove/+server.test.ts` | approve/unapprove ハンドラの NOT_FOUND・CONFLICT を検証                 |
+| AC-113〜114    | Unit        | `[id]/+server.test.ts`, `[id]/finalize/+server.test.ts`          | 確定済みロック・未承認確定の 409 を検証                                 |
+| AC-015         | Unit        | `page.svelte.test.ts`                                            | 確定済み行の操作ボタン非表示・グレーアウトを検証                        |
+| AC-016〜020    | E2E         | `e2e/expense.e2e.ts`                                             | モバイル viewport 依存のため E2E で検証（testing.md 参照）              |
+| AC-021〜026    | Unit        | `src/lib/components/Dialog.svelte.test.ts`                       | Dialog の基本動作（open/close/Escape/backdrop）を検証                   |
+| AC-027〜031    | Unit        | `src/lib/components/ConfirmDialog.svelte.test.ts`                | ConfirmDialog の表示・ボタン・loading・error を検証                     |
+| AC-032〜034    | Unit        | `components/ExpenseFormDialog.svelte.test.ts`                    | ExpenseFormDialog の open/mode 別表示を検証                             |
+| AC-111〜112    | Unit        | `page.svelte.test.ts`                                            | フロントのインラインバリデーション表示を検証（ページ統合）              |
+| AC-111〜112    | Unit        | `components/ExpenseForm.svelte.test.ts`                          | ExpenseForm コンポーネント直接のバリデーション検証                      |
+| AC-120         | Unit        | `components/ExpenseForm.svelte.test.ts`                          | 支払者未選択のインラインバリデーション表示を検証                        |
+| AC-201〜203    | Unit        | `schema.test.ts`, `categories/schema.test.ts`                    | Zod 境界値検証                                                          |
+| AC-208         | Unit        | `payers/schema.test.ts`                                          | 支払者名 50 文字境界値を検証                                            |
+| AC-206〜207    | Unit        | `components/ExpenseForm.svelte.test.ts`                          | 金額欄の全角変換・カンマ整形を検証                                      |
+| AC-204〜205    | E2E         | `e2e/expense.e2e.ts`                                             | 空状態・合計¥0 表示はブラウザ全体が必要                                 |
 
 ## Non-Functional Requirements
 
