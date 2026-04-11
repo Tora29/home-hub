@@ -20,7 +20,7 @@ import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
 import { sendLineMessage, getLineUserId, getOppositeRole } from '$lib/server/line';
-import { approveExpenses } from '../service';
+import { approveExpenses, getPartnerUserId } from '../service';
 
 /**
  * 他ユーザーの pending 支出を全件 approved に変更し、申請者へ LINE 通知を送信する。
@@ -48,8 +48,12 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 
 	try {
 		const db = createDb(platform!.env.DB);
+		const partnerId = await getPartnerUserId(db, currentUser.id);
+		if (!partnerId) {
+			return json({ code: 'CONFLICT', message: '承認できる支出がありません' }, { status: 409 });
+		}
 		// DB 更新を先に実行する。LINE 送信失敗時も DB 更新は維持する（spec AC-120）。
-		const count = await approveExpenses(db, currentUser.id);
+		const count = await approveExpenses(db, currentUser.id, partnerId);
 
 		if (toLineUserId) {
 			await sendLineMessage(

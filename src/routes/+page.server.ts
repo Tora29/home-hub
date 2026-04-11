@@ -12,15 +12,16 @@
  */
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
-import { getPendingApprovalCount } from './expenses/service';
+import { getPendingApprovalCount, getPartnerUserId } from './expenses/service';
 import { getDashboardSummary } from './dashboard/summary/service';
 
 export const load: PageServerLoad = async ({ platform, locals }) => {
 	const db = createDb(platform!.env.DB);
 	const now = new Date();
 	const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+	const partnerId = await getPartnerUserId(db, locals.user!.id);
 	const [pendingApprovalCount, summary] = await Promise.all([
-		getPendingApprovalCount(db, locals.user!.id),
+		getPendingApprovalCount(db, locals.user!.id, partnerId),
 		getDashboardSummary(db, { period: 'month', month: currentMonth })
 	]);
 	return { pendingApprovalCount, summary, currentMonth };

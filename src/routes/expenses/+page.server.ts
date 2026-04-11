@@ -13,7 +13,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
-import { getExpenses, getUsers, getBulkCounts } from './service';
+import { getExpenses, getUsers, getBulkCounts, getPartnerUserId } from './service';
 import { getCategories } from './categories/service';
 import { expenseQuerySchema } from './schema';
 
@@ -30,12 +30,13 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
 	}
 	const selectedMonth = parsed.success ? (parsed.data.month ?? currentMonth) : currentMonth;
 
-	const [expenses, categories, users, bulkCounts] = await Promise.all([
+	const [expenses, categories, users, partnerId] = await Promise.all([
 		getExpenses(db, { month: selectedMonth }),
 		getCategories(db, locals.user!.id),
 		getUsers(db, locals.user!.id),
-		getBulkCounts(db, locals.user!.id)
+		getPartnerUserId(db, locals.user!.id)
 	]);
+	const bulkCounts = await getBulkCounts(db, locals.user!.id, partnerId);
 
 	return { expenses, categories, users, bulkCounts, currentMonth, currentUserId: locals.user!.id };
 };

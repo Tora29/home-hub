@@ -139,7 +139,7 @@ export async function getExpenses(
 /**
  * 支出を新規作成する。status は unapproved で作成する。
  * @ac AC-003
- * @throws {NOT_FOUND} - 指定カテゴリが存在しない場合
+ * @throws {NOT_FOUND} - 指定カテゴリが存在しない場合、または自分以外のカテゴリの場合
  */
 export async function createExpense(
 	db: Db,
@@ -149,7 +149,7 @@ export async function createExpense(
 	const category = await db
 		.select()
 		.from(expenseCategory)
-		.where(eq(expenseCategory.id, data.categoryId))
+		.where(and(eq(expenseCategory.id, data.categoryId), eq(expenseCategory.userId, userId)))
 		.get();
 	if (!category) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 
@@ -192,7 +192,7 @@ export async function updateExpense(
 	const category = await db
 		.select()
 		.from(expenseCategory)
-		.where(eq(expenseCategory.id, data.categoryId))
+		.where(and(eq(expenseCategory.id, data.categoryId), eq(expenseCategory.userId, userId)))
 		.get();
 	if (!category) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 
@@ -317,35 +317,40 @@ export async function cancelExpenses(db: Db, userId: string): Promise<number> {
 }
 
 /**
- * 相手（自分以外）の pending 支出を全件 approved に変更する。0件の場合は CONFLICT を throw する。
+ * パートナーの pending 支出を全件 approved に変更する。0件の場合は CONFLICT を throw する。
  * @ac AC-010, AC-118
- * @throws {CONFLICT} - 相手の pending 支出が 0 件の場合
+ * @throws {CONFLICT} - パートナーの pending 支出が 0 件の場合
  */
-export async function approveExpenses(db: Db, userId: string): Promise<number> {
+export async function approveExpenses(db: Db, userId: string, partnerId: string): Promise<number> {
 	const pending = await db
 		.select({ id: expense.id })
 		.from(expense)
-		.where(and(ne(expense.userId, userId), eq(expense.status, 'pending')));
+		.where(and(eq(expense.userId, partnerId), eq(expense.status, 'pending')));
 
 	if (pending.length === 0) throw new AppError('CONFLICT', 409, '承認できる支出がありません');
 
 	await db
 		.update(expense)
 		.set({ status: 'approved' })
-		.where(and(ne(expense.userId, userId), eq(expense.status, 'pending')));
+		.where(and(eq(expense.userId, partnerId), eq(expense.status, 'pending')));
 
 	return pending.length;
 }
 
 /**
- * 全期間の承認待ち件数を取得する（相手からの pending 支出）。ダッシュボード警告バナー用。
+ * 全期間の承認待ち件数を取得する（パートナーからの pending 支出）。ダッシュボード警告バナー用。
  * @ac dashboard/AC-008, dashboard/AC-009
  */
-export async function getPendingApprovalCount(db: Db, userId: string): Promise<number> {
+export async function getPendingApprovalCount(
+	db: Db,
+	userId: string,
+	partnerId: string | null
+): Promise<number> {
+	if (!partnerId) return 0;
 	const [{ cnt }] = await db
 		.select({ cnt: sql<number>`count(*)` })
 		.from(expense)
-		.where(and(ne(expense.userId, userId), eq(expense.status, 'pending')));
+		.where(and(eq(expense.userId, partnerId), eq(expense.status, 'pending')));
 
 	return Number(cnt);
 }
@@ -367,7 +372,8 @@ export async function getUsers(
  */
 export async function getBulkCounts(
 	db: Db,
-	userId: string
+	userId: string,
+	partnerId: string | null
 ): Promise<{ myChecked: number; myPending: number; othersPending: number }> {
 	const [checked] = await db
 		.select({ cnt: sql<number>`count(*)` })
@@ -379,14 +385,53 @@ export async function getBulkCounts(
 		.from(expense)
 		.where(and(eq(expense.userId, userId), eq(expense.status, 'pending')));
 
+	if (!partnerId) {
+		return {
+			myChecked: Number(checked.cnt),
+			myPending: Number(pending.cnt),
+			othersPending: 0
+		};
+	}
+
 	const [partnerPending] = await db
 		.select({ cnt: sql<number>`count(*)` })
 		.from(expense)
-		.where(and(ne(expense.userId, userId), eq(expense.status, 'pending')));
+		.where(and(eq(expense.userId, partnerId), eq(expense.status, 'pending')));
 
 	return {
 		myChecked: Number(checked.cnt),
 		myPending: Number(pending.cnt),
 		othersPending: Number(partnerPending.cnt)
 	};
+}
+
+/**
+ * パートナーユーザーの ID を返す。ロールが設定されている場合は対応ロールで検索し、
+ * 未設定（移行期）の場合は自分以外の最初のユーザーを返す。パートナーが存在しない場合は null。
+ */
+export async function getPartnerUserId(db: Db, userId: string): Promise<string | null> {
+	const currentUser = await db
+		.select({ role: user.role })
+		.from(user)
+		.where(eq(user.id, userId))
+		.get();
+
+	if (currentUser?.role) {
+		const partnerRole = currentUser.role === 'primary' ? 'spouse' : 'primary';
+		const partner = await db
+			.select({ id: user.id })
+			.from(user)
+			.where(eq(user.role, partnerRole))
+			.get();
+		return partner?.id ?? null;
+	}
+
+	// ロール未設定（移行期）: 自分以外の最初のユーザーをパートナーとみなす
+	const partner = await db
+		.select({ id: user.id })
+		.from(user)
+		.where(ne(user.id, userId))
+		.limit(1)
+		.get();
+	return partner?.id ?? null;
 }

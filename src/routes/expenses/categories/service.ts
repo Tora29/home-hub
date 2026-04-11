@@ -121,7 +121,7 @@ export async function deleteCategory(db: Db, userId: string, id: string): Promis
 	const [{ linkedCount }] = await db
 		.select({ linkedCount: sql<number>`count(*)` })
 		.from(expense)
-		.where(and(eq(expense.categoryId, id), eq(expense.userId, userId)));
+		.where(eq(expense.categoryId, id));
 
 	if (Number(linkedCount) > 0) {
 		throw new AppError('CONFLICT', 409, 'このカテゴリは使用中のため削除できません');

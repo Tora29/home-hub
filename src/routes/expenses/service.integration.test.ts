@@ -258,7 +258,7 @@ describe('updateExpense', () => {
 		// checked → pending → approved
 		await checkExpense(db, requesterId, created.id);
 		await requestExpenses(db, requesterId);
-		await approveExpenses(db, approverId);
+		await approveExpenses(db, approverId, requesterId);
 
 		try {
 			await updateExpense(db, requesterId, created.id, {
@@ -657,10 +657,10 @@ describe('bulkApprove', () => {
 		await checkExpense(db, requesterId, e2.id);
 		await requestExpenses(db, requesterId);
 
-		const result = await approveExpenses(db, approverId);
+		const result = await approveExpenses(db, approverId, requesterId);
 
-		// 他テストの残留 pending 支出が含まれる場合があるため、2件以上であることを確認
-		expect(result).toBeGreaterThanOrEqual(2);
+		// requesterId の pending 支出 2 件のみが対象
+		expect(result).toBe(2);
 
 		const month = getCurrentMonth();
 		const expenses = await getExpenses(db, { month });
@@ -671,9 +671,10 @@ describe('bulkApprove', () => {
 	test('[SPEC: AC-118] 承認対象パートナーの pending 支出が 0 件の場合、409 CONFLICT になる', async () => {
 		const db = createDb(env.DB);
 		const approverId = makeUserId();
+		const partnerId = makeUserId(); // pending 支出を持たないパートナー
 
 		try {
-			await approveExpenses(db, approverId);
+			await approveExpenses(db, approverId, partnerId);
 			expect.fail('CONFLICT エラーが発生しなかった');
 		} catch (e) {
 			expect(e).toBeInstanceOf(AppError);
@@ -707,19 +708,15 @@ describe('getPendingApprovalCount', () => {
 		await checkExpense(db, requesterId, e2.id);
 		await requestExpenses(db, requesterId);
 
-		const count = await getPendingApprovalCount(db, approverId);
+		const count = await getPendingApprovalCount(db, approverId, requesterId);
 		expect(count).toBe(2);
 	});
 
-	test('[SPEC: dashboard/AC-009] 承認対象パートナーの pending 支出が 0 件の場合、0 が返る', async () => {
-		// 他テストの残留 pending データが含まれる shared DB のため、
-		// 代わりに「全支出が approved になると 0 が返る」テストで検証する。
-		// 自分自身（requesterId）の支出は 0 件であることは確認できる。
+	test('[SPEC: dashboard/AC-009] パートナーが null の場合、0 が返る', async () => {
 		const db = createDb(env.DB);
-		const requesterId = makeUserId(); // 支出を一切登録していない新規ユーザー
-		const count = await getPendingApprovalCount(db, requesterId);
-		// 他ユーザーの残留 pending は含まれる可能性があるが、自分の支出は 0 件
-		expect(count).toBeGreaterThanOrEqual(0);
+		const userId = makeUserId();
+		const count = await getPendingApprovalCount(db, userId, null);
+		expect(count).toBe(0);
 	});
 
 	test('[SPEC: dashboard/AC-009] 全支出が approved になると 0 が返る', async () => {
@@ -737,9 +734,9 @@ describe('getPendingApprovalCount', () => {
 
 		await checkExpense(db, requesterId, expense.id);
 		await requestExpenses(db, requesterId);
-		await approveExpenses(db, approverId);
+		await approveExpenses(db, approverId, requesterId);
 
-		const count = await getPendingApprovalCount(db, approverId);
+		const count = await getPendingApprovalCount(db, approverId, requesterId);
 		expect(count).toBe(0);
 	});
 });

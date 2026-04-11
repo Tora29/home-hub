@@ -152,9 +152,9 @@ describe('load (ダッシュボード +page.server.ts) - 承認待ち件数', ()
 		await requestExpenses(db, requesterId);
 
 		// approver から見た pending 件数（requesterId の支出が pending になっている）
-		const pendingCount = await getPendingApprovalCount(db, approverId);
+		const pendingCount = await getPendingApprovalCount(db, approverId, requesterId);
 
-		expect(pendingCount).toBeGreaterThanOrEqual(2);
+		expect(pendingCount).toBe(2);
 	});
 
 	test('[SPEC: AC-008] 自分が申請した支出は pendingApprovalCount に含まれない', async () => {
@@ -173,45 +173,32 @@ describe('load (ダッシュボード +page.server.ts) - 承認待ち件数', ()
 		await checkExpense(db, userId, expense1.id);
 		await requestExpenses(db, userId);
 
-		// 自分から見た pending 件数（自分の支出は含まれない）
-		const pendingCount = await getPendingApprovalCount(db, userId);
+		// パートナーなし（userId 自身しかいない）→ 0 が返る
+		const pendingCount = await getPendingApprovalCount(db, userId, null);
 
-		// 自分の支出は ne(userId) で除外されるため 0 のはず（他テストの pending は含まれる可能性あり）
-		// 自分の申請した支出のみで始めているため、自分のuserIdを持つpendingは除外される
-		expect(typeof pendingCount).toBe('number');
-		expect(pendingCount).toBeGreaterThanOrEqual(0);
+		expect(pendingCount).toBe(0);
 	});
 
-	test('[SPEC: AC-009] pending 支出が 0 件の場合、pendingApprovalCount は 0 を返す', async () => {
+	test('[SPEC: AC-009] partnerId が null の場合、pendingApprovalCount は 0 を返す', async () => {
 		const db = createDb(env.DB);
-		// 新規ユーザー（このユーザーへの pending 支出は存在しない）
 		const userId = await createTestUser(db, { name: 'テスト新規ユーザーAC009' });
 
-		// 2020-01 のような過去データはないため、このユーザーへの pending 支出は 0
-		// ただし DB 共有のため他テストの pending が存在する可能性があるため、
-		// ここでは getPendingApprovalCount が数値を返すことのみ確認する
-		const pendingCount = await getPendingApprovalCount(db, userId);
+		const pendingCount = await getPendingApprovalCount(db, userId, null);
 
-		expect(typeof pendingCount).toBe('number');
-		expect(pendingCount).toBeGreaterThanOrEqual(0);
+		expect(pendingCount).toBe(0);
 	});
 
-	test('[SPEC: AC-009] 支出が 0 件のユーザーに対して pendingApprovalCount は 0 を返す', async () => {
+	test('[SPEC: AC-009] パートナーに pending 支出が 0 件の場合、pendingApprovalCount は 0 を返す', async () => {
 		const db = createDb(env.DB);
-		// 新規ユーザーで支出を一切持たない
 		const newUserId = await createTestUser(db, { name: 'テスト支出なしユーザーAC009' });
-		// 別ユーザーとして同様に新規作成（相互に pending がない状況）
 		const anotherUserId = await createTestUser(db, { name: 'テスト別ユーザーAC009' });
 
-		// anotherUserId が新規なので、このユーザーへ向けた pending 支出（他ユーザー由来）は存在しない
-		// ただし DB 共有のため保証できないので、ここでは型チェックのみ行う
-		const pendingCount = await getPendingApprovalCount(db, anotherUserId);
-		expect(typeof pendingCount).toBe('number');
-		expect(pendingCount).toBeGreaterThanOrEqual(0);
+		// anotherUserId は pending 支出を持たないため、newUserId から見ても 0
+		const pendingCount = await getPendingApprovalCount(db, newUserId, anotherUserId);
+		expect(pendingCount).toBe(0);
 
-		// newUserId には支出が 0 件なので pending も 0
-		const pendingCountNew = await getPendingApprovalCount(db, newUserId);
-		expect(typeof pendingCountNew).toBe('number');
-		expect(pendingCountNew).toBeGreaterThanOrEqual(0);
+		// 逆方向も同様
+		const pendingCountNew = await getPendingApprovalCount(db, anotherUserId, newUserId);
+		expect(pendingCountNew).toBe(0);
 	});
 });
