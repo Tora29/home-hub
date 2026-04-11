@@ -55,12 +55,14 @@ async function createCategory(page: Page, name: string): Promise<string> {
 	const res = await page.request.post('/expenses/categories', {
 		data: { name }
 	});
+	expect(res.ok()).toBeTruthy();
 	const data = (await res.json()) as { id: string };
 	return data.id;
 }
 
 async function deleteCategory(page: Page, id: string): Promise<void> {
-	await page.request.delete(`/expenses/categories/${id}`);
+	const res = await page.request.delete(`/expenses/categories/${id}`);
+	expect(res.ok()).toBeTruthy();
 }
 
 /**
@@ -82,12 +84,29 @@ async function createExpense(
 	const res = await page.request.post('/expenses', {
 		data: { amount, categoryId, payerUserId }
 	});
+	expect(res.ok()).toBeTruthy();
 	const data = (await res.json()) as { id: string };
 	return data.id;
 }
 
 async function deleteExpense(page: Page, id: string): Promise<void> {
-	await page.request.delete(`/expenses/${id}`);
+	const res = await page.request.delete(`/expenses/${id}`);
+	expect(res.ok()).toBeTruthy();
+}
+
+async function checkExpense(page: Page, expenseId: string): Promise<void> {
+	const res = await page.request.post(`/expenses/${expenseId}/check`);
+	expect(res.ok()).toBeTruthy();
+}
+
+async function requestApproval(page: Page): Promise<void> {
+	const res = await page.request.post('/expenses/request');
+	expect(res.ok()).toBeTruthy();
+}
+
+async function cancelApproval(page: Page): Promise<void> {
+	const res = await page.request.post('/expenses/cancel');
+	expect(res.ok()).toBeTruthy();
 }
 
 // ============================================================
@@ -283,7 +302,12 @@ test.describe('承認ワークフロー', () => {
 			try {
 				await deleteExpense(page, expenseId);
 			} catch {
-				// 承認済みで削除不可の場合は無視
+				try {
+					await cancelApproval(page);
+					await deleteExpense(page, expenseId);
+				} catch {
+					// 承認済みなど、状態上削除不可の場合は無視
+				}
 			}
 		}
 		if (categoryId) {
@@ -295,7 +319,7 @@ test.describe('承認ワークフロー', () => {
 		page
 	}) => {
 		// check 操作
-		await page.request.post(`/expenses/${expenseId}/check`);
+		await checkExpense(page, expenseId);
 
 		await page.goto('/expenses');
 
@@ -306,8 +330,8 @@ test.describe('承認ワークフロー', () => {
 		page
 	}) => {
 		// check → pending
-		await page.request.post(`/expenses/${expenseId}/check`);
-		await page.request.post('/expenses/request');
+		await checkExpense(page, expenseId);
+		await requestApproval(page);
 
 		await page.goto('/expenses');
 

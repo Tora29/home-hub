@@ -58,12 +58,14 @@ async function createExpense(
 	const res = await page.request.post('/expenses', {
 		data: { amount, categoryId, payerUserId }
 	});
+	expect(res.ok()).toBeTruthy();
 	const data = (await res.json()) as { id: string };
 	return data.id;
 }
 
 async function checkExpense(page: Page, expenseId: string): Promise<void> {
-	await page.request.patch(`/expenses/${expenseId}/check`);
+	const res = await page.request.post(`/expenses/${expenseId}/check`);
+	expect(res.ok()).toBeTruthy();
 }
 
 async function requestApproval(page: Page): Promise<void> {

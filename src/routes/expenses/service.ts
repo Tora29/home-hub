@@ -71,6 +71,11 @@ const expenseSelectFields = {
 	}
 };
 
+async function ensurePayerUserExists(db: Db, payerUserId: string): Promise<void> {
+	const payer = await db.select({ id: user.id }).from(user).where(eq(user.id, payerUserId)).get();
+	if (!payer) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
+}
+
 async function fetchExpenseWithRelations(db: Db, id: string): Promise<ExpenseWithRelations> {
 	const row = await db
 		.select(expenseSelectFields)
@@ -152,6 +157,7 @@ export async function createExpense(
 		.where(and(eq(expenseCategory.id, data.categoryId), eq(expenseCategory.userId, userId)))
 		.get();
 	if (!category) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
+	await ensurePayerUserExists(db, data.payerUserId);
 
 	const id = crypto.randomUUID();
 	const now = new Date();
@@ -195,6 +201,7 @@ export async function updateExpense(
 		.where(and(eq(expenseCategory.id, data.categoryId), eq(expenseCategory.userId, userId)))
 		.get();
 	if (!category) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
+	await ensurePayerUserExists(db, data.payerUserId);
 
 	await db
 		.update(expense)

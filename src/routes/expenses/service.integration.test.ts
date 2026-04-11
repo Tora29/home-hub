@@ -75,6 +75,21 @@ describe('createExpense', () => {
 		expect(created.category.name).toBe('食費');
 	});
 
+	test('[SPEC: AC-003] 存在しない支払者ユーザーIDを指定した場合は NOT_FOUND になる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		const category = await createCategory(db, userId, { name: '食費' });
+
+		await expect(
+			createExpense(db, userId, {
+				amount: 1500,
+				categoryId: category.id,
+				payerUserId: crypto.randomUUID()
+			})
+		).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 });
+	});
+
 	test('[SPEC: AC-003] 登録日時（createdAt）は自動でセットされる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
@@ -317,6 +332,27 @@ describe('updateExpense', () => {
 				payerUserId
 			})
 		).rejects.toMatchObject({ code: 'NOT_FOUND' });
+	});
+
+	test('[SPEC: AC-006] 存在しない支払者ユーザーIDへの更新は NOT_FOUND になる', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+		const payerUserId = await createTestUser(db);
+
+		const category = await createCategory(db, userId, { name: '食費' });
+		const created = await createExpense(db, userId, {
+			amount: 1000,
+			categoryId: category.id,
+			payerUserId
+		});
+
+		await expect(
+			updateExpense(db, userId, created.id, {
+				amount: 1200,
+				categoryId: category.id,
+				payerUserId: crypto.randomUUID()
+			})
+		).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 });
 	});
 });
 
