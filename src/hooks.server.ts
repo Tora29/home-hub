@@ -27,7 +27,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// セッションを取得して locals に注入（全ルート共通）
 	const session = await auth.api.getSession({ headers: event.request.headers });
-	event.locals.user = session?.user ?? null;
+	event.locals.user = (session?.user ?? null) as App.Locals['user'];
 	event.locals.session = session?.session ?? null;
 
 	// 公開パスはそのまま通す

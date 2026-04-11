@@ -10,8 +10,7 @@
  * - user, session, account, verification — Better Auth 管理テーブル
  * - recipe                              — アプリ固有テーブル
  * - expenseCategory                     — 支出カテゴリテーブル
- * - expensePayer                        — 支出支払者テーブル
- * - expense                             — 支出テーブル（payerId 含む）
+ * - expense                             — 支出テーブル（payerUserId / status 含む）
  */
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
@@ -24,7 +23,10 @@ export const user = sqliteTable('User', {
 	emailVerified: integer('emailVerified', { mode: 'boolean' }).notNull(),
 	image: text('image'),
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
-	updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull()
+	updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
+	// 'primary'（主）または 'spouse'（妻）。承認フロー・LINE 通知先決定に使用
+	// 段階的 migration: まず nullable で追加 → seed/本番 SQL 投入後に NOT NULL 化
+	role: text('role')
 });
 
 export const session = sqliteTable('Session', {
@@ -76,13 +78,6 @@ export const expenseCategory = sqliteTable('ExpenseCategory', {
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
 });
 
-export const expensePayer = sqliteTable('ExpensePayer', {
-	id: text('id').primaryKey(),
-	userId: text('userId').notNull(),
-	name: text('name').notNull(),
-	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
-});
-
 export const expense = sqliteTable('Expense', {
 	id: text('id').primaryKey(),
 	userId: text('userId').notNull(),
@@ -90,9 +85,10 @@ export const expense = sqliteTable('Expense', {
 	categoryId: text('categoryId')
 		.notNull()
 		.references(() => expenseCategory.id, { onDelete: 'restrict' }),
-	payerId: text('payerId').references(() => expensePayer.id, { onDelete: 'restrict' }),
-	approvedAt: integer('approvedAt', { mode: 'timestamp' }),
-	finalizedAt: integer('finalizedAt', { mode: 'timestamp' }),
+	// 支払者ユーザー ID（User テーブルの id を参照）。nullable: migration 中の既存データ対応
+	payerUserId: text('payerUserId').references(() => user.id, { onDelete: 'restrict' }),
+	// 承認ステータス: 'unapproved' | 'checked' | 'pending' | 'approved'
+	status: text('status').notNull().default('unapproved'),
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
 });
 

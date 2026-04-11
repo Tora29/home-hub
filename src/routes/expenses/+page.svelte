@@ -4,22 +4,26 @@
   @feature expenses
 
   @description
-  月ごとの支出一覧を表示する。月切り替え・登録・編集・削除・承認・確定操作ができる。
-  確定は複数行を選択してまとめて確定するバッチフロー。
-  各行のアクションは行メニューボタン（expense-menu-button）から操作する。
+  全ユーザーの月ごとの支出一覧を表示する。
+  チェックボックスで確認済みにし、「承認依頼する」で相手に申請を送信する。
+  相手からの申請は「全件承認する」で一括承認する。
 
   @spec specs/expenses/spec.md
-  @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-013, AC-014, AC-015, AC-016, AC-017, AC-018, AC-019, AC-020, AC-204, AC-205
+  @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009, AC-010, AC-014, AC-015, AC-016, AC-017, AC-018, AC-019, AC-204, AC-205
 
   @navigation
   - 遷移先: /expenses/categories - カテゴリ管理画面
 
   @api
-  - GET /expenses → 200 ExpenseList - 一覧取得（SSR load）
-  - POST /expenses → 201 ExpenseWithCategory - 新規作成
-  - PUT /expenses/[id] → 200 ExpenseWithCategory - 更新
-  - DELETE /expenses/[id] → 204 - 削除
-  - POST /expenses/[id]/finalize → 200 ExpenseWithCategory - 確定（バッチ）
+  - GET  /expenses            → 200 ExpenseList       - 全ユーザー一覧取得（SSR load）
+  - POST /expenses            → 201 ExpenseWithRelations - 新規作成
+  - PUT  /expenses/[id]       → 200 ExpenseWithRelations - 更新
+  - DELETE /expenses/[id]     → 204 - 削除
+  - POST /expenses/[id]/check   → 200 - 確認（unapproved→checked）
+  - POST /expenses/[id]/uncheck → 200 - 確認取消（checked→unapproved）
+  - POST /expenses/request    → 200 {count} - 一括承認依頼
+  - POST /expenses/cancel     → 200 {count} - 一括申請取り消し
+  - POST /expenses/approve    → 200 {count} - 一括承認
 -->
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
@@ -27,14 +31,13 @@
 	import {
 		Wallet,
 		Plus,
-		CheckCircle,
-		RotateCcw,
 		Pencil,
 		Trash2,
 		Tag,
-		Users,
-		Check,
-		MoreVertical
+		MoreVertical,
+		SendHorizontal,
+		Undo2,
+		ThumbsUp
 	} from '@lucide/svelte';
 	import Button from '$lib/components/Button.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
@@ -55,13 +58,19 @@
 
 	let actionError = $state<string | null>(null);
 
-	// 確認済み（未確定）の支出を自動で確定対象にする
-	let finalizeTargets = $derived(
-		data.expenses.items.filter((e) => e.approvedAt !== null && e.finalizedAt === null)
-	);
-	let showFinalizeDialog = $state(false);
-	let isFinalizing = $state(false);
-	let finalizeError = $state<string | null>(null);
+	// ---- 承認ワークフロー ----
+	// 一括操作ボタンの表示判定は全月対象カウント（data.bulkCounts）を使用する。
+	// data.expenses.items は表示中の月のみのため、過去月の件数を見落とす可能性がある。
+
+	let showRequestDialog = $state(false);
+	let isRequesting = $state(false);
+	let requestError = $state<string | null>(null);
+
+	let showCancelDialog = $state(false);
+	let isCanceling = $state(false);
+
+	let showApproveDialog = $state(false);
+	let isApproving = $state(false);
 
 	let currentMonth = $derived(page.url.searchParams.get('month') ?? data.currentMonth);
 
@@ -79,30 +88,10 @@
 		void goto(`?month=${month}`, { keepFocus: true, replaceState: true });
 	}
 
-	// まとめて確定（確認済み未確定を全件）
-	async function handleBulkFinalize() {
-		isFinalizing = true;
-		finalizeError = null;
-		try {
-			const results = await Promise.all(
-				finalizeTargets.map((e) => fetch(`/expenses/${e.id}/finalize`, { method: 'POST' }))
-			);
-			const failCount = results.filter((r) => !r.ok).length;
-			if (failCount > 0) {
-				finalizeError = `${failCount}件の確定に失敗しました。再度お試しください。`;
-				await invalidateAll();
-			} else {
-				showFinalizeDialog = false;
-				await invalidateAll();
-			}
-		} finally {
-			isFinalizing = false;
-		}
-	}
-
-	async function handleApprove(exp: ExpenseWithRelations) {
+	// チェックボックス: unapproved → checked
+	async function handleCheck(exp: ExpenseWithRelations) {
 		actionError = null;
-		const res = await fetch(`/expenses/${exp.id}/approve`, { method: 'POST' });
+		const res = await fetch(`/expenses/${exp.id}/check`, { method: 'POST' });
 		if (res.ok) {
 			await invalidateAll();
 		} else {
@@ -111,14 +100,61 @@
 		}
 	}
 
-	async function handleUnapprove(exp: ExpenseWithRelations) {
+	// チェックボックス: checked → unapproved
+	async function handleUncheck(exp: ExpenseWithRelations) {
 		actionError = null;
-		const res = await fetch(`/expenses/${exp.id}/unapprove`, { method: 'POST' });
+		const res = await fetch(`/expenses/${exp.id}/uncheck`, { method: 'POST' });
 		if (res.ok) {
 			await invalidateAll();
 		} else {
 			const err = await res.json().catch(() => null);
 			actionError = err?.message ?? '未承認への戻しに失敗しました';
+		}
+	}
+
+	// 一括承認依頼
+	async function handleBulkRequest() {
+		isRequesting = true;
+		requestError = null;
+		try {
+			const res = await fetch('/expenses/request', { method: 'POST' });
+			if (res.ok) {
+				showRequestDialog = false;
+				await invalidateAll();
+			} else {
+				const err = await res.json().catch(() => null);
+				requestError = err?.message ?? '承認依頼に失敗しました';
+			}
+		} finally {
+			isRequesting = false;
+		}
+	}
+
+	// 一括申請取り消し
+	async function handleBulkCancel() {
+		isCanceling = true;
+		try {
+			const res = await fetch('/expenses/cancel', { method: 'POST' });
+			if (res.ok) {
+				showCancelDialog = false;
+				await invalidateAll();
+			}
+		} finally {
+			isCanceling = false;
+		}
+	}
+
+	// 一括承認
+	async function handleBulkApprove() {
+		isApproving = true;
+		try {
+			const res = await fetch('/expenses/approve', { method: 'POST' });
+			if (res.ok) {
+				showApproveDialog = false;
+				await invalidateAll();
+			}
+		} finally {
+			isApproving = false;
 		}
 	}
 
@@ -143,11 +179,32 @@
 	}
 
 	let monthOptions = $derived(generateMonthOptions(data.currentMonth));
+
+	// ステータスバッジ設定
+	function statusBadge(status: string) {
+		switch (status) {
+			case 'checked':
+				return { label: '確認済み', class: 'bg-bg-warning text-warning' };
+			case 'pending':
+				return { label: '申請中', class: 'bg-blue-100 text-blue-600' };
+			case 'approved':
+				return { label: '承認済み', class: 'bg-success/20 text-success' };
+			default:
+				return { label: '未承認', class: 'bg-destructive/10 text-destructive' };
+		}
+	}
+
+	// 自分が操作可能な行か（edit/delete/check/uncheck）
+	function isMyEditableRow(exp: ExpenseWithRelations): boolean {
+		return (
+			exp.userId === data.currentUserId && (exp.status === 'unapproved' || exp.status === 'checked')
+		);
+	}
 </script>
 
 <div class="mx-auto max-w-3xl" onclick={() => (openMenuId = null)} role="presentation">
 	<!-- Header -->
-	<div class="mb-6 flex items-center gap-3">
+	<div class="mb-6 flex flex-wrap items-center gap-2">
 		<Wallet size={28} class="text-accent" />
 		<h1 class="flex-1 text-2xl font-medium whitespace-nowrap text-label">支出</h1>
 		<a
@@ -158,27 +215,49 @@
 			<Tag size={14} />
 			<span class="hidden md:inline">カテゴリ管理</span>
 		</a>
-		<a
-			href="/expenses/payers"
-			class="inline-flex items-center gap-1.5 rounded-2xl border border-separator px-2 py-2 text-sm text-secondary hover:text-label md:px-3"
-			aria-label="支払者管理"
-		>
-			<Users size={14} />
-			<span class="hidden md:inline">支払者管理</span>
-		</a>
-		<!-- 確認済み（未確定）が1件以上あるときにまとめて確定ボタンを表示 -->
-		{#if finalizeTargets.length > 0}
+
+		<!-- 承認依頼ボタン（自分の checked が 1 件以上・全月対象） -->
+		{#if data.bulkCounts.myChecked > 0}
 			<Button
-				data-testid="expense-bulk-finalize-button"
-				onclick={() => (showFinalizeDialog = true)}
+				data-testid="expense-bulk-request-button"
+				onclick={() => (showRequestDialog = true)}
 				variant="primary"
 				size="md"
 			>
-				<Check size={16} />
-				<span class="hidden md:inline">確定する（{finalizeTargets.length}件）</span>
-				<span class="md:hidden">{finalizeTargets.length}件確定</span>
+				<SendHorizontal size={16} />
+				<span class="hidden md:inline">承認依頼する（{data.bulkCounts.myChecked}件）</span>
+				<span class="md:hidden">{data.bulkCounts.myChecked}件依頼</span>
 			</Button>
 		{/if}
+
+		<!-- 申請取り消しボタン（自分の pending が 1 件以上・全月対象） -->
+		{#if data.bulkCounts.myPending > 0}
+			<Button
+				data-testid="expense-bulk-cancel-button"
+				onclick={() => (showCancelDialog = true)}
+				variant="secondary"
+				size="md"
+			>
+				<Undo2 size={16} />
+				<span class="hidden md:inline">申請取り消す（{data.bulkCounts.myPending}件）</span>
+				<span class="md:hidden">{data.bulkCounts.myPending}件取消</span>
+			</Button>
+		{/if}
+
+		<!-- 全件承認ボタン（相手の pending が 1 件以上・全月対象） -->
+		{#if data.bulkCounts.othersPending > 0}
+			<Button
+				data-testid="expense-bulk-approve-button"
+				onclick={() => (showApproveDialog = true)}
+				variant="primary"
+				size="md"
+			>
+				<ThumbsUp size={16} />
+				<span class="hidden md:inline">全件承認する（{data.bulkCounts.othersPending}件）</span>
+				<span class="md:hidden">{data.bulkCounts.othersPending}件承認</span>
+			</Button>
+		{/if}
+
 		<Button
 			data-testid="expense-create-button"
 			onclick={() => (showCreateDialog = true)}
@@ -229,14 +308,32 @@
 	{:else}
 		<ul data-testid="expense-list" class="flex flex-col gap-3">
 			{#each data.expenses.items as exp (exp.id)}
+				{@const badge = statusBadge(exp.status)}
+				{@const isGrayed = exp.status === 'pending' || exp.status === 'approved'}
+				{@const canEdit = isMyEditableRow(exp)}
 				<li
 					data-testid="expense-item"
-					class="rounded-3xl bg-bg-card p-4 shadow-md transition-all {exp.finalizedAt !== null
-						? 'opacity-60'
-						: ''}"
+					class="rounded-3xl bg-bg-card p-4 shadow-md transition-all {isGrayed ? 'opacity-60' : ''}"
 				>
 					<div class="flex items-start gap-3">
-						<!-- Amount & Category -->
+						<!-- チェックボックス（自分の unapproved/checked のみ） -->
+						{#if canEdit}
+							<input
+								data-testid="expense-check-button"
+								type="checkbox"
+								checked={exp.status === 'checked'}
+								onchange={() => {
+									if (exp.status === 'unapproved') void handleCheck(exp);
+									else void handleUncheck(exp);
+								}}
+								aria-label="{formatAmount(exp.amount)} を{exp.status === 'checked'
+									? '未承認に戻す'
+									: '確認済みにする'}"
+								class="mt-1 h-4 w-4 cursor-pointer rounded accent-accent"
+							/>
+						{/if}
+
+						<!-- Amount & Badges -->
 						<div class="min-w-0 flex-1">
 							<div class="flex flex-wrap items-center gap-2">
 								<span class="text-lg font-semibold text-label">{formatAmount(exp.amount)}</span>
@@ -248,57 +345,18 @@
 										{exp.payer.name}
 									</span>
 								{/if}
-								<!-- Approval badge -->
-								{#if exp.finalizedAt !== null}
-									<span
-										class="rounded-xl bg-success/20 px-2 py-0.5 text-xs font-medium text-success"
-									>
-										確定済み
-									</span>
-								{:else if exp.approvedAt !== null}
-									<span
-										class="rounded-xl bg-bg-warning px-2 py-0.5 text-xs font-medium text-warning"
-									>
-										確認済み
-									</span>
-								{:else}
-									<span
-										class="rounded-xl bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
-									>
-										未承認
-									</span>
-								{/if}
+								<!-- Status badge -->
+								<span class="rounded-xl px-2 py-0.5 text-xs font-medium {badge.class}">
+									{badge.label}
+								</span>
 							</div>
 							<p class="mt-0.5 text-xs text-secondary">{formatDate(exp.createdAt)}</p>
 						</div>
 
-						<!-- Actions (non-finalized rows only) -->
-						{#if exp.finalizedAt === null}
+						<!-- Actions: 自分の unapproved/checked のみ表示 -->
+						{#if canEdit}
 							<!-- デスクトップ: 直接ボタン -->
 							<div class="hidden shrink-0 items-center gap-1 md:flex">
-								{#if exp.approvedAt === null}
-									<Button
-										data-testid="expense-approve-button"
-										variant="secondary"
-										size="sm"
-										onclick={() => void handleApprove(exp)}
-										aria-label="確認済みにする"
-									>
-										<CheckCircle size={14} />
-										確認済み
-									</Button>
-								{:else}
-									<Button
-										data-testid="expense-unapprove-button"
-										variant="secondary"
-										size="sm"
-										onclick={() => void handleUnapprove(exp)}
-										aria-label="未承認に戻す"
-									>
-										<RotateCcw size={14} />
-										未承認に戻す
-									</Button>
-								{/if}
 								<Button
 									data-testid="expense-edit-button"
 									variant="secondary"
@@ -337,40 +395,12 @@
 								{#if openMenuId === exp.id}
 									<div
 										data-testid="expense-menu"
-										class="absolute top-full right-0 z-20 mt-1 w-48 rounded-2xl border border-separator bg-bg-card py-1 shadow-md"
+										class="absolute top-full right-0 z-20 mt-1 w-40 rounded-2xl border border-separator bg-bg-card py-1 shadow-md"
 										onclick={(e) => e.stopPropagation()}
 										onkeydown={(e) => e.stopPropagation()}
 										role="menu"
 										tabindex={0}
 									>
-										{#if exp.approvedAt === null}
-											<button
-												data-testid="expense-approve-button"
-												onclick={() => {
-													openMenuId = null;
-													void handleApprove(exp);
-												}}
-												class="flex w-full items-center gap-2 px-4 py-2 text-sm text-label hover:bg-bg-secondary"
-												role="menuitem"
-											>
-												<CheckCircle size={14} class="text-success" />
-												確認済みにする
-											</button>
-										{:else}
-											<button
-												data-testid="expense-unapprove-button"
-												onclick={() => {
-													openMenuId = null;
-													void handleUnapprove(exp);
-												}}
-												class="flex w-full items-center gap-2 px-4 py-2 text-sm text-label hover:bg-bg-secondary"
-												role="menuitem"
-											>
-												<RotateCcw size={14} />
-												未承認に戻す
-											</button>
-										{/if}
-										<hr class="my-1 border-separator" />
 										<button
 											data-testid="expense-edit-button"
 											onclick={() => {
@@ -411,7 +441,7 @@
 	open={showCreateDialog}
 	mode="create"
 	categories={data.categories.items}
-	payers={data.payers.items}
+	users={data.users}
 	onSuccess={handleFormSuccess}
 	onCancel={() => (showCreateDialog = false)}
 />
@@ -420,7 +450,7 @@
 	mode="edit"
 	expense={editingExpense}
 	categories={data.categories.items}
-	payers={data.payers.items}
+	users={data.users}
 	onSuccess={handleFormSuccess}
 	onCancel={() => (editingExpense = null)}
 />
@@ -441,19 +471,46 @@
 	onCancel={() => (deletingExpense = null)}
 />
 
-<!-- Finalize confirm dialog -->
+<!-- 承認依頼確認ダイアログ -->
 <ConfirmDialog
-	open={showFinalizeDialog}
-	title="支出を確定しますか？"
-	description={`確認済みの支出 ${finalizeTargets.length} 件を確定します。確定後は編集・削除・承認状態の変更ができなくなります。`}
-	confirmLabel="確定する"
-	loading={isFinalizing}
-	error={finalizeError ?? undefined}
-	data-testid="expense-finalize-dialog"
-	confirmTestid="expense-finalize-confirm-button"
-	onConfirm={() => void handleBulkFinalize()}
+	open={showRequestDialog}
+	title="承認依頼を送信しますか？"
+	description={`確認済みの支出 ${data.bulkCounts.myChecked} 件を相手に承認依頼します。LINE で通知が送信されます。`}
+	confirmLabel="依頼する"
+	loading={isRequesting}
+	error={requestError ?? undefined}
+	data-testid="expense-request-dialog"
+	confirmTestid="expense-request-confirm-button"
+	onConfirm={() => void handleBulkRequest()}
 	onCancel={() => {
-		showFinalizeDialog = false;
-		finalizeError = null;
+		showRequestDialog = false;
+		requestError = null;
 	}}
+/>
+
+<!-- 申請取り消し確認ダイアログ -->
+<ConfirmDialog
+	open={showCancelDialog}
+	title="申請を取り消しますか？"
+	description={`申請中の支出 ${data.bulkCounts.myPending} 件を取り消して「確認済み」に戻します。`}
+	confirmLabel="取り消す"
+	confirmVariant="destructive"
+	loading={isCanceling}
+	data-testid="expense-cancel-dialog"
+	confirmTestid="expense-cancel-confirm-button"
+	onConfirm={() => void handleBulkCancel()}
+	onCancel={() => (showCancelDialog = false)}
+/>
+
+<!-- 全件承認確認ダイアログ -->
+<ConfirmDialog
+	open={showApproveDialog}
+	title="全件承認しますか？"
+	description={`相手から申請中の支出 ${data.bulkCounts.othersPending} 件を承認します。LINE で通知が送信されます。`}
+	confirmLabel="承認する"
+	loading={isApproving}
+	data-testid="expense-approve-dialog"
+	confirmTestid="expense-approve-confirm-button"
+	onConfirm={() => void handleBulkApprove()}
+	onCancel={() => (showApproveDialog = false)}
 />

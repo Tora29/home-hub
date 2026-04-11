@@ -5,7 +5,7 @@ declare global {
 	namespace App {
 		// interface Error {}
 		interface Locals {
-			user: import('better-auth').User | null;
+			user: (import('better-auth').User & { role: 'primary' | 'spouse' | null }) | null;
 			session: import('better-auth').Session | null;
 		}
 		// interface PageData {}
@@ -16,6 +16,10 @@ declare global {
 				AI: import('@cloudflare/workers-types').Ai;
 				BETTER_AUTH_SECRET: string;
 				USE_REAL_AI?: string;
+				LINE_CHANNEL_ACCESS_TOKEN?: string;
+				LINE_USER_ID_PRIMARY?: string;
+				LINE_USER_ID_SPOUSE?: string;
+				LINE_MOCK?: string;
 			};
 			context: import('@cloudflare/workers-types').ExecutionContext;
 			caches: import('@cloudflare/workers-types').CacheStorage & {

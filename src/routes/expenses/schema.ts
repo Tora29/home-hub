@@ -55,7 +55,7 @@ export const expenseCreateSchema = z.object({
 	categoryId: z
 		.string({ error: (iss) => (iss.input === undefined ? 'カテゴリは必須です' : undefined) })
 		.min(1, 'カテゴリは必須です'),
-	payerId: z
+	payerUserId: z
 		.string({ error: (iss) => (iss.input === undefined ? '支払者は必須です' : undefined) })
 		.min(1, '支払者は必須です')
 });

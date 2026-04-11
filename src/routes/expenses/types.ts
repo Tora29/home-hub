@@ -15,22 +15,24 @@ export type ExpenseCategory = {
 	createdAt: Date;
 };
 
-export type ExpensePayer = {
+export type ExpenseUser = {
 	id: string;
-	userId: string;
 	name: string;
-	createdAt: Date;
+	email: string;
 };
+
+export type ExpensePayer = ExpenseUser;
+
+export type ExpenseStatus = 'unapproved' | 'checked' | 'pending' | 'approved';
 
 export type ExpenseWithRelations = {
 	id: string;
 	userId: string;
 	amount: number;
 	categoryId: string;
-	payerId: string | null;
-	approvedAt: Date | null;
-	finalizedAt: Date | null;
+	payerUserId: string | null;
+	status: ExpenseStatus;
 	createdAt: Date;
 	category: ExpenseCategory;
-	payer: ExpensePayer | null;
+	payer: ExpenseUser | null;
 };

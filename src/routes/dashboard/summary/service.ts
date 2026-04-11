@@ -6,6 +6,7 @@
  * @description
  * ダッシュボード集計サマリーのビジネスロジックと DB 操作を担う。
  * 月別・全期間の支出合計・支払者別合計・カテゴリ別合計を算出する。
+ * 集計は全ユーザー（世帯全体）を対象とする。支払者別集計は user テーブルを参照する。
  *
  * @spec specs/dashboard/spec.md
  * @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-201, AC-202, AC-203
@@ -19,7 +20,7 @@
  */
 import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { expense, expenseCategory, expensePayer } from '$lib/server/tables';
+import { expense, expenseCategory, user } from '$lib/server/tables';
 import type * as schema from '$lib/server/tables';
 
 type Db = DrizzleD1Database<typeof schema>;
@@ -49,15 +50,13 @@ type SummaryOptions = {
 
 /**
  * 集計サマリーを取得する。period=month の場合は指定月、period=all の場合は全期間。
+ * 集計は全ユーザーの支出を対象とする。
  * @ac AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-201, AC-202, AC-203
  */
 export async function getDashboardSummary(
 	db: Db,
-	userId: string,
 	options: SummaryOptions
 ): Promise<DashboardSummary> {
-	const userFilter = eq(expense.userId, userId);
-
 	let periodFilter;
 	if (options.period === 'month') {
 		const now = new Date();
@@ -69,27 +68,26 @@ export async function getDashboardSummary(
 		periodFilter = and(gte(expense.createdAt, monthStart), lt(expense.createdAt, monthEnd));
 	}
 
-	const whereClause = periodFilter ? and(userFilter, periodFilter) : userFilter;
+	const scopedFilter = periodFilter ?? undefined;
 
-	// 全体合計
+	// 全体合計（世帯スコープ）
 	const [overallRow] = await db
 		.select({ total: sql<number>`coalesce(sum(${expense.amount}), 0)` })
 		.from(expense)
-		.where(whereClause);
+		.where(scopedFilter);
 
-	// 支払者別合計（多い順）
-	// payerId が NULL の行（migration 0007 で修正済み）は LEFT JOIN で expensePayer が null になるため除外される。
+	// 支払者別合計（多い順）。user テーブルを JOIN
 	const payerRows = await db
 		.select({
-			payerId: expensePayer.id,
-			payerName: expensePayer.name,
+			payerId: user.id,
+			payerName: user.name,
 			total: sql<number>`coalesce(sum(${expense.amount}), 0)`
 		})
 		.from(expense)
-		.leftJoin(expensePayer, eq(expense.payerId, expensePayer.id))
-		.where(whereClause)
-		.groupBy(expensePayer.id, expensePayer.name)
-		.having(sql`${expensePayer.id} is not null`)
+		.leftJoin(user, eq(expense.payerUserId, user.id))
+		.where(scopedFilter)
+		.groupBy(user.id, user.name)
+		.having(sql`${user.id} is not null`)
 		.orderBy(desc(sql`sum(${expense.amount})`));
 
 	// カテゴリ別合計（多い順）
@@ -101,7 +99,7 @@ export async function getDashboardSummary(
 		})
 		.from(expense)
 		.innerJoin(expenseCategory, eq(expense.categoryId, expenseCategory.id))
-		.where(whereClause)
+		.where(scopedFilter)
 		.groupBy(expenseCategory.id, expenseCategory.name)
 		.orderBy(desc(sql`sum(${expense.amount})`));
 

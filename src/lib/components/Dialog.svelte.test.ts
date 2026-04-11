@@ -22,7 +22,7 @@ import ConfirmDialog from './ConfirmDialog.svelte';
 import ExpenseFormDialog from '../../routes/expenses/components/ExpenseFormDialog.svelte';
 
 const mockCategory = { id: 'cat-1', userId: 'u1', name: '食費', createdAt: new Date() };
-const mockPayer = { id: 'payer-1', userId: 'u1', name: '田中', createdAt: new Date() };
+const mockUser = { id: 'user-1', name: '田中', email: 'tanaka@example.com' };
 
 const confirmProps = {
 	title: 'テスト確認',
@@ -64,7 +64,7 @@ describe('Dialog', () => {
 			open: true,
 			mode: 'create',
 			categories: [mockCategory],
-			payers: [mockPayer],
+			users: [mockUser],
 			onSuccess: vi.fn(),
 			onCancel
 		});

@@ -28,15 +28,15 @@ const mockCategories = [
 	{ id: 'cat-2', userId: 'user-1', name: '交通費', createdAt: new Date() }
 ];
 
-const mockPayers = [
-	{ id: 'payer-1', userId: 'user-1', name: '田中', createdAt: new Date() },
-	{ id: 'payer-2', userId: 'user-1', name: '佐藤', createdAt: new Date() }
+const mockUsers = [
+	{ id: 'user-2', name: '田中', email: 'tanaka@example.com' },
+	{ id: 'user-3', name: '佐藤', email: 'sato@example.com' }
 ];
 
 const defaultProps = {
 	mode: 'create' as const,
 	categories: mockCategories,
-	payers: mockPayers,
+	users: mockUsers,
 	onSuccess: vi.fn(),
 	onCancel: vi.fn()
 };

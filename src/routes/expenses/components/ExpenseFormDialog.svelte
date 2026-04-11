@@ -14,9 +14,9 @@
   @props
   - open: boolean - 表示状態
   - mode: 'create' | 'edit' - フォームモード
-  - expense: ExpenseWithCategory | null - 編集対象（edit mode のみ）
-  - categories: Category[] - カテゴリ一覧
-  - payers: Payer[] - 支払者一覧
+  - expense: ExpenseWithRelations | null - 編集対象（edit mode のみ）
+  - categories: ExpenseCategory[] - カテゴリ一覧
+  - users: ExpensePayer[] - ユーザー一覧（支払者選択用）
   - onSuccess: () => void | Promise<void> - 送信成功時コールバック
   - onCancel: () => void - キャンセル時コールバック
 -->
@@ -30,7 +30,7 @@
 		mode,
 		expense = null,
 		categories,
-		payers,
+		users,
 		onSuccess,
 		onCancel
 	}: {
@@ -38,7 +38,7 @@
 		mode: 'create' | 'edit';
 		expense?: ExpenseWithRelations | null;
 		categories: ExpenseCategory[];
-		payers: ExpensePayer[];
+		users: ExpensePayer[];
 		onSuccess: () => void | Promise<void>;
 		onCancel: () => void;
 	} = $props();
@@ -55,7 +55,7 @@
 			{mode}
 			expense={expense ?? undefined}
 			{categories}
-			{payers}
+			{users}
 			{onSuccess}
 			{onCancel}
 		/>

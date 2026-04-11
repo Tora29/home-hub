@@ -13,7 +13,7 @@ import { dashboardSummaryQuerySchema } from './schema';
 
 describe('dashboardSummaryQuerySchema', () => {
 	describe('正常系', () => {
-		test('[SPEC: AC-001] デフォルト値で parse できる（period=month）', () => {
+		test('デフォルト値で parse できる（period=month）', () => {
 			const result = dashboardSummaryQuerySchema.safeParse({});
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -21,22 +21,22 @@ describe('dashboardSummaryQuerySchema', () => {
 			}
 		});
 
-		test('[SPEC: AC-001] period=all で month 省略の場合、parse できる', () => {
+		test('period=all で month 省略の場合、parse できる', () => {
 			const result = dashboardSummaryQuerySchema.safeParse({ period: 'all' });
 			expect(result.success).toBe(true);
 		});
 
-		test('[SPEC: AC-001] month が 01〜12 の場合、parse できる', () => {
+		test('month が 01〜12 の場合、parse できる', () => {
 			const result = dashboardSummaryQuerySchema.safeParse({ period: 'month', month: '2026-04' });
 			expect(result.success).toBe(true);
 		});
 
-		test('[SPEC: AC-001] month が 12 月の場合、parse できる', () => {
+		test('month が 12 月の場合、parse できる', () => {
 			const result = dashboardSummaryQuerySchema.safeParse({ period: 'month', month: '2026-12' });
 			expect(result.success).toBe(true);
 		});
 
-		test('[SPEC: AC-001] month が 01 月の場合、parse できる', () => {
+		test('month が 01 月の場合、parse できる', () => {
 			const result = dashboardSummaryQuerySchema.safeParse({ period: 'month', month: '2026-01' });
 			expect(result.success).toBe(true);
 		});

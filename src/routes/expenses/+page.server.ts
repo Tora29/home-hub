@@ -5,7 +5,7 @@
  *
  * @description
  * 支出一覧画面の初期データをサーバーサイドで取得する。
- * 当月の支出一覧とカテゴリ一覧を返す。
+ * 全ユーザーの当月支出一覧・カテゴリ一覧・ユーザー一覧（支払者選択用）を返す。
  *
  * @spec specs/expenses/spec.md
  * @acceptance AC-001
@@ -13,9 +13,8 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
-import { getExpenses } from './service';
+import { getExpenses, getUsers, getBulkCounts } from './service';
 import { getCategories } from './categories/service';
-import { getPayers } from './payers/service';
 import { expenseQuerySchema } from './schema';
 
 export const load: PageServerLoad = async ({ platform, locals, url }) => {
@@ -31,11 +30,12 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
 	}
 	const selectedMonth = parsed.success ? (parsed.data.month ?? currentMonth) : currentMonth;
 
-	const [expenses, categories, payers] = await Promise.all([
-		getExpenses(db, locals.user!.id, { month: selectedMonth }),
+	const [expenses, categories, users, bulkCounts] = await Promise.all([
+		getExpenses(db, { month: selectedMonth }),
 		getCategories(db, locals.user!.id),
-		getPayers(db, locals.user!.id)
+		getUsers(db, locals.user!.id),
+		getBulkCounts(db, locals.user!.id)
 	]);
 
-	return { expenses, categories, payers, currentMonth };
+	return { expenses, categories, users, bulkCounts, currentMonth, currentUserId: locals.user!.id };
 };

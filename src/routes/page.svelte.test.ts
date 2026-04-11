@@ -46,7 +46,7 @@ describe('ダッシュボード - 期間切り替えエラー', () => {
 		vi.stubGlobal('fetch', async () => new Response(null, { status: 500 }));
 
 		render(Page, {
-			data: { summary: emptySummary, unapprovedCount: 0, currentMonth: '2026-04' }
+			data: { summary: emptySummary, pendingApprovalCount: 0, currentMonth: '2026-04' }
 		});
 
 		// 初期は「当月合計」ラベル（period === 'month'）
@@ -64,7 +64,7 @@ describe('ダッシュボード - 期間切り替えエラー', () => {
 describe('ダッシュボード - 合計金額表示', () => {
 	test('[SPEC: AC-005] 全体合計金額がカンマ区切りで表示される（¥12,300）', async () => {
 		render(Page, {
-			data: { summary: richSummary, unapprovedCount: 0, currentMonth: '2026-04' }
+			data: { summary: richSummary, pendingApprovalCount: 0, currentMonth: '2026-04' }
 		});
 
 		await expect.element(page.getByTestId('dashboard-total')).toHaveTextContent('¥12,300');
@@ -72,7 +72,7 @@ describe('ダッシュボード - 合計金額表示', () => {
 
 	test('[SPEC: AC-006] 支払者別合計セクションに各支払者名と合計金額がカンマ区切りで表示される', async () => {
 		render(Page, {
-			data: { summary: richSummary, unapprovedCount: 0, currentMonth: '2026-04' }
+			data: { summary: richSummary, pendingApprovalCount: 0, currentMonth: '2026-04' }
 		});
 
 		await expect.element(page.getByTestId('dashboard-payer-summary-list')).toBeVisible();
@@ -85,7 +85,7 @@ describe('ダッシュボード - 合計金額表示', () => {
 
 	test('[SPEC: AC-007] カテゴリ別合計セクションに各カテゴリ名と合計金額がカンマ区切りで表示される', async () => {
 		render(Page, {
-			data: { summary: richSummary, unapprovedCount: 0, currentMonth: '2026-04' }
+			data: { summary: richSummary, pendingApprovalCount: 0, currentMonth: '2026-04' }
 		});
 
 		await expect.element(page.getByTestId('dashboard-category-summary-list')).toBeVisible();
@@ -97,19 +97,19 @@ describe('ダッシュボード - 合計金額表示', () => {
 	});
 });
 
-describe('ダッシュボード - 未承認バナー', () => {
-	test('[SPEC: AC-008] 未承認支出が1件以上ある場合、expense-pending-alert が件数付きで表示される', async () => {
+describe('ダッシュボード - 承認依頼バナー', () => {
+	test('[SPEC: AC-008] 承認依頼が1件以上ある場合、expense-pending-alert が件数付きで表示される', async () => {
 		render(Page, {
-			data: { summary: emptySummary, unapprovedCount: 3, currentMonth: '2026-04' }
+			data: { summary: emptySummary, pendingApprovalCount: 3, currentMonth: '2026-04' }
 		});
 
 		await expect.element(page.getByTestId('expense-pending-alert')).toBeVisible();
-		await expect.element(page.getByText('未確認の支出が 3 件あります')).toBeVisible();
+		await expect.element(page.getByText('承認依頼が 3 件届いています')).toBeVisible();
 	});
 
-	test('[SPEC: AC-009] 未承認支出が0件の場合、expense-pending-alert が DOM に存在しない', async () => {
+	test('[SPEC: AC-009] 承認依頼が0件の場合、expense-pending-alert が DOM に存在しない', async () => {
 		render(Page, {
-			data: { summary: emptySummary, unapprovedCount: 0, currentMonth: '2026-04' }
+			data: { summary: emptySummary, pendingApprovalCount: 0, currentMonth: '2026-04' }
 		});
 
 		await expect.element(page.getByTestId('expense-pending-alert')).not.toBeInTheDocument();
@@ -121,7 +121,7 @@ describe('ダッシュボード - 空状態表示', () => {
 		render(Page, {
 			data: {
 				summary: emptySummary,
-				unapprovedCount: 0,
+				pendingApprovalCount: 0,
 				currentMonth: '2026-04'
 			}
 		});
@@ -134,7 +134,7 @@ describe('ダッシュボード - 空状態表示', () => {
 		render(Page, {
 			data: {
 				summary: emptySummary,
-				unapprovedCount: 0,
+				pendingApprovalCount: 0,
 				currentMonth: '2026-04'
 			}
 		});
@@ -146,7 +146,7 @@ describe('ダッシュボード - 空状態表示', () => {
 		render(Page, {
 			data: {
 				summary: emptySummary,
-				unapprovedCount: 0,
+				pendingApprovalCount: 0,
 				currentMonth: '2026-04'
 			}
 		});

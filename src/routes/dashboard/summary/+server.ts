@@ -6,7 +6,7 @@
  * @description
  * 支出の集計サマリーを取得するエンドポイント。
  * period=month（デフォルト）で月別集計、period=all で全期間集計を返す。
- * 集計対象は未承認・確認済み・確定済みの全ステータスを含む。
+ * 集計対象は unapproved・checked・pending・approved の全ステータスを含む。
  *
  * @spec specs/dashboard/spec.md
  * @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007
@@ -30,7 +30,7 @@ import { getDashboardSummary } from './service';
  * @ac AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007
  * @calls getDashboardSummary
  */
-export const GET: RequestHandler = async ({ url, locals, platform }) => {
+export const GET: RequestHandler = async ({ url, platform }) => {
 	const periodParam = url.searchParams.get('period') ?? undefined;
 	// period=all の場合は month を無視する（不正な month 値でも 400 にしない）
 	const queryResult = dashboardSummaryQuerySchema.safeParse({
@@ -42,7 +42,7 @@ export const GET: RequestHandler = async ({ url, locals, platform }) => {
 
 	try {
 		const db = createDb(platform!.env.DB);
-		const summary = await getDashboardSummary(db, locals.user!.id, {
+		const summary = await getDashboardSummary(db, {
 			period: queryResult.data.period,
 			month: queryResult.data.month
 		});

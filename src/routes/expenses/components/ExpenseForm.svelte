@@ -13,9 +13,9 @@
 
   @props
   - mode: 'create' | 'edit' - フォームモード
-  - expense?: ExpenseWithCategory - 編集対象（edit mode のみ）
-  - categories: Category[] - カテゴリ一覧
-  - payers: Payer[] - 支払者一覧
+  - expense?: ExpenseWithRelations - 編集対象（edit mode のみ）
+  - categories: ExpenseCategory[] - カテゴリ一覧
+  - users: ExpensePayer[] - ユーザー一覧（支払者選択用）
   - onSuccess: () => void | Promise<void> - 送信成功時コールバック
   - onCancel: () => void - キャンセル時コールバック
 -->
@@ -31,14 +31,14 @@
 		mode,
 		expense,
 		categories,
-		payers = [],
+		users = [],
 		onSuccess,
 		onCancel
 	}: {
 		mode: 'create' | 'edit';
 		expense?: ExpenseWithRelations;
 		categories: ExpenseCategory[];
-		payers: ExpensePayer[];
+		users: ExpensePayer[];
 		onSuccess: () => void | Promise<void>;
 		onCancel: () => void;
 	} = $props();
@@ -46,7 +46,7 @@
 	// 内部値はカンマなしの半角数字文字列
 	let amountRaw = $state(untrack(() => (expense ? String(expense.amount) : '')));
 	let categoryId = $state(untrack(() => expense?.categoryId ?? ''));
-	let payerId = $state(untrack(() => expense?.payerId ?? ''));
+	let payerUserId = $state(untrack(() => expense?.payerUserId ?? ''));
 	let amountError = $state('');
 	let categoryError = $state('');
 	let payerError = $state('');
@@ -89,7 +89,7 @@
 			valid = false;
 		}
 
-		if (!payerId) {
+		if (!payerUserId) {
 			payerError = '支払者は必須です';
 			valid = false;
 		}
@@ -104,7 +104,7 @@
 		serverError = '';
 
 		const amount = Number(amountRaw);
-		const body = { amount, categoryId, payerId };
+		const body = { amount, categoryId, payerUserId };
 
 		const url = mode === 'create' ? '/expenses' : `/expenses/${expense!.id}`;
 		const method = mode === 'create' ? 'POST' : 'PUT';
@@ -126,7 +126,7 @@
 					for (const f of err.fields) {
 						if (f.field === 'amount') amountError = f.message;
 						if (f.field === 'categoryId') categoryError = f.message;
-						if (f.field === 'payerId') payerError = f.message;
+						if (f.field === 'payerUserId') payerError = f.message;
 					}
 				} else {
 					serverError = err.message ?? 'エラーが発生しました';
@@ -208,12 +208,12 @@
 			<Select
 				id="expense-payer"
 				data-testid="expense-payer-select"
-				bind:value={payerId}
+				bind:value={payerUserId}
 				class="w-full"
 			>
 				<option value="">選択してください</option>
-				{#each payers as payer (payer.id)}
-					<option value={payer.id}>{payer.name}</option>
+				{#each users as user (user.id)}
+					<option value={user.id}>{user.name}</option>
 				{/each}
 			</Select>
 			{#if payerError}

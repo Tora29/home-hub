@@ -12,13 +12,31 @@
 import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
+import { user } from '$lib/server/tables';
 import { AppError } from '$lib/server/errors';
 import { getCategories, createCategory, updateCategory, deleteCategory } from './service';
 import { createExpense } from '../service';
-import { createPayer } from '../payers/service';
 
 function makeUserId() {
 	return crypto.randomUUID();
+}
+
+async function createTestUser(
+	db: ReturnType<typeof createDb>,
+	opts?: { name?: string; role?: 'primary' | 'spouse' }
+) {
+	const id = crypto.randomUUID();
+	const now = new Date();
+	await db.insert(user).values({
+		id,
+		name: opts?.name ?? 'テストユーザー',
+		email: `${id}@example.com`,
+		emailVerified: false,
+		role: opts?.role ?? 'primary',
+		createdAt: now,
+		updatedAt: now
+	});
+	return id;
 }
 
 describe('createCategory', () => {
@@ -168,20 +186,17 @@ describe('deleteCategory', () => {
 		const userId = makeUserId();
 		const otherUserId = makeUserId();
 
-		// 自分のカテゴリと支払者
+		// 自分のカテゴリと支払者ユーザー
 		const myCategory = await createCategory(db, userId, { name: '食費' });
-		const myPayer = await createPayer(db, userId, { name: '田中' });
+		const myPayerUserId = await createTestUser(db, { name: '自分の支払者' });
 
-		// 他ユーザーが自分と同じ categoryId を紐付けた支出は作れないが、
-		// 削除チェック関数が userId フィルタなしだと他ユーザーの支出でブロックされる。
-		// ここでは自分のカテゴリが支出 0 件のときに削除できることを確認する。
-		// （他ユーザーが同名カテゴリを持っていても影響しない）
+		// 他ユーザーのカテゴリと支払者ユーザー、および支出
 		const otherCategory = await createCategory(db, otherUserId, { name: '食費' });
-		const otherPayer = await createPayer(db, otherUserId, { name: '他人' });
+		const otherPayerUserId = await createTestUser(db, { name: '他人の支払者' });
 		await createExpense(db, otherUserId, {
 			amount: 500,
 			categoryId: otherCategory.id,
-			payerId: otherPayer.id
+			payerUserId: otherPayerUserId
 		});
 
 		// 自分の myCategory には支出がないので削除できる
@@ -194,7 +209,7 @@ describe('deleteCategory', () => {
 		await createExpense(db, userId, {
 			amount: 1000,
 			categoryId: myCategory2.id,
-			payerId: myPayer.id
+			payerUserId: myPayerUserId
 		});
 		await expect(deleteCategory(db, userId, myCategory2.id)).rejects.toMatchObject({
 			code: 'CONFLICT'
@@ -206,8 +221,8 @@ describe('deleteCategory', () => {
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerId: payer.id });
+		const payerUserId = await createTestUser(db, { name: '田中' });
+		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerUserId });
 
 		await expect(deleteCategory(db, userId, category.id)).rejects.toThrow(AppError);
 

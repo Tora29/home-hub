@@ -14,24 +14,23 @@ import { page } from 'vitest/browser';
 import ExpenseFormDialog from './ExpenseFormDialog.svelte';
 
 const mockCategory = { id: 'cat-1', userId: 'user-1', name: '食費', createdAt: new Date() };
-const mockPayer = { id: 'payer-1', userId: 'user-1', name: '田中', createdAt: new Date() };
+const mockUser = { id: 'user-2', name: '田中', email: 'tanaka@example.com' };
 
 const mockExpense = {
 	id: 'exp-1',
 	userId: 'user-1',
 	amount: 1000,
 	categoryId: 'cat-1',
-	payerId: 'payer-1',
-	approvedAt: null,
-	finalizedAt: null,
+	payerUserId: 'user-2',
+	status: 'unapproved' as const,
 	createdAt: new Date(),
 	category: mockCategory,
-	payer: mockPayer
+	payer: mockUser
 };
 
 const baseProps = {
 	categories: [mockCategory],
-	payers: [mockPayer],
+	users: [mockUser],
 	onSuccess: vi.fn(),
 	onCancel: vi.fn()
 };

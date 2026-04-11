@@ -2,11 +2,12 @@
 
 ## Overview
 
-ダッシュボード（`/`）に支出の集計情報と未承認支出の警告バナーを表示する。
+ダッシュボード（`/`）に支出の集計情報と承認依頼バナーを表示する。
 月別・全期間を切り替えながら、全体合計・支払者別合計・カテゴリ別合計を確認できる。
-全期間で未承認の支出が 1 件以上存在する場合は警告バナーを表示し、ユーザーが見落とさないよう通知する。
+全期間で相手から `pending`（申請中）の支出が 1 件以上存在する場合は承認依頼バナーを表示し、ユーザーが見落とさないよう通知する。
 
-集計対象は **確定済み・確認済み・未承認の全ステータス**を含む（支払い記録としての合計を把握するため）。
+集計対象は **承認済み・申請中・確認済み・未承認の全ステータス**を含む（支払い記録としての合計を把握するため）。
+集計は全ユーザー（主・妻）の支出を世帯合計として扱う。支払者別合計は `user` テーブルから取得する。
 
 ## User Stories
 
@@ -14,7 +15,7 @@
 - ユーザーとして、誰がどれだけ払ったかをダッシュボードで確認したい。支払い負担のバランスを把握するため。
 - ユーザーとして、カテゴリ別の支出合計をダッシュボードで確認したい。支出傾向を把握するため。
 - ユーザーとして、月別表示と全期間表示を切り替えたい。短期・長期の両方の視点で確認するため。
-- ユーザーとして、未承認の支出がある場合にダッシュボードで通知を受けたい。支出の確認漏れを防ぐため。
+- ユーザーとして、相手から承認依頼が届いた場合にダッシュボードで通知を受けたい。承認漏れを防ぐため。
 
 ## API Endpoints
 
@@ -38,8 +39,8 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-005: 全体合計金額がカンマ区切りで表示される（例: `¥12,300`）
 - AC-006: 支払者別合計セクションに各支払者名と合計金額がカンマ区切りで表示される。合計金額が多い順でソートされる
 - AC-007: カテゴリ別合計セクションに各カテゴリ名と合計金額がカンマ区切りで表示される。合計金額が多い順でソートされる
-- AC-008: **全期間**の未承認支出が 1 件以上ある場合、`expense-pending-alert` バナーに「未確認の支出が X 件あります」と件数付きで表示され、`/expenses` へのリンクが付与される
-- AC-009: 全支出が承認済みになる（または支出が 0 件になる）と、`expense-pending-alert` バナーが非表示になる
+- AC-008: **全期間**で相手からの `pending`（申請中）支出が 1 件以上ある場合、`expense-pending-alert` バナーに「承認依頼が X 件届いています」と件数付きで表示され、`/expenses` へのリンクが付与される
+- AC-009: 相手からの `pending` 支出がなくなる（0 件または承認済みになる）と、`expense-pending-alert` バナーが非表示になる
 
 ### 異常系
 
@@ -50,7 +51,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 ### 境界値
 
 - AC-201: 対象期間に支出が 0 件の場合、全体合計が「¥0」と表示される
-- AC-202: 支払者が 1 人も登録されていない（または対象期間に支出がない）場合、支払者別合計セクションに空状態メッセージが表示される
+- AC-202: 対象期間に支払者別集計対象の支出が 1 件もない場合、支払者別合計セクションに空状態メッセージが表示される
 - AC-203: カテゴリが 1 件も登録されていない（または対象期間に支出がない）場合、カテゴリ別合計セクションに空状態メッセージが表示される
 
 ## UI Requirements
@@ -59,7 +60,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 #### 画面構成
 
-- **未承認支出警告バナー** (`expense-pending-alert`): 全期間の未承認支出が 1 件以上ある場合に表示。テキスト例: 「未確認の支出が X 件あります」（`/expenses` へのリンク付き）。SSR load 関数で全期間の未承認件数を取得して表示判定する
+- **承認依頼バナー** (`expense-pending-alert`): 全期間で承認対象パートナーからの `pending` 支出が 1 件以上ある場合に表示。テキスト例: 「承認依頼が X 件届いています」（`/expenses` へのリンク付き）。SSR load 関数で全期間の承認依頼件数（`pendingApprovalCount`）を取得して表示判定する
 - **期間切り替えタブ**: 「月別」(`dashboard-period-tab-month`) / 「全期間」(`dashboard-period-tab-all`) の 2 タブ
 - **月切り替えセレクト** (`dashboard-month-select`): 「月別」タブ選択時のみ表示。デフォルトは当月（`YYYY-MM` 形式）。選択肢は当月を含む過去 13 か月分
 - **全体合計カード** (`dashboard-total`): 対象期間の支出合計金額をカンマ区切りで表示（例: `¥12,300`）
@@ -81,45 +82,47 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 
 ## data-testid
 
-| testid                             | 要素種別   | 説明                                                  |
-| ---------------------------------- | ---------- | ----------------------------------------------------- |
-| `dashboard-period-tab-month`       | `<button>` | 「月別」タブボタン                                    |
-| `dashboard-period-tab-all`         | `<button>` | 「全期間」タブボタン                                  |
-| `dashboard-month-select`           | `<select>` | 月切り替えセレクト（「月別」タブ選択時のみ表示）      |
-| `dashboard-total`                  | `<p>`      | 全体合計金額表示                                      |
-| `dashboard-payer-summary-list`     | `<ul>`     | 支払者別合計リスト                                    |
-| `dashboard-payer-summary-item`     | `<li>`     | 支払者別合計行（支払者名 + 合計金額）                 |
-| `dashboard-payer-summary-empty`    | `<p>`      | 支払者別合計の空状態メッセージ                        |
-| `dashboard-category-summary-list`  | `<ul>`     | カテゴリ別合計リスト                                  |
-| `dashboard-category-summary-item`  | `<li>`     | カテゴリ別合計行（カテゴリ名 + 合計金額）             |
-| `dashboard-category-summary-empty` | `<p>`      | カテゴリ別合計の空状態メッセージ                      |
-| `expense-pending-alert`            | `<div>`    | 未承認支出の警告バナー（全期間未承認 1 件以上で表示） |
+| testid                             | 要素種別   | 説明                                                             |
+| ---------------------------------- | ---------- | ---------------------------------------------------------------- |
+| `dashboard-period-tab-month`       | `<button>` | 「月別」タブボタン                                               |
+| `dashboard-period-tab-all`         | `<button>` | 「全期間」タブボタン                                             |
+| `dashboard-month-select`           | `<select>` | 月切り替えセレクト（「月別」タブ選択時のみ表示）                 |
+| `dashboard-total`                  | `<p>`      | 全体合計金額表示                                                 |
+| `dashboard-payer-summary-list`     | `<ul>`     | 支払者別合計リスト                                               |
+| `dashboard-payer-summary-item`     | `<li>`     | 支払者別合計行（支払者名 + 合計金額）                            |
+| `dashboard-payer-summary-empty`    | `<p>`      | 支払者別合計の空状態メッセージ                                   |
+| `dashboard-category-summary-list`  | `<ul>`     | カテゴリ別合計リスト                                             |
+| `dashboard-category-summary-item`  | `<li>`     | カテゴリ別合計行（カテゴリ名 + 合計金額）                        |
+| `dashboard-category-summary-empty` | `<p>`      | カテゴリ別合計の空状態メッセージ                                 |
+| `expense-pending-alert`            | `<div>`    | 承認依頼バナー（全期間で相手の pending が 1 件以上のときに表示） |
 
 ## テスト戦略
 
-| AC          | 種別        | 対象ファイル                                    | 備考                                                                         |
-| ----------- | ----------- | ----------------------------------------------- | ---------------------------------------------------------------------------- |
-| AC-001〜004 | Integration | `page.server.integration.test.ts`（`/` 側）     | SSR load 関数で当月集計データ取得を実 D1 で検証                              |
-| AC-001〜007 | Integration | `dashboard/summary/service.integration.test.ts` | 支払者別・カテゴリ別・全体合計算出を実 D1 で検証                             |
-| AC-008〜009 | Integration | `page.server.integration.test.ts`（`/` 側）     | 全期間の未承認件数取得・バナー表示判定を実 D1 で検証                         |
-| AC-008〜009 | Integration | `expenses/service.integration.test.ts`          | `getUnapprovedCount` の DB ロジックを実 D1 で検証（expenses service に実装） |
-| AC-101〜102 | Unit        | `dashboard/schema.test.ts`                      | Zod スキーマによる入力バリデーションを検証                                   |
-| AC-002〜004 | E2E         | `e2e/dashboard.e2e.ts`                          | タブ切り替え・月切り替えのインタラクションを E2E で検証                      |
-| AC-008〜009 | E2E         | `e2e/dashboard.e2e.ts`                          | 未承認バナーの表示・非表示を E2E で検証                                      |
-| AC-201〜203 | Integration | `dashboard/summary/service.integration.test.ts` | 0 件境界値を実 D1 で検証                                                     |
-| AC-201〜203 | Unit        | `page.svelte.test.ts`（`/` 側）                 | 空状態メッセージの表示を検証                                                 |
-| AC-005〜007 | Unit        | `page.svelte.test.ts`（`/` 側）                 | 合計金額のカンマ区切り表示・支払者別・カテゴリ別一覧の表示形式を検証         |
-| AC-008〜009 | Unit        | `page.svelte.test.ts`（`/` 側）                 | 未承認バナーの表示（件数テキスト含む）・非表示（DOM 除去）を検証             |
+| AC          | 種別        | 対象ファイル                                    | 備考                                                                              |
+| ----------- | ----------- | ----------------------------------------------- | --------------------------------------------------------------------------------- |
+| AC-001〜004 | Integration | `page.server.integration.test.ts`（`/` 側）     | SSR load 関数で当月集計データ取得を実 D1 で検証                                   |
+| AC-001〜007 | Integration | `dashboard/summary/service.integration.test.ts` | 支払者別・カテゴリ別・全体合計算出を実 D1 で検証                                  |
+| AC-008〜009 | Integration | `page.server.integration.test.ts`（`/` 側）     | 全期間の承認依頼件数取得・バナー表示判定を実 D1 で検証                            |
+| AC-008〜009 | Integration | `expenses/service.integration.test.ts`          | `getPendingApprovalCount` の DB ロジックを実 D1 で検証（expenses service に実装） |
+| AC-101〜102 | Unit        | `dashboard/schema.test.ts`                      | Zod スキーマによる入力バリデーションを検証                                        |
+| AC-002〜004 | E2E         | `e2e/dashboard.e2e.ts`                          | タブ切り替え・月切り替えのインタラクションを E2E で検証                           |
+| AC-201〜203 | Integration | `dashboard/summary/service.integration.test.ts` | 0 件境界値を実 D1 で検証                                                          |
+| AC-201〜203 | Unit        | `page.svelte.test.ts`（`/` 側）                 | 空状態メッセージの表示を検証                                                      |
+| AC-005〜007 | Unit        | `page.svelte.test.ts`（`/` 側）                 | 合計金額のカンマ区切り表示・支払者別・カテゴリ別一覧の表示形式を検証              |
+| AC-008〜009 | Unit        | `page.svelte.test.ts`（`/` 側）                 | 承認依頼バナーの表示（件数テキスト含む）・非表示（DOM 除去）を検証                |
 
 ## Non-Functional Requirements
 
 ### Performance
 
 - 集計クエリは月別・全期間ともに GROUP BY で DB 側で集計し、アプリ側での集計は行わない
-- 集計対象は全ステータス（未承認・確認済み・確定済み）を含む
+- 集計対象は全ステータス（unapproved・checked・pending・approved）を含む
+- 支払者別集計は `user` テーブルを JOIN して取得する
+- 承認依頼件数（`pendingApprovalCount`）は自分以外の全ユーザーの `status='pending'` 件数を全期間で集計する
 
 ### Security
 
 - `hooks.server.ts` の認証ガードにより全エンドポイント認証済み
-- `userId` でデータを絞り込み、他ユーザーのデータは返さない
+- 集計は世帯全体（全ユーザー）を対象とする。`userId` による絞り込みは行わない
+- `pendingApprovalCount` は自分自身を除く全ユーザーの `pending` を対象に取得する
 - `{@html}` は不使用

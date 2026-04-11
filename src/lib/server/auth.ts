@@ -9,6 +9,7 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import type { D1Database } from '@cloudflare/workers-types';
+import { and, eq, ne, notExists } from 'drizzle-orm';
 import { scryptAsync } from '@noble/hashes/scrypt.js';
 import { bytesToHex, randomBytes } from '@noble/hashes/utils.js';
 import { createDb } from './db';
@@ -59,6 +60,65 @@ export function createAuth(d1: D1Database, secret: string, baseURL: string) {
 		},
 		session: {
 			expiresIn: 60 * 60 * 24 * 30 // 30日
+		},
+		user: {
+			additionalFields: {
+				role: {
+					type: 'string',
+					required: false,
+					defaultValue: null
+				}
+			}
+		},
+		databaseHooks: {
+			user: {
+				create: {
+					// サインアップ後に role を自動付与する。
+					// NOT EXISTS サブクエリによるアトミック UPDATE で TOCTOU 競合を防ぐ。
+					// primary が存在しなければ → 'primary'（同時サインアップでも1件だけ付与）
+					// primary はいるが spouse がいなければ → 'spouse'
+					// 両方いる → null（3人目以降）
+					after: async (newUser) => {
+						// Step 1: primary が存在しない場合のみアトミックに 'primary' を付与
+						await db
+							.update(user)
+							.set({ role: 'primary' })
+							.where(
+								and(
+									eq(user.id, newUser.id),
+									notExists(
+										db
+											.select({ id: user.id })
+											.from(user)
+											.where(and(eq(user.role, 'primary'), ne(user.id, newUser.id)))
+									)
+								)
+							);
+						// Step 2: 自分が primary になれたか確認
+						const self = await db
+							.select({ role: user.role })
+							.from(user)
+							.where(eq(user.id, newUser.id))
+							.get();
+						if (self?.role === 'primary') return;
+						// Step 3: spouse が存在しない場合のみアトミックに 'spouse' を付与
+						await db
+							.update(user)
+							.set({ role: 'spouse' })
+							.where(
+								and(
+									eq(user.id, newUser.id),
+									notExists(
+										db
+											.select({ id: user.id })
+											.from(user)
+											.where(and(eq(user.role, 'spouse'), ne(user.id, newUser.id)))
+									)
+								)
+							);
+					}
+				}
+			}
 		},
 		logger: {
 			// 「User not found」は誤認証テストで意図的に発生する想定内のエラー

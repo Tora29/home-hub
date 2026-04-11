@@ -6,7 +6,7 @@
   @description
   アプリケーションのトップページ。
   月別・全期間を切り替えながら、全体合計・支払者別合計・カテゴリ別合計を確認できる。
-  全期間で未承認の支出が 1 件以上ある場合は警告バナーを表示する。
+  全期間で承認対象パートナーからの pending 支出が 1 件以上ある場合は承認依頼バナーを表示する。
 
   @spec specs/dashboard/spec.md
   @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009, AC-201, AC-202, AC-203
@@ -53,14 +53,14 @@
 	}
 </script>
 
-{#if data.unapprovedCount > 0}
+{#if data.pendingApprovalCount > 0}
 	<div
 		data-testid="expense-pending-alert"
 		class="mb-6 flex items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3"
 	>
 		<AlertTriangle size={18} class="shrink-0 text-destructive" />
 		<p class="flex-1 text-sm text-destructive">
-			未確認の支出が {data.unapprovedCount} 件あります
+			承認依頼が {data.pendingApprovalCount} 件届いています
 		</p>
 		<a
 			href="/expenses"
