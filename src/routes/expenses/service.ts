@@ -26,7 +26,7 @@
  *
  * @test ./service.integration.test.ts
  */
-import { and, desc, eq, gte, lt, ne, sql, type ExtractTablesWithRelations } from 'drizzle-orm';
+import { and, desc, eq, gte, lt, sql, type ExtractTablesWithRelations } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { D1Result } from '@cloudflare/workers-types';
 import { AppError } from '$lib/server/errors';
@@ -433,12 +433,5 @@ export async function getPartnerUserId(db: Db, userId: string): Promise<string |
 		return partner?.id ?? null;
 	}
 
-	// ロール未設定（移行期）: 自分以外の最初のユーザーをパートナーとみなす
-	const partner = await db
-		.select({ id: user.id })
-		.from(user)
-		.where(ne(user.id, userId))
-		.limit(1)
-		.get();
-	return partner?.id ?? null;
+	return null;
 }

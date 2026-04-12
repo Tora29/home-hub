@@ -14,7 +14,6 @@ import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { AppError } from '$lib/server/errors';
 import { user as userTable } from '$lib/server/tables';
-import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import {
 	getExpenses,
 	createExpense,
@@ -25,7 +24,8 @@ import {
 	requestExpenses,
 	cancelExpenses,
 	approveExpenses,
-	getPendingApprovalCount
+	getPendingApprovalCount,
+	getPartnerUserId
 } from './service';
 import { createCategory } from './categories/service';
 
@@ -33,14 +33,18 @@ function makeUserId() {
 	return crypto.randomUUID();
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createTestUser(db: DrizzleD1Database<any>, id?: string): Promise<string> {
+async function createTestUser(
+	db: ReturnType<typeof createDb>,
+	id?: string,
+	role?: 'primary' | 'spouse' | null
+): Promise<string> {
 	const userId = id ?? makeUserId();
 	await db.insert(userTable).values({
 		id: userId,
 		name: 'テストユーザー',
 		email: `${userId}@test.example`,
 		emailVerified: false,
+		role,
 		createdAt: new Date(),
 		updatedAt: new Date()
 	});
@@ -671,6 +675,18 @@ describe('cancelRequest', () => {
 });
 
 describe('bulkApprove', () => {
+	test('[SPEC: AC-010] role=null ユーザーは承認対象パートナーを解決しない', async () => {
+		const db = createDb(env.DB);
+		const primaryUserId = await createTestUser(db, undefined, 'primary');
+		await createTestUser(db, undefined, 'spouse');
+		const noRoleUserId = await createTestUser(db, undefined, null);
+
+		const partnerId = await getPartnerUserId(db, noRoleUserId);
+
+		expect(primaryUserId).toBeTruthy();
+		expect(partnerId).toBeNull();
+	});
+
 	test('[SPEC: AC-010] 承認対象パートナーの pending 支出を全件 approved に変更できる', async () => {
 		const db = createDb(env.DB);
 		const requesterId = makeUserId();
