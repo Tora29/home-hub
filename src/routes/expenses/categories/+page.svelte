@@ -7,7 +7,7 @@
   支出カテゴリの一覧表示・追加・編集・削除を行う管理画面。
 
   @spec specs/expenses/spec.md
-  @acceptance AC-010, AC-011, AC-012, AC-107, AC-108, AC-109, AC-110
+  @acceptance AC-011, AC-012, AC-013, AC-107, AC-108, AC-109, AC-110
 
   @navigation
   - 遷移元: /expenses - 支出一覧画面

@@ -7,7 +7,7 @@
  * 他ユーザーの pending 支出を全件 approved に変更し、申請者へ LINE 通知を送信する。
  *
  * @spec specs/expenses/spec.md
- * @acceptance AC-010, AC-118, AC-119, AC-120
+ * @acceptance AC-010, AC-118, AC-119, AC-120, AC-125
  *
  * @endpoints
  * - POST /expenses/approve → 200 {count} - 一括承認
@@ -16,15 +16,21 @@
  * @service ../service.ts
  */
 import { json } from '@sveltejs/kit';
+import { AppError } from '$lib/server/errors';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
 import { sendLineMessage, getLineUserId, getOppositeRole } from '$lib/server/line';
-import { approveExpenses, getPartnerUserId } from '../service';
+import {
+	approveExpenses,
+	getExpenseIdsByOwnerAndStatus,
+	getPartnerUserId,
+	updateExpenseStatusesByIds
+} from '../service';
 
 /**
  * 他ユーザーの pending 支出を全件 approved に変更し、申請者へ LINE 通知を送信する。
- * @ac AC-010, AC-118, AC-119, AC-120
+ * @ac AC-010, AC-118, AC-119, AC-120, AC-125
  * @throws CONFLICT - 相手の pending 支出が 0 件の場合
  * @throws BAD_GATEWAY - LINE API 失敗時
  */
@@ -38,29 +44,29 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 	const oppositeRole = role ? getOppositeRole(role) : null;
 	const toLineUserId = oppositeRole ? getLineUserId(env, oppositeRole) : undefined;
 
-	// role が設定されていて LINE トークンもあるが宛先 ID が未設定の場合のみ設定ミスとして 409
-	if (oppositeRole && !toLineUserId && env.LINE_CHANNEL_ACCESS_TOKEN) {
-		return json(
-			{ code: 'CONFLICT', message: 'LINE 宛先ユーザー ID が設定されていません' },
-			{ status: 409 }
-		);
-	}
-
 	try {
 		const db = createDb(platform!.env.DB);
 		const partnerId = await getPartnerUserId(db, currentUser.id);
 		if (!partnerId) {
 			return json({ code: 'CONFLICT', message: '承認できる支出がありません' }, { status: 409 });
 		}
-		// DB 更新を先に実行する。LINE 送信失敗時も DB 更新は維持する（spec AC-120）。
+		const pendingExpenseIds = await getExpenseIdsByOwnerAndStatus(db, partnerId, 'pending');
 		const count = await approveExpenses(db, currentUser.id, partnerId);
 
+		// 通知先 role / LINE user ID を解決できない場合は通知のみスキップする。
 		if (toLineUserId) {
-			await sendLineMessage(
-				env,
-				toLineUserId,
-				`${currentUser.name} が ${count} 件の支出を承認しました。`
-			);
+			try {
+				await sendLineMessage(
+					env,
+					toLineUserId,
+					`${currentUser.name} が ${count} 件の支出を承認しました。`
+				);
+			} catch (e) {
+				if (e instanceof AppError && e.code === 'BAD_GATEWAY') {
+					await updateExpenseStatusesByIds(db, pendingExpenseIds, 'approved', 'pending');
+				}
+				throw e;
+			}
 		}
 
 		return json({ count });

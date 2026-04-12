@@ -786,16 +786,42 @@ describe('cancelRequest', () => {
 });
 
 describe('bulkApprove', () => {
-	test('[SPEC: AC-010] role=null ユーザーは承認対象パートナーを解決しない', async () => {
+	test('[SPEC: AC-010] role=null ユーザーは pending 支出を持つ他ユーザーを承認対象に解決する', async () => {
 		const db = createDb(env.DB);
+		await resetRoleScopedFixtures(db);
 		const primaryUserId = await createTestUser(db, undefined, 'primary');
-		await createTestUser(db, undefined, 'spouse');
+		const spouseUserId = await createTestUser(db, undefined, 'spouse');
 		const noRoleUserId = await createTestUser(db, undefined, null);
+
+		const category = await createCategory(db, spouseUserId, { name: 'role-null-pending-target' });
+		const expense = await createExpense(db, spouseUserId, {
+			amount: 1000,
+			categoryId: category.id,
+			payerUserId: primaryUserId
+		});
+		await checkExpense(db, spouseUserId, expense.id);
+		await requestExpenses(db, spouseUserId);
 
 		const partnerId = await getPartnerUserId(db, noRoleUserId);
 
 		expect(primaryUserId).toBeTruthy();
-		expect(partnerId).toBeNull();
+		expect(partnerId).toBe(spouseUserId);
+	});
+
+	test('[SPEC: AC-010] role=null ユーザーは pending がない場合、自分以外の最初のユーザーへフォールバックする', async () => {
+		const db = createDb(env.DB);
+		await resetRoleScopedFixtures(db);
+		const primaryUserId = await createTestUser(
+			db,
+			'00000000-0000-0000-0000-000000000001',
+			'primary'
+		);
+		await createTestUser(db, '00000000-0000-0000-0000-000000000002', 'spouse');
+		const noRoleUserId = await createTestUser(db, undefined, null);
+
+		const partnerId = await getPartnerUserId(db, noRoleUserId);
+
+		expect(partnerId).toBe(primaryUserId);
 	});
 
 	test('[SPEC: AC-010] 承認対象パートナーの pending 支出を全件 approved に変更できる', async () => {

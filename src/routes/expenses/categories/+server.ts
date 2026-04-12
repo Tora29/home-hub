@@ -7,7 +7,7 @@
  * 支出カテゴリの一覧取得・新規登録エンドポイント。
  *
  * @spec specs/expenses/spec.md
- * @acceptance AC-010, AC-107, AC-108
+ * @acceptance AC-011, AC-107, AC-108
  *
  * @endpoints
  * - GET /expenses/categories → 200 CategoryList - カテゴリ一覧取得
@@ -27,7 +27,7 @@ import { createCategory, getCategories } from './service';
 
 /**
  * カテゴリ一覧を取得する（全件）。
- * @ac AC-010
+ * @ac AC-011, AC-012
  * @calls getCategories
  */
 export const GET: RequestHandler = async ({ locals, platform }) => {
@@ -42,7 +42,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 
 /**
  * カテゴリを新規作成する。categoryCreateSchema で入力値を検証後、service に委譲する。
- * @ac AC-010, AC-107, AC-108
+ * @ac AC-011, AC-107, AC-108
  * @body categoryCreateSchema
  * @throws VALIDATION_ERROR - 入力値が不正な場合
  */

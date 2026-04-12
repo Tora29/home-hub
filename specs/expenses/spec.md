@@ -69,7 +69,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-014: 一覧画面に選択中の月の世帯合計金額（全ユーザーの全ステータスの全件）がカンマ区切りで表示される
 - AC-015: `approved` の支出行は opacity を下げてグレーアウト表示し、チェックボックス・編集・削除ボタンを非表示にする
 - AC-016: 他ユーザーが登録した `unapproved` / `checked` の支出行にはチェックボックス・編集・削除ボタンが表示されない（閲覧のみ）
-- AC-017: `pending` の支出行はグレーアウト + チェックボックスなし・編集・削除ボタンは disabled
+- AC-017: 自分が登録した `pending` の支出行はグレーアウト + チェックボックスなし・編集・削除ボタンは disabled、他ユーザーの `pending` 行は閲覧のみで操作ボタンを表示しない
 - AC-018: 未承認行の `expense-menu-button`（モバイル）をタップすると `expense-menu` が表示される（自分が登録した行のみ）
 - AC-019: `expense-menu` 表示中にメニュー外をクリックすると `expense-menu` が閉じる
 
@@ -110,7 +110,8 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-116: `POST /expenses/cancel` 実行時に自分の `pending` 支出が 0 件の場合、409 CONFLICT「申請中の支出がありません」が返る
 - AC-118: `POST /expenses/approve` 実行時に承認対象パートナーの `pending` 支出が 0 件の場合、409 CONFLICT「承認できる支出がありません」が返る（第三者アカウントの `pending` のみ存在する場合も含む）
 - AC-119: `user.role` が未設定（null）の状態で `POST /expenses/request` または `POST /expenses/approve` を実行した場合も DB 更新は継続される。通知先 role を解決できないため LINE 通知は送信されない
-- AC-120: LINE API が 4xx/5xx を返した場合、`POST /expenses/request` / `POST /expenses/approve` は 502 BAD_GATEWAY「LINE 通知の送信に失敗したため承認フローを完了できませんでした」を返す
+- AC-120: LINE API が 4xx/5xx を返した場合、`POST /expenses/request` / `POST /expenses/approve` は 502 BAD_GATEWAY「LINE 通知の送信に失敗したため承認フローを完了できませんでした」を返し、対象支出の status は変更しない
+- AC-125: `LINE_CHANNEL_ACCESS_TOKEN` が設定されていても通知先 LINE ユーザー ID が未設定の場合、`POST /expenses/request` / `POST /expenses/approve` はエラーにせず DB 更新を継続する。LINE 通知は送信しない
 - AC-121: `month` クエリパラメータの月部分が `01〜12` の範囲外の場合（例: `2026-13`、`2026-00`）、400 VALIDATION_ERROR「月は01〜12で入力してください」が返る
 - AC-122: check/uncheck 操作が失敗した場合（4xx/5xx）、一覧上部にエラーメッセージ（`expense-action-error`）を表示する
 - AC-123: 承認依頼が失敗した場合、`expense-request-dialog` 内にエラーメッセージを表示しダイアログを閉じない
@@ -147,7 +148,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
   - **チェックボックス** (`expense-check-button`): 自分が登録した `unapproved` / `checked` の行のみ表示。チェック状態は `checked` かどうかで切り替わる
   - **編集ボタン** (`expense-edit-button`): 自分が登録した `unapproved` / `checked` の行のみ表示
   - **削除ボタン** (`expense-delete-button`): 自分が登録した `unapproved` / `checked` の行のみ表示
-  - **pending 行のスタイル**: opacity を下げてグレーアウト。チェックボックスなし。編集・削除ボタンは disabled
+  - **pending 行のスタイル**: opacity を下げてグレーアウト。チェックボックスなし。自分が登録した行の編集・削除ボタンは disabled、他ユーザー行は非表示
   - **approved 行のスタイル**: opacity を下げてグレーアウト。チェックボックス・編集・削除ボタンは非表示
   - **他ユーザーの unapproved / checked 行**: チェックボックス・編集・削除ボタンを非表示
 

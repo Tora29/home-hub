@@ -200,6 +200,10 @@
 			exp.userId === data.currentUserId && (exp.status === 'unapproved' || exp.status === 'checked')
 		);
 	}
+
+	function isMyPendingRow(exp: ExpenseWithRelations): boolean {
+		return exp.userId === data.currentUserId && exp.status === 'pending';
+	}
 </script>
 
 <div class="mx-auto max-w-3xl" onclick={() => (openMenuId = null)} role="presentation">
@@ -311,6 +315,7 @@
 				{@const badge = statusBadge(exp.status)}
 				{@const isGrayed = exp.status === 'pending' || exp.status === 'approved'}
 				{@const canEdit = isMyEditableRow(exp)}
+				{@const isPendingMine = isMyPendingRow(exp)}
 				<li
 					data-testid="expense-item"
 					class="rounded-3xl bg-bg-card p-4 shadow-md transition-all {isGrayed ? 'opacity-60' : ''}"
@@ -353,15 +358,18 @@
 							<p class="mt-0.5 text-xs text-secondary">{formatDate(exp.createdAt)}</p>
 						</div>
 
-						<!-- Actions: 自分の unapproved/checked のみ表示 -->
-						{#if canEdit}
+						<!-- Actions: 自分の unapproved/checked は操作可、pending は disabled 表示 -->
+						{#if canEdit || isPendingMine}
 							<!-- デスクトップ: 直接ボタン -->
 							<div class="hidden shrink-0 items-center gap-1 md:flex">
 								<Button
 									data-testid="expense-edit-button"
 									variant="secondary"
 									size="sm"
-									onclick={() => (editingExpense = exp)}
+									onclick={() => {
+										if (canEdit) editingExpense = exp;
+									}}
+									disabled={!canEdit}
 									aria-label="編集"
 								>
 									<Pencil size={14} />
@@ -370,7 +378,10 @@
 									data-testid="expense-delete-button"
 									variant="ghost-destructive"
 									size="sm"
-									onclick={() => (deletingExpense = exp)}
+									onclick={() => {
+										if (canEdit) deletingExpense = exp;
+									}}
+									disabled={!canEdit}
 									aria-label="削除"
 								>
 									<Trash2 size={14} />
@@ -379,53 +390,55 @@
 
 							<!-- モバイル: 3点メニュー -->
 							<div class="relative shrink-0 md:hidden">
-								<button
-									data-testid="expense-menu-button"
-									onclick={(e) => {
-										e.stopPropagation();
-										openMenuId = openMenuId === exp.id ? null : exp.id;
-									}}
-									class="rounded-xl p-1.5 text-secondary hover:bg-bg-secondary hover:text-label"
-									aria-label="操作メニューを開く"
-									aria-expanded={openMenuId === exp.id}
-								>
-									<MoreVertical size={18} />
-								</button>
-
-								{#if openMenuId === exp.id}
-									<div
-										data-testid="expense-menu"
-										class="absolute top-full right-0 z-20 mt-1 w-40 rounded-2xl border border-separator bg-bg-card py-1 shadow-md"
-										onclick={(e) => e.stopPropagation()}
-										onkeydown={(e) => e.stopPropagation()}
-										role="menu"
-										tabindex={0}
+								{#if canEdit}
+									<button
+										data-testid="expense-menu-button"
+										onclick={(e) => {
+											e.stopPropagation();
+											openMenuId = openMenuId === exp.id ? null : exp.id;
+										}}
+										class="rounded-xl p-1.5 text-secondary hover:bg-bg-secondary hover:text-label"
+										aria-label="操作メニューを開く"
+										aria-expanded={openMenuId === exp.id}
 									>
-										<button
-											data-testid="expense-edit-button"
-											onclick={() => {
-												openMenuId = null;
-												editingExpense = exp;
-											}}
-											class="flex w-full items-center gap-2 px-4 py-2 text-sm text-label hover:bg-bg-secondary"
-											role="menuitem"
+										<MoreVertical size={18} />
+									</button>
+
+									{#if openMenuId === exp.id}
+										<div
+											data-testid="expense-menu"
+											class="absolute top-full right-0 z-20 mt-1 w-40 rounded-2xl border border-separator bg-bg-card py-1 shadow-md"
+											onclick={(e) => e.stopPropagation()}
+											onkeydown={(e) => e.stopPropagation()}
+											role="menu"
+											tabindex={0}
 										>
-											<Pencil size={14} />
-											編集
-										</button>
-										<button
-											data-testid="expense-delete-button"
-											onclick={() => {
-												openMenuId = null;
-												deletingExpense = exp;
-											}}
-											class="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-bg-secondary"
-											role="menuitem"
-										>
-											<Trash2 size={14} />
-											削除
-										</button>
-									</div>
+											<button
+												data-testid="expense-edit-button"
+												onclick={() => {
+													openMenuId = null;
+													editingExpense = exp;
+												}}
+												class="flex w-full items-center gap-2 px-4 py-2 text-sm text-label hover:bg-bg-secondary"
+												role="menuitem"
+											>
+												<Pencil size={14} />
+												編集
+											</button>
+											<button
+												data-testid="expense-delete-button"
+												onclick={() => {
+													openMenuId = null;
+													deletingExpense = exp;
+												}}
+												class="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-bg-secondary"
+												role="menuitem"
+											>
+												<Trash2 size={14} />
+												削除
+											</button>
+										</div>
+									{/if}
 								{/if}
 							</div>
 						{/if}

@@ -7,7 +7,7 @@
  * 支出カテゴリ機能のビジネスロジックと DB 操作を担う。
  *
  * @spec specs/expenses/spec.md
- * @acceptance AC-010, AC-011, AC-012, AC-107, AC-108, AC-109, AC-110
+ * @acceptance AC-011, AC-012, AC-013, AC-107, AC-108, AC-109, AC-110
  *
  * @entity ExpenseCategory
  *
@@ -37,7 +37,7 @@ type Category = {
 
 /**
  * カテゴリ一覧を取得する（全件）。
- * @ac AC-010
+ * @ac AC-011, AC-012
  */
 export async function getCategories(
 	db: Db,
@@ -59,7 +59,7 @@ export async function getCategories(
 
 /**
  * カテゴリを新規作成する。
- * @ac AC-010
+ * @ac AC-011
  */
 export async function createCategory(
 	db: Db,
@@ -79,7 +79,7 @@ export async function createCategory(
 
 /**
  * カテゴリを更新する。
- * @ac AC-011
+ * @ac AC-012
  * @throws {NOT_FOUND} - 該当カテゴリが存在しない場合、または他ユーザーのカテゴリの場合
  */
 export async function updateCategory(
@@ -106,7 +106,7 @@ export async function updateCategory(
 
 /**
  * カテゴリを削除する。紐付く支出が存在する場合は CONFLICT を投げる。
- * @ac AC-012
+ * @ac AC-013
  * @throws {NOT_FOUND} - 該当カテゴリが存在しない場合、または他ユーザーのカテゴリの場合
  * @throws {CONFLICT} - カテゴリに紐付く支出が 1 件以上ある場合
  */

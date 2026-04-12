@@ -28,6 +28,7 @@
  */
 import {
 	and,
+	asc,
 	desc,
 	eq,
 	gte,
@@ -59,6 +60,8 @@ type ListOptions = {
 	page?: number;
 	limit?: number;
 };
+
+type ExpenseStatus = 'unapproved' | 'checked' | 'pending' | 'approved';
 
 const expenseSelectFields = {
 	id: expense.id,
@@ -346,25 +349,46 @@ export async function uncheckExpense(
 	return fetchExpenseWithRelations(db, id);
 }
 
+export async function getExpenseIdsByOwnerAndStatus(
+	db: Db,
+	userId: string,
+	status: ExpenseStatus
+): Promise<string[]> {
+	const rows = await db
+		.select({ id: expense.id })
+		.from(expense)
+		.where(and(eq(expense.userId, userId), eq(expense.status, status)));
+
+	return rows.map((row) => row.id);
+}
+
+export async function updateExpenseStatusesByIds(
+	db: Db,
+	ids: string[],
+	fromStatus: ExpenseStatus,
+	toStatus: ExpenseStatus
+): Promise<void> {
+	if (ids.length === 0) return;
+
+	await db
+		.update(expense)
+		.set({ status: toStatus })
+		.where(and(inArray(expense.id, ids), eq(expense.status, fromStatus)));
+}
+
 /**
  * 自分の checked 支出を全件 pending に変更する。
  * @ac AC-008, AC-115
  * @throws {CONFLICT} - checked 支出が 0 件の場合
  */
 export async function requestExpenses(db: Db, userId: string): Promise<number> {
-	const checked = await db
-		.select({ id: expense.id })
-		.from(expense)
-		.where(and(eq(expense.userId, userId), eq(expense.status, 'checked')));
+	const checkedIds = await getExpenseIdsByOwnerAndStatus(db, userId, 'checked');
 
-	if (checked.length === 0) throw new AppError('CONFLICT', 409, '確認済みの支出がありません');
+	if (checkedIds.length === 0) throw new AppError('CONFLICT', 409, '確認済みの支出がありません');
 
-	await db
-		.update(expense)
-		.set({ status: 'pending' })
-		.where(and(eq(expense.userId, userId), eq(expense.status, 'checked')));
+	await updateExpenseStatusesByIds(db, checkedIds, 'checked', 'pending');
 
-	return checked.length;
+	return checkedIds.length;
 }
 
 /**
@@ -373,19 +397,13 @@ export async function requestExpenses(db: Db, userId: string): Promise<number> {
  * @throws {CONFLICT} - pending 支出が 0 件の場合
  */
 export async function cancelExpenses(db: Db, userId: string): Promise<number> {
-	const pending = await db
-		.select({ id: expense.id })
-		.from(expense)
-		.where(and(eq(expense.userId, userId), eq(expense.status, 'pending')));
+	const pendingIds = await getExpenseIdsByOwnerAndStatus(db, userId, 'pending');
 
-	if (pending.length === 0) throw new AppError('CONFLICT', 409, '申請中の支出がありません');
+	if (pendingIds.length === 0) throw new AppError('CONFLICT', 409, '申請中の支出がありません');
 
-	await db
-		.update(expense)
-		.set({ status: 'checked' })
-		.where(and(eq(expense.userId, userId), eq(expense.status, 'pending')));
+	await updateExpenseStatusesByIds(db, pendingIds, 'pending', 'checked');
 
-	return pending.length;
+	return pendingIds.length;
 }
 
 /**
@@ -394,19 +412,13 @@ export async function cancelExpenses(db: Db, userId: string): Promise<number> {
  * @throws {CONFLICT} - パートナーの pending 支出が 0 件の場合
  */
 export async function approveExpenses(db: Db, userId: string, partnerId: string): Promise<number> {
-	const pending = await db
-		.select({ id: expense.id })
-		.from(expense)
-		.where(and(eq(expense.userId, partnerId), eq(expense.status, 'pending')));
+	const pendingIds = await getExpenseIdsByOwnerAndStatus(db, partnerId, 'pending');
 
-	if (pending.length === 0) throw new AppError('CONFLICT', 409, '承認できる支出がありません');
+	if (pendingIds.length === 0) throw new AppError('CONFLICT', 409, '承認できる支出がありません');
 
-	await db
-		.update(expense)
-		.set({ status: 'approved' })
-		.where(and(eq(expense.userId, partnerId), eq(expense.status, 'pending')));
+	await updateExpenseStatusesByIds(db, pendingIds, 'pending', 'approved');
 
-	return pending.length;
+	return pendingIds.length;
 }
 
 /**
@@ -479,7 +491,8 @@ export async function getBulkCounts(
 
 /**
  * パートナーユーザーの ID を返す。ロールが設定されている場合は対応ロールで検索し、
- * 未設定（移行期）の場合は自分以外の最初のユーザーを返す。パートナーが存在しない場合は null。
+ * 未設定（移行期）の場合は pending 支出を持つ他ユーザーを優先し、いなければ自分以外の最初のユーザーを返す。
+ * パートナーが存在しない場合は null。
  */
 export async function getPartnerUserId(db: Db, userId: string): Promise<string | null> {
 	const currentUser = await db
@@ -498,5 +511,32 @@ export async function getPartnerUserId(db: Db, userId: string): Promise<string |
 		return partner?.id ?? null;
 	}
 
-	return null;
+	const pendingOwner = await db
+		.select({ id: user.id })
+		.from(user)
+		.where(
+			and(
+				sql`${user.id} <> ${userId}`,
+				sql`exists (
+					select 1
+					from ${expense}
+					where ${expense.userId} = ${user.id}
+						and ${expense.status} = 'pending'
+				)`
+			)
+		)
+		.orderBy(asc(user.createdAt), asc(user.id))
+		.get();
+	if (pendingOwner) {
+		return pendingOwner.id;
+	}
+
+	const fallbackUser = await db
+		.select({ id: user.id })
+		.from(user)
+		.where(sql`${user.id} <> ${userId}`)
+		.orderBy(asc(user.createdAt), asc(user.id))
+		.get();
+
+	return fallbackUser?.id ?? null;
 }

@@ -7,7 +7,7 @@
  * カテゴリ管理画面の初期データをサーバーサイドで取得する。
  *
  * @spec specs/expenses/spec.md
- * @acceptance AC-010
+ * @acceptance AC-011, AC-012, AC-013
  */
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';

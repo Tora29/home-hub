@@ -154,6 +154,14 @@ describe('+page.svelte - pending 行の表示', () => {
 		// チェックボックスは非表示
 		await expect.element(page.getByTestId('expense-check-button')).not.toBeInTheDocument();
 	});
+
+	test('[SPEC: AC-017] 自分の pending 行では編集・削除ボタンが disabled 表示される', async () => {
+		render(Page, { data: mockDataWithPendingOwn });
+
+		await expect.element(page.getByTestId('expense-edit-button')).toBeDisabled();
+		await expect.element(page.getByTestId('expense-delete-button')).toBeDisabled();
+		await expect.element(page.getByTestId('expense-menu-button')).not.toBeInTheDocument();
+	});
 });
 
 describe('+page.svelte - フロントバリデーション', () => {

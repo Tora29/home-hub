@@ -62,6 +62,8 @@ paths:
                   monthTotal:
                     type: integer
                     description: 当月の世帯合計金額（円・全ユーザー・全ステータス）
+        '400':
+          $ref: '#/components/responses/ValidationError'
 
     post:
       tags: [expense]
@@ -89,8 +91,9 @@ paths:
       description: |
         自分が登録した `checked` ステータスの全支出を `pending` に変更し、相手へ LINE 通知を送信する。
         - `checked` 支出が 0 件の場合は 409 を返す
-        - `user.role` が未設定の場合は 409 を返す
-        - LINE API 失敗時は 502 を返す（DB 更新は成功していても 502 で返却）
+        - `user.role` が未設定の場合は DB 更新を継続し、LINE 通知は送信しない
+        - 通知先 LINE ユーザー ID が未設定の場合は DB 更新を継続し、LINE 通知は送信しない
+        - LINE API 失敗時は 502 を返し、対象支出の status は変更しない
       responses:
         '200':
           description: 承認依頼成功（更新件数を返す）
@@ -136,10 +139,10 @@ paths:
       summary: 一括承認
       description: |
         他ユーザーが登録した `pending` ステータスの全支出を `approved` に変更し、申請者へ LINE 通知を送信する。
-        - 自己承認（自分の pending を承認しようとした場合）は 403 を返す
         - 相手の `pending` 支出が 0 件の場合は 409 を返す
-        - `user.role` が未設定の場合は 409 を返す
-        - LINE API 失敗時は 502 を返す
+        - `user.role` が未設定の場合は DB 更新を継続し、LINE 通知は送信しない
+        - 通知先 LINE ユーザー ID が未設定の場合は DB 更新を継続し、LINE 通知は送信しない
+        - LINE API 失敗時は 502 を返し、対象支出の status は変更しない
       responses:
         '200':
           description: 承認成功（更新件数を返す）
@@ -152,8 +155,6 @@ paths:
                   count:
                     type: integer
                     description: 承認した件数
-        '403':
-          $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
         '502':
@@ -369,6 +370,7 @@ components:
           description: カテゴリ ID
         payerUserId:
           type: string
+          nullable: true
           description: 支払者ユーザー ID（users テーブルの id）
         status:
           type: string
@@ -394,6 +396,7 @@ components:
               $ref: '#/components/schemas/Category'
             payer:
               $ref: '#/components/schemas/User'
+              nullable: true
 
     ExpenseCreate:
       type: object
