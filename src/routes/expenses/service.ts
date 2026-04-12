@@ -26,7 +26,17 @@
  *
  * @test ./service.integration.test.ts
  */
-import { and, desc, eq, gte, lt, sql, type ExtractTablesWithRelations } from 'drizzle-orm';
+import {
+	and,
+	desc,
+	eq,
+	gte,
+	inArray,
+	lt,
+	or,
+	sql,
+	type ExtractTablesWithRelations
+} from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { D1Result } from '@cloudflare/workers-types';
 import { AppError } from '$lib/server/errors';
@@ -71,7 +81,55 @@ const expenseSelectFields = {
 	}
 };
 
-async function ensurePayerUserExists(db: Db, payerUserId: string): Promise<void> {
+type ExpenseUserRow = {
+	id: string;
+	name: string;
+	email: string;
+};
+
+async function getCurrentUser(db: Db, userId: string) {
+	return db
+		.select({
+			id: user.id,
+			name: user.name,
+			email: user.email,
+			role: user.role
+		})
+		.from(user)
+		.where(eq(user.id, userId))
+		.get();
+}
+
+async function getAuthorizedPayerUsers(db: Db, userId: string): Promise<ExpenseUserRow[]> {
+	const currentUser = await getCurrentUser(db, userId);
+	if (!currentUser) return [];
+	if (!currentUser.role) {
+		return [
+			{
+				id: currentUser.id,
+				name: currentUser.name,
+				email: currentUser.email
+			}
+		];
+	}
+
+	const partnerRole = currentUser.role === 'primary' ? 'spouse' : 'primary';
+	return db
+		.select({ id: user.id, name: user.name, email: user.email })
+		.from(user)
+		.where(or(eq(user.id, userId), eq(user.role, partnerRole)));
+}
+
+async function ensurePayerUserExists(db: Db, userId: string, payerUserId: string): Promise<void> {
+	const authorizedPayers = await getAuthorizedPayerUsers(db, userId);
+	if (authorizedPayers.length > 0) {
+		const payer = authorizedPayers.find((candidate) => candidate.id === payerUserId);
+		if (!payer) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
+		return;
+	}
+
+	// 認証済みユーザーは通常 User テーブルに存在するが、移行中データや既存テストでは
+	// userId に対応する User 行が無いケースがあるため、存在確認のみへフォールバックする。
 	const payer = await db.select({ id: user.id }).from(user).where(eq(user.id, payerUserId)).get();
 	if (!payer) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 }
@@ -94,6 +152,7 @@ async function fetchExpenseWithRelations(db: Db, id: string): Promise<ExpenseWit
  */
 export async function getExpenses(
 	db: Db,
+	userId: string,
 	options: ListOptions = {}
 ): Promise<{
 	items: ExpenseWithRelations[];
@@ -112,7 +171,13 @@ export async function getExpenses(
 	const [year, mon] = month.split('-').map(Number);
 	const monthStart = new Date(year, mon - 1, 1);
 	const monthEnd = new Date(year, mon, 1);
-	const monthFilter = and(gte(expense.createdAt, monthStart), lt(expense.createdAt, monthEnd));
+	const partnerId = await getPartnerUserId(db, userId);
+	const visibleUserIds = partnerId ? [userId, partnerId] : [userId];
+	const monthFilter = and(
+		inArray(expense.userId, visibleUserIds),
+		gte(expense.createdAt, monthStart),
+		lt(expense.createdAt, monthEnd)
+	);
 
 	const [stats] = await db
 		.select({
@@ -157,7 +222,7 @@ export async function createExpense(
 		.where(and(eq(expenseCategory.id, data.categoryId), eq(expenseCategory.userId, userId)))
 		.get();
 	if (!category) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
-	await ensurePayerUserExists(db, data.payerUserId);
+	await ensurePayerUserExists(db, userId, data.payerUserId);
 
 	const id = crypto.randomUUID();
 	const now = new Date();
@@ -201,7 +266,7 @@ export async function updateExpense(
 		.where(and(eq(expenseCategory.id, data.categoryId), eq(expenseCategory.userId, userId)))
 		.get();
 	if (!category) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
-	await ensurePayerUserExists(db, data.payerUserId);
+	await ensurePayerUserExists(db, userId, data.payerUserId);
 
 	await db
 		.update(expense)
@@ -363,14 +428,14 @@ export async function getPendingApprovalCount(
 }
 
 /**
- * 支出一覧画面の支払者選択用に全ユーザー一覧を取得する。
+ * 支出一覧画面の支払者選択用に承認対象世帯メンバーのみ取得する。
  * @ac AC-003, AC-006
  */
 export async function getUsers(
 	db: Db,
-	_userId: string
+	userId: string
 ): Promise<Array<{ id: string; name: string; email: string }>> {
-	return db.select({ id: user.id, name: user.name, email: user.email }).from(user);
+	return getAuthorizedPayerUsers(db, userId);
 }
 
 /**

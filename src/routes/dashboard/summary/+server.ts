@@ -30,7 +30,7 @@ import { getDashboardSummary } from './service';
  * @ac AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007
  * @calls getDashboardSummary
  */
-export const GET: RequestHandler = async ({ url, platform }) => {
+export const GET: RequestHandler = async ({ url, locals, platform }) => {
 	const periodParam = url.searchParams.get('period') ?? undefined;
 	// period=all の場合は month を無視する（不正な month 値でも 400 にしない）
 	const queryResult = dashboardSummaryQuerySchema.safeParse({
@@ -42,7 +42,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 
 	try {
 		const db = createDb(platform!.env.DB);
-		const summary = await getDashboardSummary(db, {
+		const summary = await getDashboardSummary(db, locals.user!.id, {
 			period: queryResult.data.period,
 			month: queryResult.data.month
 		});

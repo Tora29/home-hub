@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
 	const partnerId = await getPartnerUserId(db, locals.user!.id);
 	const [pendingApprovalCount, summary] = await Promise.all([
 		getPendingApprovalCount(db, locals.user!.id, partnerId),
-		getDashboardSummary(db, { period: 'month', month: currentMonth })
+		getDashboardSummary(db, locals.user!.id, { period: 'month', month: currentMonth })
 	]);
 	return { pendingApprovalCount, summary, currentMonth };
 };

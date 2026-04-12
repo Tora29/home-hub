@@ -18,10 +18,11 @@
  *
  * @test ./service.integration.test.ts
  */
-import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { expense, expenseCategory, user } from '$lib/server/tables';
 import type * as schema from '$lib/server/tables';
+import { getPartnerUserId } from '../../expenses/service';
 
 type Db = DrizzleD1Database<typeof schema>;
 
@@ -55,6 +56,7 @@ type SummaryOptions = {
  */
 export async function getDashboardSummary(
 	db: Db,
+	userId: string,
 	options: SummaryOptions
 ): Promise<DashboardSummary> {
 	let periodFilter;
@@ -68,7 +70,10 @@ export async function getDashboardSummary(
 		periodFilter = and(gte(expense.createdAt, monthStart), lt(expense.createdAt, monthEnd));
 	}
 
-	const scopedFilter = periodFilter ?? undefined;
+	const partnerId = await getPartnerUserId(db, userId);
+	const visibleUserIds = partnerId ? [userId, partnerId] : [userId];
+	const scopeFilter = inArray(expense.userId, visibleUserIds);
+	const scopedFilter = periodFilter ? and(scopeFilter, periodFilter) : scopeFilter;
 
 	// 全体合計（世帯スコープ）
 	const [overallRow] = await db

@@ -13,20 +13,24 @@ import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { user as userTable } from '$lib/server/tables';
-import { createExpense, getExpenses } from './service';
+import { createExpense, getExpenses, getPartnerUserId } from './service';
 import { createCategory } from './categories/service';
 
 function makeUserId() {
 	return crypto.randomUUID();
 }
 
-async function createTestUser(db: ReturnType<typeof createDb>): Promise<string> {
+async function createTestUser(
+	db: ReturnType<typeof createDb>,
+	role?: 'primary' | 'spouse' | null
+): Promise<string> {
 	const id = makeUserId();
 	await db.insert(userTable).values({
 		id,
 		name: 'テストユーザー',
 		email: `${id}@test.example`,
 		emailVerified: false,
+		role,
 		createdAt: new Date(),
 		updatedAt: new Date()
 	});
@@ -34,7 +38,7 @@ async function createTestUser(db: ReturnType<typeof createDb>): Promise<string> 
 }
 
 describe('load (expenses +page.server.ts)', () => {
-	test('[SPEC: AC-001] month 未指定時、当月の全ユーザーの支出一覧が取得できる', async () => {
+	test('[SPEC: AC-001] month 未指定時、当月の自分の支出一覧が取得できる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const payerUserId = await createTestUser(db);
@@ -46,7 +50,7 @@ describe('load (expenses +page.server.ts)', () => {
 		const now = new Date();
 		const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-		const result = await getExpenses(db, { month: currentMonth });
+		const result = await getExpenses(db, userId, { month: currentMonth });
 
 		// 登録した支出が含まれることを確認
 		const amounts = result.items.map((i) => i.amount);
@@ -66,7 +70,7 @@ describe('load (expenses +page.server.ts)', () => {
 
 		const now = new Date();
 		const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-		const result = await getExpenses(db, { month });
+		const result = await getExpenses(db, userId, { month });
 
 		const item = result.items.find((i) => i.userId === userId);
 		expect(item).toBeDefined();
@@ -86,7 +90,7 @@ describe('load (expenses +page.server.ts)', () => {
 		const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
 		// 当月指定: 登録した支出が含まれる
-		const currentResult = await getExpenses(db, { month: currentMonth });
+		const currentResult = await getExpenses(db, userId, { month: currentMonth });
 		const hasMyExpense = currentResult.items.some((i) => i.amount === 1000 && i.userId === userId);
 		expect(hasMyExpense).toBe(true);
 
@@ -95,9 +99,48 @@ describe('load (expenses +page.server.ts)', () => {
 			now.getMonth() === 11
 				? `${now.getFullYear() + 1}-01`
 				: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}`;
-		const nextResult = await getExpenses(db, { month: nextMonth });
+		const nextResult = await getExpenses(db, userId, { month: nextMonth });
 		const hasMyExpenseNext = nextResult.items.some((i) => i.amount === 1000 && i.userId === userId);
 		expect(hasMyExpenseNext).toBe(false);
+	});
+
+	test('[SPEC: AC-001] 自分とパートナーのみ取得し、第三者は取得しない', async () => {
+		const db = createDb(env.DB);
+		const userId = await createTestUser(db, 'primary');
+		await createTestUser(db, 'spouse');
+		const partnerUserId = await getPartnerUserId(db, userId);
+		const thirdUserId = await createTestUser(db, null);
+		expect(partnerUserId).toBeTruthy();
+
+		const myCategory = await createCategory(db, userId, { name: '食費' });
+		const partnerCategory = await createCategory(db, partnerUserId!, { name: '日用品' });
+		const thirdCategory = await createCategory(db, thirdUserId, { name: '旅行' });
+
+		await createExpense(db, userId, {
+			amount: 800,
+			categoryId: myCategory.id,
+			payerUserId: userId
+		});
+		await createExpense(db, partnerUserId!, {
+			amount: 1200,
+			categoryId: partnerCategory.id,
+			payerUserId: userId
+		});
+		await createExpense(db, thirdUserId, {
+			amount: 5000,
+			categoryId: thirdCategory.id,
+			payerUserId: thirdUserId
+		});
+
+		const now = new Date();
+		const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+		const result = await getExpenses(db, userId, { month: currentMonth });
+
+		expect(result.items.some((item) => item.userId === userId && item.amount === 800)).toBe(true);
+		expect(result.items.some((item) => item.userId === partnerUserId && item.amount === 1200)).toBe(
+			true
+		);
+		expect(result.items.some((item) => item.userId === thirdUserId)).toBe(false);
 	});
 
 	test('[SPEC: AC-002c] 不正な月パラメータ（2026-13）が渡された場合の +page.server.ts のバリデーション', async () => {

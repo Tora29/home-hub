@@ -31,7 +31,7 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
 	const selectedMonth = parsed.success ? (parsed.data.month ?? currentMonth) : currentMonth;
 
 	const [expenses, categories, users, partnerId] = await Promise.all([
-		getExpenses(db, { month: selectedMonth }),
+		getExpenses(db, locals.user!.id, { month: selectedMonth }),
 		getCategories(db, locals.user!.id),
 		getUsers(db, locals.user!.id),
 		getPartnerUserId(db, locals.user!.id)

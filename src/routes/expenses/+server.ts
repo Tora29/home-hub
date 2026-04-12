@@ -31,7 +31,7 @@ import { createExpense, getExpenses } from './service';
  * @ac AC-001, AC-002
  * @calls getExpenses
  */
-export const GET: RequestHandler = async ({ url, platform }) => {
+export const GET: RequestHandler = async ({ url, locals, platform }) => {
 	const queryResult = expenseQuerySchema.safeParse({
 		month: url.searchParams.get('month') ?? undefined,
 		page: url.searchParams.get('page') ?? undefined,
@@ -42,7 +42,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 
 	try {
 		const db = createDb(platform!.env.DB);
-		const result = await getExpenses(db, { month, page, limit });
+		const result = await getExpenses(db, locals.user!.id, { month, page, limit });
 		return json(result);
 	} catch (e) {
 		return handleApiError(e);

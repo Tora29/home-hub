@@ -13,7 +13,11 @@ import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { AppError } from '$lib/server/errors';
-import { user as userTable } from '$lib/server/tables';
+import {
+	user as userTable,
+	expense as expenseTable,
+	expenseCategory as expenseCategoryTable
+} from '$lib/server/tables';
 import {
 	getExpenses,
 	createExpense,
@@ -25,7 +29,8 @@ import {
 	cancelExpenses,
 	approveExpenses,
 	getPendingApprovalCount,
-	getPartnerUserId
+	getPartnerUserId,
+	getUsers
 } from './service';
 import { createCategory } from './categories/service';
 
@@ -54,6 +59,12 @@ async function createTestUser(
 function getCurrentMonth(): string {
 	const now = new Date();
 	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+async function resetRoleScopedFixtures(db: ReturnType<typeof createDb>): Promise<void> {
+	await db.delete(expenseTable);
+	await db.delete(expenseCategoryTable);
+	await db.delete(userTable);
 }
 
 describe('createExpense', () => {
@@ -112,28 +123,89 @@ describe('createExpense', () => {
 		expect(createdAt.getTime()).toBeGreaterThanOrEqual(before.getTime() - 1000);
 		expect(createdAt.getTime()).toBeLessThanOrEqual(after.getTime() + 1000);
 	});
+
+	test('[SPEC: AC-003] role 設定済みユーザーは承認対象ペア外の支払者を指定できない', async () => {
+		const db = createDb(env.DB);
+		await resetRoleScopedFixtures(db);
+		const userId = await createTestUser(db, undefined, 'primary');
+		const partnerUserId = await createTestUser(db, undefined, 'spouse');
+		const outsiderUserId = await createTestUser(db, undefined, null);
+
+		const category = await createCategory(db, userId, { name: '食費' });
+
+		await expect(
+			createExpense(db, userId, {
+				amount: 1500,
+				categoryId: category.id,
+				payerUserId: outsiderUserId
+			})
+		).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 });
+
+		const created = await createExpense(db, userId, {
+			amount: 1500,
+			categoryId: category.id,
+			payerUserId: partnerUserId
+		});
+		expect(created.payerUserId).toBe(partnerUserId);
+	});
 });
 
 describe('getExpenses', () => {
-	test('[SPEC: AC-001] 当月の全ユーザーの支出一覧が取得できる', async () => {
+	test('[SPEC: AC-001] 当月の自分の支出一覧が取得できる', async () => {
 		const db = createDb(env.DB);
 		const userId1 = makeUserId();
-		const userId2 = makeUserId();
 		const payerUserId = await createTestUser(db);
 
 		const category1 = await createCategory(db, userId1, { name: '食費' });
-		const category2 = await createCategory(db, userId2, { name: '交通費' });
-
 		await createExpense(db, userId1, { amount: 500, categoryId: category1.id, payerUserId });
-		await createExpense(db, userId2, { amount: 1000, categoryId: category2.id, payerUserId });
 
 		const month = getCurrentMonth();
-		const result = await getExpenses(db, { month });
+		const result = await getExpenses(db, userId1, { month });
 
-		// 全ユーザーの支出が含まれる（userId1 と userId2 の両方）
+		// 自分の支出が含まれる
 		const amounts = result.items.map((i) => i.amount);
 		expect(amounts).toContain(500);
-		expect(amounts).toContain(1000);
+	});
+
+	test('[SPEC: AC-001] 自分 + パートナーのみ取得し、第三者の支出は除外する', async () => {
+		const db = createDb(env.DB);
+		await resetRoleScopedFixtures(db);
+		const userId = await createTestUser(db, undefined, 'primary');
+		await createTestUser(db, undefined, 'spouse');
+		const partnerUserId = await getPartnerUserId(db, userId);
+		const thirdUserId = await createTestUser(db, undefined, null);
+		expect(partnerUserId).toBeTruthy();
+
+		const myCategory = await createCategory(db, userId, { name: '食費' });
+		const partnerCategory = await createCategory(db, partnerUserId!, { name: '日用品' });
+		const thirdCategory = await createCategory(db, thirdUserId, { name: '旅行' });
+
+		await createExpense(db, userId, {
+			amount: 500,
+			categoryId: myCategory.id,
+			payerUserId: userId
+		});
+		await createExpense(db, partnerUserId!, {
+			amount: 1000,
+			categoryId: partnerCategory.id,
+			payerUserId: userId
+		});
+		await createExpense(db, thirdUserId, {
+			amount: 9000,
+			categoryId: thirdCategory.id,
+			payerUserId: thirdUserId
+		});
+
+		const month = getCurrentMonth();
+		const result = await getExpenses(db, userId, { month });
+
+		expect(result.items.some((item) => item.userId === userId && item.amount === 500)).toBe(true);
+		expect(result.items.some((item) => item.userId === partnerUserId && item.amount === 1000)).toBe(
+			true
+		);
+		expect(result.items.some((item) => item.userId === thirdUserId)).toBe(false);
+		expect(result.total).toBe(2);
+		expect(result.monthTotal).toBe(1500);
 	});
 
 	test('[SPEC: AC-002] 月フィルタで指定した月の支出のみ取得できる', async () => {
@@ -145,7 +217,7 @@ describe('getExpenses', () => {
 		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerUserId });
 
 		const currentMonth = getCurrentMonth();
-		const currentResult = await getExpenses(db, { month: currentMonth });
+		const currentResult = await getExpenses(db, userId, { month: currentMonth });
 		expect(currentResult.items.some((i) => i.amount === 1000)).toBe(true);
 
 		// 翌月は 0 件（当ユーザーの支出が含まれない）
@@ -154,31 +226,46 @@ describe('getExpenses', () => {
 			now.getMonth() === 11
 				? `${now.getFullYear() + 1}-01`
 				: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}`;
-		const nextResult = await getExpenses(db, { month: nextMonth });
+		const nextResult = await getExpenses(db, userId, { month: nextMonth });
 		const hasCurrentUserExpense = nextResult.items.some(
 			(i) => i.amount === 1000 && i.userId === userId
 		);
 		expect(hasCurrentUserExpense).toBe(false);
 	});
 
-	test('[SPEC: AC-014] monthTotal に当月の世帯合計金額（全ユーザー・全ステータス）が含まれる', async () => {
+	test('[SPEC: AC-014] monthTotal に当月の表示対象合計金額（自分 + パートナー・全ステータス）が含まれる', async () => {
 		const db = createDb(env.DB);
-		const userId1 = makeUserId();
-		const userId2 = makeUserId();
-		const payerUserId = await createTestUser(db);
+		await resetRoleScopedFixtures(db);
+		const userId1 = await createTestUser(db, undefined, 'primary');
+		await createTestUser(db, undefined, 'spouse');
+		const userId2 = await getPartnerUserId(db, userId1);
+		const userId3 = await createTestUser(db, undefined, null);
+		expect(userId2).toBeTruthy();
 
 		const category1 = await createCategory(db, userId1, { name: '食費' });
-		const category2 = await createCategory(db, userId2, { name: '食費' });
+		const category2 = await createCategory(db, userId2!, { name: '食費' });
+		const category3 = await createCategory(db, userId3, { name: '旅行' });
 
-		// 各ユーザーの支出を登録
-		await createExpense(db, userId1, { amount: 1000, categoryId: category1.id, payerUserId });
-		await createExpense(db, userId2, { amount: 2000, categoryId: category2.id, payerUserId });
+		await createExpense(db, userId1, {
+			amount: 1000,
+			categoryId: category1.id,
+			payerUserId: userId1
+		});
+		await createExpense(db, userId2!, {
+			amount: 2000,
+			categoryId: category2.id,
+			payerUserId: userId1
+		});
+		await createExpense(db, userId3, {
+			amount: 4000,
+			categoryId: category3.id,
+			payerUserId: userId3
+		});
 
 		const month = getCurrentMonth();
-		const result = await getExpenses(db, { month });
+		const result = await getExpenses(db, userId1, { month });
 
-		// 全ユーザーの合計が monthTotal に含まれる
-		expect(result.monthTotal).toBeGreaterThanOrEqual(3000);
+		expect(result.monthTotal).toBe(3000);
 	});
 });
 
@@ -358,6 +445,30 @@ describe('updateExpense', () => {
 			})
 		).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 });
 	});
+
+	test('[SPEC: AC-006] role 設定済みユーザーは承認対象ペア外の支払者へ更新できない', async () => {
+		const db = createDb(env.DB);
+		await resetRoleScopedFixtures(db);
+		const userId = await createTestUser(db, undefined, 'primary');
+		const selfPayerUserId = userId;
+		await createTestUser(db, undefined, 'spouse');
+		const outsiderUserId = await createTestUser(db, undefined, null);
+
+		const category = await createCategory(db, userId, { name: '食費' });
+		const created = await createExpense(db, userId, {
+			amount: 1000,
+			categoryId: category.id,
+			payerUserId: selfPayerUserId
+		});
+
+		await expect(
+			updateExpense(db, userId, created.id, {
+				amount: 1200,
+				categoryId: category.id,
+				payerUserId: outsiderUserId
+			})
+		).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 });
+	});
 });
 
 describe('deleteExpense', () => {
@@ -375,7 +486,7 @@ describe('deleteExpense', () => {
 		await deleteExpense(db, userId, created.id);
 
 		const month = getCurrentMonth();
-		const result = await getExpenses(db, { month });
+		const result = await getExpenses(db, userId, { month });
 		expect(result.items.find((e) => e.id === created.id)).toBeUndefined();
 	});
 
@@ -394,7 +505,7 @@ describe('deleteExpense', () => {
 		await deleteExpense(db, userId, created.id);
 
 		const month = getCurrentMonth();
-		const result = await getExpenses(db, { month });
+		const result = await getExpenses(db, userId, { month });
 		expect(result.items.find((e) => e.id === created.id)).toBeUndefined();
 	});
 
@@ -605,7 +716,7 @@ describe('requestApproval', () => {
 		expect(result).toBe(2);
 
 		const month = getCurrentMonth();
-		const expenses = await getExpenses(db, { month });
+		const expenses = await getExpenses(db, userId, { month });
 		const myExpenses = expenses.items.filter((e) => e.userId === userId);
 		expect(myExpenses.every((e) => e.status === 'pending')).toBe(true);
 	});
@@ -653,7 +764,7 @@ describe('cancelRequest', () => {
 		expect(result).toBe(2);
 
 		const month = getCurrentMonth();
-		const expenses = await getExpenses(db, { month });
+		const expenses = await getExpenses(db, userId, { month });
 		const myExpenses = expenses.items.filter((e) => e.userId === userId);
 		expect(myExpenses.every((e) => e.status === 'checked')).toBe(true);
 	});
@@ -715,7 +826,7 @@ describe('bulkApprove', () => {
 		expect(result).toBe(2);
 
 		const month = getCurrentMonth();
-		const expenses = await getExpenses(db, { month });
+		const expenses = await getExpenses(db, requesterId, { month });
 		const requesterExpenses = expenses.items.filter((e) => e.userId === requesterId);
 		expect(requesterExpenses.every((e) => e.status === 'approved')).toBe(true);
 	});
@@ -734,6 +845,36 @@ describe('bulkApprove', () => {
 			expect((e as AppError).code).toBe('CONFLICT');
 			expect((e as AppError).message).toBe('承認できる支出がありません');
 		}
+	});
+});
+
+describe('getUsers', () => {
+	test('[SPEC: AC-003] role 設定済みユーザーには自分と承認対象パートナーのみ返す', async () => {
+		const db = createDb(env.DB);
+		await resetRoleScopedFixtures(db);
+		const currentUserId = await createTestUser(db, undefined, 'primary');
+		const partnerUserId = await createTestUser(db, undefined, 'spouse');
+		const outsiderUserId = await createTestUser(db, undefined, null);
+
+		const users = await getUsers(db, currentUserId);
+		const userIds = users.map((item) => item.id);
+
+		expect(userIds).toContain(currentUserId);
+		expect(userIds).toContain(partnerUserId);
+		expect(userIds).not.toContain(outsiderUserId);
+	});
+
+	test('[SPEC: AC-003] role 未設定ユーザーには自分のみ返す', async () => {
+		const db = createDb(env.DB);
+		await resetRoleScopedFixtures(db);
+		const currentUserId = await createTestUser(db, undefined, null);
+		await createTestUser(db, undefined, 'primary');
+		await createTestUser(db, undefined, 'spouse');
+
+		const users = await getUsers(db, currentUserId);
+
+		expect(users).toHaveLength(1);
+		expect(users[0]?.id).toBe(currentUserId);
 	});
 });
 

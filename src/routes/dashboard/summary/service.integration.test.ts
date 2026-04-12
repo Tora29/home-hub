@@ -12,9 +12,13 @@
 import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
-import { user } from '$lib/server/tables';
+import {
+	expense as expenseTable,
+	expenseCategory as expenseCategoryTable,
+	user
+} from '$lib/server/tables';
 import { getDashboardSummary } from './service';
-import { createExpense, checkExpense } from '../../expenses/service';
+import { createExpense, checkExpense, getPartnerUserId } from '../../expenses/service';
 import { createCategory } from '../../expenses/categories/service';
 
 function makeUserId() {
@@ -33,7 +37,8 @@ function getCurrentMonth(): string {
  */
 async function createTestUser(
 	db: ReturnType<typeof createDb>,
-	name: string
+	name: string,
+	role?: 'primary' | 'spouse' | null
 ): Promise<{ id: string; name: string }> {
 	const id = makeUserId();
 	const now = new Date();
@@ -42,10 +47,17 @@ async function createTestUser(
 		name,
 		email: `${id}@test.example.com`,
 		emailVerified: true,
+		role,
 		createdAt: now,
 		updatedAt: now
 	});
 	return { id, name };
+}
+
+async function resetRoleScopedFixtures(db: ReturnType<typeof createDb>): Promise<void> {
+	await db.delete(expenseTable);
+	await db.delete(expenseCategoryTable);
+	await db.delete(user);
 }
 
 describe('getDashboardSummary - 月別集計', () => {
@@ -60,7 +72,7 @@ describe('getDashboardSummary - 月別集計', () => {
 		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerUserId });
 		await createExpense(db, userId, { amount: 2000, categoryId: category.id, payerUserId });
 
-		const summary = await getDashboardSummary(db, { period: 'month', month });
+		const summary = await getDashboardSummary(db, userId, { period: 'month', month });
 
 		expect(summary.overall).toBeGreaterThanOrEqual(3000);
 	});
@@ -79,37 +91,46 @@ describe('getDashboardSummary - 月別集計', () => {
 			payerUserId
 		});
 
-		const summary = await getDashboardSummary(db, { period: 'month', month });
+		const summary = await getDashboardSummary(db, userId, { period: 'month', month });
 
 		expect(typeof summary.overall).toBe('number');
 		expect(summary.overall).toBeGreaterThanOrEqual(12300);
 	});
 
-	test('[SPEC: AC-001] 全ユーザーの支出が世帯合計として集計される', async () => {
+	test('[SPEC: AC-001] 自分 + パートナーの支出が世帯合計として集計され、第三者は含まれない', async () => {
 		const db = createDb(env.DB);
-		const userId1 = makeUserId();
-		const userId2 = makeUserId();
-		const payerUserId = (await createTestUser(db, `ユーザー_${Date.now()}`)).id;
+		await resetRoleScopedFixtures(db);
+		const userId1 = (await createTestUser(db, `primary_${Date.now()}`, 'primary')).id;
+		await createTestUser(db, `spouse_${Date.now()}`, 'spouse');
+		const userId2 = await getPartnerUserId(db, userId1);
+		const userId3 = (await createTestUser(db, `outsider_${Date.now()}`, null)).id;
 		const month = getCurrentMonth();
+		expect(userId2).toBeTruthy();
 
 		const category1 = await createCategory(db, userId1, { name: '食費_世帯テスト' });
-		const category2 = await createCategory(db, userId2, { name: '交通費_世帯テスト' });
+		const category2 = await createCategory(db, userId2!, { name: '交通費_世帯テスト' });
+		const category3 = await createCategory(db, userId3, { name: '旅行_世帯テスト' });
 
 		await createExpense(db, userId1, {
 			amount: 1111,
 			categoryId: category1.id,
-			payerUserId
+			payerUserId: userId1
 		});
-		await createExpense(db, userId2, {
+		await createExpense(db, userId2!, {
 			amount: 2222,
 			categoryId: category2.id,
-			payerUserId
+			payerUserId: userId1
+		});
+		await createExpense(db, userId3, {
+			amount: 9999,
+			categoryId: category3.id,
+			payerUserId: userId3
 		});
 
-		const summary = await getDashboardSummary(db, { period: 'month', month });
+		const summary = await getDashboardSummary(db, userId1, { period: 'month', month });
 
-		// 両ユーザーの支出合計 3333 が含まれていること（世帯集計）
-		expect(summary.overall).toBeGreaterThanOrEqual(3333);
+		expect(summary.overall).toBe(3333);
+		expect(summary.byCategory.some((item) => item.categoryId === category3.id)).toBe(false);
 	});
 
 	test('[SPEC: AC-001] 全ステータス（unapproved・checked）が集計対象に含まれる', async () => {
@@ -130,7 +151,7 @@ describe('getDashboardSummary - 月別集計', () => {
 		});
 		await checkExpense(db, userId, expense2.id);
 
-		const summary = await getDashboardSummary(db, { period: 'month', month });
+		const summary = await getDashboardSummary(db, userId, { period: 'month', month });
 
 		// unapproved(1000) + checked(2000) = 3000 が含まれていること
 		expect(summary.overall).toBeGreaterThanOrEqual(3000);
@@ -145,8 +166,11 @@ describe('getDashboardSummary - 月別集計', () => {
 		const category = await createCategory(db, userId, { name: '食費_月別テスト' });
 		await createExpense(db, userId, { amount: 5555, categoryId: category.id, payerUserId });
 
-		const summaryCurrentMonth = await getDashboardSummary(db, { period: 'month', month });
-		const summaryOtherMonth = await getDashboardSummary(db, { period: 'month', month: '2020-01' });
+		const summaryCurrentMonth = await getDashboardSummary(db, userId, { period: 'month', month });
+		const summaryOtherMonth = await getDashboardSummary(db, userId, {
+			period: 'month',
+			month: '2020-01'
+		});
 
 		expect(summaryCurrentMonth.overall).toBeGreaterThanOrEqual(5555);
 		// 2020-01 のデータは存在しないため、別ユーザー分のみ or 0
@@ -182,7 +206,7 @@ describe('getDashboardSummary - 月別集計', () => {
 			payerUserId: userB.id
 		});
 
-		const summary = await getDashboardSummary(db, { period: 'month', month });
+		const summary = await getDashboardSummary(db, userId, { period: 'month', month });
 
 		// 2名分の支払者別集計が含まれていること
 		const payerEntries = summary.byPayer.filter(
@@ -223,7 +247,7 @@ describe('getDashboardSummary - 月別集計', () => {
 		await createExpense(db, userId, { amount: 5000, categoryId: category1.id, payerUserId });
 		await createExpense(db, userId, { amount: 1000, categoryId: category2.id, payerUserId });
 
-		const summary = await getDashboardSummary(db, { period: 'month', month });
+		const summary = await getDashboardSummary(db, userId, { period: 'month', month });
 
 		const cat1Entry = summary.byCategory.find((c) => c.categoryId === category1.id);
 		const cat2Entry = summary.byCategory.find((c) => c.categoryId === category2.id);
@@ -253,7 +277,7 @@ describe('getDashboardSummary - 全期間集計', () => {
 		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerUserId });
 		await createExpense(db, userId, { amount: 2000, categoryId: category.id, payerUserId });
 
-		const summary = await getDashboardSummary(db, { period: 'all' });
+		const summary = await getDashboardSummary(db, userId, { period: 'all' });
 
 		expect(summary.overall).toBeGreaterThanOrEqual(3000);
 		expect(Array.isArray(summary.byPayer)).toBe(true);
@@ -269,11 +293,11 @@ describe('getDashboardSummary - 全期間集計', () => {
 		await createExpense(db, userId, { amount: 7777, categoryId: category.id, payerUserId });
 
 		// period=all なので month=2020-01 を指定しても当月データが取得される
-		const summaryAllWithPastMonth = await getDashboardSummary(db, {
+		const summaryAllWithPastMonth = await getDashboardSummary(db, userId, {
 			period: 'all',
 			month: '2020-01'
 		});
-		const summaryAll = await getDashboardSummary(db, { period: 'all' });
+		const summaryAll = await getDashboardSummary(db, userId, { period: 'all' });
 
 		// どちらも全期間集計なので同じ overall が返る
 		expect(summaryAllWithPastMonth.overall).toBe(summaryAll.overall);
@@ -285,7 +309,8 @@ describe('getDashboardSummary - 境界値', () => {
 	test('[SPEC: AC-201] 対象期間に支出が0件の場合、全体合計が0を返す', async () => {
 		const db = createDb(env.DB);
 
-		const summary = await getDashboardSummary(db, {
+		const userId = (await createTestUser(db, `primary_${Date.now()}`, 'primary')).id;
+		const summary = await getDashboardSummary(db, userId, {
 			period: 'month',
 			month: '2001-01'
 		});
@@ -296,7 +321,8 @@ describe('getDashboardSummary - 境界値', () => {
 	test('[SPEC: AC-202] 支払者別集計対象の支出がない場合、byPayer が空配列を返す', async () => {
 		const db = createDb(env.DB);
 
-		const summary = await getDashboardSummary(db, { period: 'month', month: '2001-02' });
+		const userId = (await createTestUser(db, `primary_${Date.now()}`, 'primary')).id;
+		const summary = await getDashboardSummary(db, userId, { period: 'month', month: '2001-02' });
 
 		expect(summary.byPayer).toHaveLength(0);
 	});
@@ -304,7 +330,8 @@ describe('getDashboardSummary - 境界値', () => {
 	test('[SPEC: AC-203] カテゴリ別集計対象の支出がない場合、byCategory が空配列を返す', async () => {
 		const db = createDb(env.DB);
 
-		const summary = await getDashboardSummary(db, { period: 'month', month: '2001-03' });
+		const userId = (await createTestUser(db, `primary_${Date.now()}`, 'primary')).id;
+		const summary = await getDashboardSummary(db, userId, { period: 'month', month: '2001-03' });
 
 		expect(summary.byCategory).toHaveLength(0);
 	});

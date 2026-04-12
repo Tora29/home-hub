@@ -20,6 +20,7 @@ vi.mock('./service', () => ({
 }));
 
 import { GET, POST } from './+server';
+import * as service from './service';
 
 const mockLocals = { user: { id: 'user-1' } };
 const mockPlatform = { env: { DB: {} } };
@@ -80,6 +81,31 @@ describe('GET /expenses - バリデーション', () => {
 		expect(response.status).toBe(400);
 		const body = await response.json();
 		expect(body.code).toBe('VALIDATION_ERROR');
+	});
+});
+
+describe('GET /expenses - スコープ', () => {
+	test('認証ユーザーIDを getExpenses に渡す', async () => {
+		vi.mocked(service.getExpenses).mockResolvedValueOnce({
+			items: [],
+			total: 0,
+			page: 1,
+			limit: 20,
+			monthTotal: 0
+		});
+
+		const response = await GET({
+			url: makeGetUrl({ month: '2026-04' }),
+			locals: mockLocals,
+			platform: mockPlatform
+		} as Parameters<typeof GET>[0]);
+
+		expect(response.status).toBe(200);
+		expect(service.getExpenses).toHaveBeenCalledWith({}, 'user-1', {
+			month: '2026-04',
+			page: 1,
+			limit: 20
+		});
 	});
 });
 
