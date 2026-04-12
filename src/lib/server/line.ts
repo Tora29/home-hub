@@ -21,7 +21,7 @@ type Env = {
 /**
  * LINE プッシュ通知を送信する。
  * LINE_MOCK=true の場合はモックとしてスキップ（開発・E2E 環境用）。
- * @throws {BAD_GATEWAY} - LINE API が 4xx/5xx を返した場合
+ * @throws {BAD_GATEWAY} - LINE API が 4xx/5xx を返した場合、またはネットワークエラー（タイムアウト・DNS/TLS 失敗など）が発生した場合
  */
 export async function sendLineMessage(env: Env, toUserId: string, message: string): Promise<void> {
 	if (env.LINE_MOCK === 'true') {
@@ -37,17 +37,27 @@ export async function sendLineMessage(env: Env, toUserId: string, message: strin
 		return;
 	}
 
-	const res = await fetch('https://api.line.me/v2/bot/message/push', {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		},
-		body: JSON.stringify({
-			to: toUserId,
-			messages: [{ type: 'text', text: message }]
-		})
-	});
+	let res: Response;
+	try {
+		res = await fetch('https://api.line.me/v2/bot/message/push', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify({
+				to: toUserId,
+				messages: [{ type: 'text', text: message }]
+			})
+		});
+	} catch (e) {
+		console.error('[LINE] ネットワークエラー:', e);
+		throw new AppError(
+			'BAD_GATEWAY',
+			502,
+			'LINE 通知の送信に失敗したため承認フローを完了できませんでした'
+		);
+	}
 
 	if (!res.ok) {
 		const body = await res.text().catch(() => '(response body unavailable)');

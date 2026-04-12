@@ -110,7 +110,7 @@ API 詳細は [openapi.yaml](./openapi.yaml) を参照。
 - AC-116: `POST /expenses/cancel` 実行時に自分の `pending` 支出が 0 件の場合、409 CONFLICT「申請中の支出がありません」が返る
 - AC-118: `POST /expenses/approve` 実行時に承認対象パートナーの `pending` 支出が 0 件の場合、409 CONFLICT「承認できる支出がありません」が返る（第三者アカウントの `pending` のみ存在する場合も含む）
 - AC-119: `user.role` が未設定（null）の状態で `POST /expenses/request` または `POST /expenses/approve` を実行した場合も DB 更新は継続される。通知先 role を解決できないため LINE 通知は送信されない
-- AC-120: LINE API が 4xx/5xx を返した場合、`POST /expenses/request` / `POST /expenses/approve` は 502 BAD_GATEWAY「LINE 通知の送信に失敗したため承認フローを完了できませんでした」を返し、対象支出の status は変更しない
+- AC-120: LINE API が 4xx/5xx を返した場合、またはネットワークエラー（タイムアウト・DNS/TLS 失敗など）が発生した場合、`POST /expenses/request` / `POST /expenses/approve` は 502 BAD_GATEWAY「LINE 通知の送信に失敗したため承認フローを完了できませんでした」を返し、対象支出の status は変更しない
 - AC-125: `LINE_CHANNEL_ACCESS_TOKEN` が設定されていても通知先 LINE ユーザー ID が未設定の場合、`POST /expenses/request` / `POST /expenses/approve` はエラーにせず DB 更新を継続する。LINE 通知は送信しない
 - AC-121: `month` クエリパラメータの月部分が `01〜12` の範囲外の場合（例: `2026-13`、`2026-00`）、400 VALIDATION_ERROR「月は01〜12で入力してください」が返る
 - AC-122: check/uncheck 操作が失敗した場合（4xx/5xx）、一覧上部にエラーメッセージ（`expense-action-error`）を表示する
