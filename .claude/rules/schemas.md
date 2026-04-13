@@ -105,3 +105,46 @@ if (!result.success) {
 ## 参照するスキル
 
 - scaffold-be, scaffold-fe, scaffold-test-unit
+
+---
+
+## Database Constraints 設計指針
+
+DB レベルの制約（UNIQUE, INDEX, FOREIGN KEY）の設計方針。
+
+### 制約種別と適用基準
+
+| 制約種別    | いつ適用するか                 | 注意点                                     |
+| ----------- | ------------------------------ | ------------------------------------------ |
+| UNIQUE      | 業務上重複を許さない組み合わせ | 複数カラムの複合ユニークも考慮             |
+| INDEX       | 頻繁に検索・ソートするカラム   | 過剰なインデックスは書き込みを遅くする     |
+| FOREIGN KEY | 他テーブルを参照するカラム     | 削除時の振る舞い（CASCADE/RESTRICT）を明記 |
+
+### UNIQUE 制約の設計
+
+- ユニーク制約は「業務上重複を許さない」場合のみ適用
+- 複数カラムの複合ユニークは `(col1, col2)` の形式で記述
+- 例: 同一ユーザー内で名前がユニーク → `(userId, name)`
+
+### INDEX の設計
+
+- 頻繁に検索・ソートするカラムにインデックスを作成
+- 主な対象:
+  - 外部キー（`userId`, `categoryId` 等）
+  - 日時カラム（`createdAt`, `dueDate` 等）
+  - ステータスカラム（`status` 等）
+- 過剰なインデックスは書き込みを遅くするため、必要最小限にする
+
+### FOREIGN KEY の設計
+
+- 他テーブルを参照するカラムには外部キー制約を設定
+- 削除時の振る舞いを明記:
+  - `CASCADE`: 親削除時に子も削除
+  - `RESTRICT`: 親削除時にエラー（使用中）
+  - `SET NULL`: 親削除時に子を null に
+
+### spec.md との連携
+
+- spec.md の `Database Constraints（サマリ）` セクションに概要を記載
+- 詳細は `src/lib/server/tables.ts` で定義
+- spec-generator は spec.md のサマリを生成し、scaffold-contract が詳細を tables.ts に反映
