@@ -10,8 +10,7 @@
  * - user, session, account, verification — Better Auth 管理テーブル
  * - recipe                              — アプリ固有テーブル
  * - expenseCategory                     — 支出カテゴリテーブル
- * - expensePayer                        — 支出支払者テーブル
- * - expense                             — 支出テーブル（payerId 含む）
+ * - expense                             — 支出テーブル（payerUserId + status 含む）
  */
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
@@ -23,6 +22,8 @@ export const user = sqliteTable('User', {
 	email: text('email').notNull().unique(),
 	emailVerified: integer('emailVerified', { mode: 'boolean' }).notNull(),
 	image: text('image'),
+	role: text('role'),
+	lineUserId: text('lineUserId'),
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
 	updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull()
 });
@@ -76,13 +77,6 @@ export const expenseCategory = sqliteTable('ExpenseCategory', {
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
 });
 
-export const expensePayer = sqliteTable('ExpensePayer', {
-	id: text('id').primaryKey(),
-	userId: text('userId').notNull(),
-	name: text('name').notNull(),
-	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
-});
-
 export const expense = sqliteTable('Expense', {
 	id: text('id').primaryKey(),
 	userId: text('userId').notNull(),
@@ -90,9 +84,8 @@ export const expense = sqliteTable('Expense', {
 	categoryId: text('categoryId')
 		.notNull()
 		.references(() => expenseCategory.id, { onDelete: 'restrict' }),
-	payerId: text('payerId').references(() => expensePayer.id, { onDelete: 'restrict' }),
-	approvedAt: integer('approvedAt', { mode: 'timestamp' }),
-	finalizedAt: integer('finalizedAt', { mode: 'timestamp' }),
+	payerUserId: text('payerUserId').references(() => user.id, { onDelete: 'restrict' }),
+	status: text('status').notNull().default('unapproved'),
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
 });
 
