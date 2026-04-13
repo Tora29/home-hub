@@ -51,11 +51,11 @@ components:
       properties:
         overall:
           type: integer
-          description: 対象期間の支出合計金額（円）
+          description: 対象期間の支出合計金額（円・世帯全体）
           example: 150000
         byPayer:
           type: array
-          description: 支払者別合計（合計金額の多い順）
+          description: 支払者別合計（合計金額の多い順）。支払者は user テーブルから取得
           items:
             $ref: '#/components/schemas/PayerSummary'
         byCategory:
@@ -70,10 +70,10 @@ components:
       properties:
         payerId:
           type: string
-          description: 支払者 ID
+          description: 支払者ユーザー ID（users テーブルの id）
         payerName:
           type: string
-          description: 支払者名
+          description: 支払者名（users テーブルの name）
         total:
           type: integer
           description: 合計金額（円）

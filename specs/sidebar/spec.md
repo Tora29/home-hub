@@ -5,6 +5,35 @@
 全ページ共通のサイドバーナビゲーションコンポーネント。カテゴリ別の入れ子メニューを提供し、デスクトップ・モバイル両環境で開閉操作をサポートする。
 `src/lib/components/Sidebar.svelte` として実装し、`+layout.svelte` から使用する。API は不要。
 
+## Schema Definition（サマリ）
+
+該当なし（UI 専用コンポーネント。API なし）。
+
+## Database Constraints（サマリ）
+
+該当なし（UI 専用コンポーネント）。
+
+## data-testid
+
+| testid                     | 要素種別   | 説明                               |
+| -------------------------- | ---------- | ---------------------------------- |
+| `sidebar`                  | `<nav>`    | サイドバー全体                     |
+| `sidebar-toggle`           | `<button>` | デスクトップ用サイドバー開閉ボタン |
+| `sidebar-hamburger`        | `<button>` | モバイル用ハンバーガーボタン       |
+| `sidebar-overlay`          | `<div>`    | モバイル用オーバーレイ             |
+| `sidebar-category-meal`    | `<button>` | 献立系カテゴリ見出し               |
+| `sidebar-category-expense` | `<button>` | 収支系カテゴリ見出し               |
+| `sidebar-item-recipes`     | `<a>`      | レシピ一覧メニュー項目             |
+| `sidebar-item-expenses`    | `<a>`      | 家計簿メニュー項目                 |
+
+## Error Responses（サマリ）
+
+該当なし（API なし）。
+
+## Query Parameters（サマリ）
+
+該当なし（API なし）。
+
 ## API Endpoints
 
 該当なし（UI 専用コンポーネント）。
@@ -47,6 +76,60 @@
     └ 家計簿（/expenses）
   ```
 
+### コンポーネント階層
+
+```
+Sidebar（src/lib/components/Sidebar.svelte）
+├── SidebarNav (sidebar)
+│   ├── ToggleButton (sidebar-toggle) ※デスクトップ
+│   ├── MealCategory (sidebar-category-meal)
+│   │   └── RecipesLink (sidebar-item-recipes)
+│   └── ExpenseCategory (sidebar-category-expense)
+│       └── ExpensesLink (sidebar-item-expenses)
+├── Overlay (sidebar-overlay) ※モバイル・サイドバー開時
+└── HamburgerButton (sidebar-hamburger) ※モバイル（Header内）
+```
+
+### レイアウト・スペーシング
+
+| 要素           | 配置           | 幅・高さ      | 余白        | 備考                                      |
+| -------------- | -------------- | ------------- | ----------- | ----------------------------------------- |
+| Sidebar        | 左固定         | w-56 h-screen | p-4         | bg-bg-secondary border-r border-separator |
+| CategoryButton | 横並び         | w-full        | px-2 py-1.5 |                                           |
+| MenuLink       | 横並び         | w-full        | px-4 py-1.5 | インデント                                |
+| Overlay        | フルスクリーン | fixed inset-0 | -           | bg-black/50 z-40                          |
+
+### 状態ごとの表示ルール
+
+| 要素            | 条件                       | 表示                    | 備考                |
+| --------------- | -------------------------- | ----------------------- | ------------------- |
+| Sidebar         | open=true（デスクトップ）  | 表示                    |                     |
+| Sidebar         | open=false（デスクトップ） | 非表示（translate-x）   |                     |
+| Sidebar         | open=true（モバイル）      | 表示 + Overlay          | z-50 固定           |
+| Sidebar         | open=false（モバイル）     | 非表示                  |                     |
+| Overlay         | モバイル + open=true       | 表示                    |                     |
+| Overlay         | open=false                 | 非表示（DOM除去）       |                     |
+| MenuItem        | currentPath = href         | アクティブ（underline） | aria-current="page" |
+| CategoryChevron | category open=true         | ChevronDown             |                     |
+| CategoryChevron | category open=false        | ChevronRight            |                     |
+| CategoryMenu    | open=true                  | 表示                    |                     |
+| CategoryMenu    | open=false                 | 非表示（DOM除去）       |                     |
+
+### アニメーション・トランジション
+
+| 要素    | トリガー           | アニメーション     | 時間  |
+| ------- | ------------------ | ------------------ | ----- |
+| Sidebar | 開く（モバイル）   | slide-in from left | 200ms |
+| Sidebar | 閉じる（モバイル） | slide-out to left  | 150ms |
+| Overlay | 表示               | fade-in            | 100ms |
+
+### レスポンシブ挙動
+
+| ブレークポイント     | レイアウト変更                                 | 備考                 |
+| -------------------- | ---------------------------------------------- | -------------------- |
+| デフォルト（<768px） | オーバーレイ表示モード。Hamburger ボタンで開閉 |                      |
+| md（≥768px）         | インライン表示モード。ToggleButton で開閉      | デフォルト open=true |
+
 ### インタラクション
 
 - メニュー項目クリック: SvelteKit の `<a href>` でページ遷移（ソフトナビゲーション）
@@ -59,33 +142,20 @@
 
 ### バリデーション表示
 
-なし
-
-## data-testid
-
-| testid                     | 要素種別   | 説明                               |
-| -------------------------- | ---------- | ---------------------------------- |
-| `sidebar`                  | `<nav>`    | サイドバー全体                     |
-| `sidebar-toggle`           | `<button>` | デスクトップ用サイドバー開閉ボタン |
-| `sidebar-hamburger`        | `<button>` | モバイル用ハンバーガーボタン       |
-| `sidebar-overlay`          | `<div>`    | モバイル用オーバーレイ             |
-| `sidebar-category-meal`    | `<button>` | 献立系カテゴリ見出し               |
-| `sidebar-category-expense` | `<button>` | 収支系カテゴリ見出し               |
-| `sidebar-item-recipes`     | `<a>`      | レシピ一覧メニュー項目             |
-| `sidebar-item-expenses`    | `<a>`      | 家計簿メニュー項目                 |
+なし（入力フォームなし）
 
 ## テスト戦略
 
-| AC     | 種別 | 対象ファイル             | 備考                                                                   |
-| ------ | ---- | ------------------------ | ---------------------------------------------------------------------- |
-| AC-001 | E2E  | `e2e/sidebar.e2e.ts`     | `<a href>` によるナビゲーションはブラウザ全体が必要                    |
-| AC-002 | Unit | `Sidebar.svelte.test.ts` | カテゴリ開閉のトグル検証                                               |
-| AC-003 | Unit | `Sidebar.svelte.test.ts` | サイドバー開閉ボタンの検証                                             |
-| AC-007 | Unit | `Sidebar.svelte.test.ts` | localStorage への書き込み検証（toggle後の値確認）                      |
-| AC-007 | E2E  | `e2e/sidebar.e2e.ts`     | リロード後の状態復元はブラウザ全体が必要                               |
-| AC-004 | Unit | `Sidebar.svelte.test.ts` | `aria-current` 属性の検証                                              |
-| AC-005 | E2E  | `e2e/sidebar.e2e.ts`     | モバイルビューポートでのデフォルト表示状態はビューポート制御が必要     |
-| AC-006 | E2E  | `e2e/sidebar.e2e.ts`     | デスクトップビューポートでのデフォルト表示状態はビューポート制御が必要 |
+| AC     | 種別 | 対象ファイル             | 備考                                                                   | spec_hash |
+| ------ | ---- | ------------------------ | ---------------------------------------------------------------------- | --------- |
+| AC-001 | E2E  | `e2e/sidebar.e2e.ts`     | `<a href>` によるナビゲーションはブラウザ全体が必要                    | a09b1b9f  |
+| AC-002 | Unit | `Sidebar.svelte.test.ts` | カテゴリ開閉のトグル検証                                               | 78b4633e  |
+| AC-003 | Unit | `Sidebar.svelte.test.ts` | サイドバー開閉ボタンの検証                                             | 1a4ac24d  |
+| AC-007 | Unit | `Sidebar.svelte.test.ts` | localStorage への書き込み検証（toggle後の値確認）                      | bbb905be  |
+| AC-007 | E2E  | `e2e/sidebar.e2e.ts`     | リロード後の状態復元はブラウザ全体が必要                               | 1dfcffc8  |
+| AC-004 | Unit | `Sidebar.svelte.test.ts` | `aria-current` 属性の検証                                              | 6a190efa  |
+| AC-005 | E2E  | `e2e/sidebar.e2e.ts`     | モバイルビューポートでのデフォルト表示状態はビューポート制御が必要     | f331e465  |
+| AC-006 | E2E  | `e2e/sidebar.e2e.ts`     | デスクトップビューポートでのデフォルト表示状態はビューポート制御が必要 | c7778a82  |
 
 ## Non-Functional Requirements
 
