@@ -916,7 +916,10 @@ test.describe('支払者管理 - 削除', () => {
 
 		// ダイアログが閉じて支払者が消える
 		await expect(page.getByTestId('expense-payer-delete-dialog')).not.toBeVisible();
-		await expect(page.getByTestId('expense-payer-list')).not.toContainText('E2E削除対象支払者');
+		// 0件になると expense-payer-list 自体が DOM から消えるため、item レベルで確認する
+		await expect(
+			page.getByTestId('expense-payer-item').filter({ hasText: 'E2E削除対象支払者' })
+		).not.toBeVisible();
 	});
 });
 
