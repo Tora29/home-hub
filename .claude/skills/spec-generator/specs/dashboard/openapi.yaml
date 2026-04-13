@@ -1,0 +1,153 @@
+openapi: 3.0.3
+info:
+  title: Dashboard API
+  description: ダッシュボード集計 API
+  version: 1.0.0
+
+tags:
+  - name: dashboard
+    description: ダッシュボード集計
+
+paths:
+  /dashboard/summary:
+    get:
+      tags: [dashboard]
+      summary: 集計サマリー取得
+      description: |
+        支出の集計サマリーを取得する。
+        - `period=month`（デフォルト）: 指定月の集計。`month` 省略時は当月
+        - `period=all`: 全期間の集計
+        集計対象は未承認・確認済み・確定済みの全ステータスを含む。
+      parameters:
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [month, all]
+            default: month
+          description: 集計期間。`month`（月別）または `all`（全期間）
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+            example: '2026-04'
+          description: 対象月（YYYY-MM 形式）。`period=month` の場合のみ有効。省略時は当月
+      responses:
+        '200':
+          description: 集計サマリー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+
+components:
+  schemas:
+    DashboardSummary:
+      type: object
+      required: [overall, byPayer, byCategory]
+      properties:
+        overall:
+          type: integer
+          description: 対象期間の支出合計金額（円・世帯全体）
+          example: 150000
+        byPayer:
+          type: array
+          description: 支払者別合計（合計金額の多い順）。支払者は user テーブルから取得
+          items:
+            $ref: '#/components/schemas/PayerSummary'
+        byCategory:
+          type: array
+          description: カテゴリ別合計（合計金額の多い順）
+          items:
+            $ref: '#/components/schemas/CategorySummary'
+
+    PayerSummary:
+      type: object
+      required: [payerId, payerName, total]
+      properties:
+        payerId:
+          type: string
+          description: 支払者ユーザー ID（users テーブルの id）
+        payerName:
+          type: string
+          description: 支払者名（users テーブルの name）
+        total:
+          type: integer
+          description: 合計金額（円）
+          example: 80000
+
+    CategorySummary:
+      type: object
+      required: [categoryId, categoryName, total]
+      properties:
+        categoryId:
+          type: string
+          description: カテゴリ ID
+        categoryName:
+          type: string
+          description: カテゴリ名
+        total:
+          type: integer
+          description: 合計金額（円）
+          example: 60000
+
+  responses:
+    ValidationError:
+      description: バリデーションエラー
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message]
+            properties:
+              code:
+                type: string
+                example: VALIDATION_ERROR
+              message:
+                type: string
+                example: 入力値が正しくありません
+              fields:
+                type: array
+                items:
+                  type: object
+                  required: [field, message]
+                  properties:
+                    field:
+                      type: string
+                      example: field_name
+                    message:
+                      type: string
+                      example: フィールドは必須です
+
+    NotFound:
+      description: リソースが見つからない
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message]
+            properties:
+              code:
+                type: string
+                example: NOT_FOUND
+              message:
+                type: string
+                example: 該当データが見つかりません
+
+    Conflict:
+      description: 競合エラー（使用中のリソースは削除不可）
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message]
+            properties:
+              code:
+                type: string
+                example: CONFLICT
+              message:
+                type: string
+                example: このリソースは使用中のため削除できません
