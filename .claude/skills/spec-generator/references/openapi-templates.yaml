@@ -1,0 +1,58 @@
+components:
+  responses:
+    ValidationError:
+      description: バリデーションエラー
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message]
+            properties:
+              code:
+                type: string
+                example: VALIDATION_ERROR
+              message:
+                type: string
+                example: 入力値が正しくありません
+              fields:
+                type: array
+                items:
+                  type: object
+                  required: [field, message]
+                  properties:
+                    field:
+                      type: string
+                      example: field_name
+                    message:
+                      type: string
+                      example: フィールドは必須です
+
+    NotFound:
+      description: リソースが見つからない
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message]
+            properties:
+              code:
+                type: string
+                example: NOT_FOUND
+              message:
+                type: string
+                example: 該当データが見つかりません
+
+    Conflict:
+      description: 競合エラー（使用中のリソースは削除不可）
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message]
+            properties:
+              code:
+                type: string
+                example: CONFLICT
+              message:
+                type: string
+                example: このリソースは使用中のため削除できません

@@ -1,6 +1,6 @@
 ---
 name: spec-generator
-description: ユーザーの雑なメモや要望から構造化された spec.md を生成する。
+description: ユーザーのメモや要望から構造化された spec.md を生成する。
 ---
 
 # Spec Generator
@@ -89,171 +89,32 @@ options:
    - NFR セクションは省略（インデックスに集約）
    - AC 番号はドメインごとに AC-001 から採番（テストで `[SPEC: {domain}/AC-001]` として参照）
 
-### Step 3.5: openapi.yaml 生成（API 要件がある場合のみ）
+### Step 3.3: サマリセクション生成
 
-ユーザーの入力に API 要件（エンドポイント、データの CRUD 等）が含まれる場合:
+Schema Definition, Database Constraints, data-testid, Error Responses, Query Parameters を生成する。
+詳細は `references/step-3.3-summary-sections.md` を参照。
 
-1. spec.md の API 要件から OpenAPI 3.0 仕様の YAML を生成
-2. `specs/{feature}/openapi.yaml` に出力
-3. spec.md 内から openapi.yaml を参照するリンクを追加
+### Step 3.4: Business Rules 生成
 
-#### tags の付与ルール（必須）
+機能にステータス遷移・権限モデル・エンティティ間制約・外部API連携がある場合、Business Rules セクションを生成する。
+詳細は `references/step-3.35-business-rules.md` を参照。
 
-生成する openapi.yaml には必ず `tags` を定義し、各 operation に付与する。
+### Step 3.5: UI Requirements 詳細化
 
-- トップレベルに `tags:` セクションを定義する
-- エンドポイントのグループ（リソース種別）ごとに tag を作成する
-- 命名: kebab-case で feature 名または resource 名を使う（例: `expense`, `expense-categories`, `recipes`）
-- 各 operation には `tags: [{tag_name}]` を付与する
+UI Requirements セクションを scaffold-fe が推測せずに実装できるレベルまで詳細化する。
+詳細は `references/step-3.4-ui-requirements.md` を参照。
 
-```yaml
-tags:
-  - name: tasks
-    description: タスク管理
-  - name: task-comments
-    description: タスクコメント
+### Step 3.6: openapi.yaml 生成（API 要件がある場合のみ）
 
-paths:
-  /tasks:
-    get:
-      tags: [tasks]
-      summary: タスク一覧取得
-  /task-comments:
-    post:
-      tags: [task-comments]
-      summary: コメント投稿
-```
+ユーザーの入力に API 要件が含まれる場合、OpenAPI 3.0 仕様の YAML を生成する。
+詳細は `references/step-3.5-openapi-generation.md` を参照。
 
-tags がないと Swagger UI で全エンドポイントが `default` グループに表示されてしまうため必須。
+### Step 3.7: テスト戦略テーブル生成
 
-#### components.responses の標準定義（必須）
+テスト戦略セクションを生成し、全テストファイルを網羅する。Business Rules 由来のテストケースも含める。
+詳細は `references/step-3.6-test-strategy.md` を参照。
 
-複数 feature の openapi.yaml をマージするため、`components.responses` の共通レスポンスは**全 feature で同一内容**にする。
-以下のテンプレートをそのままコピーして使うこと（example を feature 固有の値にしない）。
-
-```yaml
-components:
-  responses:
-    ValidationError:
-      description: バリデーションエラー
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [code, message]
-            properties:
-              code:
-                type: string
-                example: VALIDATION_ERROR
-              message:
-                type: string
-                example: 入力値が正しくありません
-              fields:
-                type: array
-                items:
-                  type: object
-                  required: [field, message]
-                  properties:
-                    field:
-                      type: string
-                      example: field_name
-                    message:
-                      type: string
-                      example: フィールドは必須です
-
-    NotFound:
-      description: リソースが見つからない
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [code, message]
-            properties:
-              code:
-                type: string
-                example: NOT_FOUND
-              message:
-                type: string
-                example: 該当データが見つかりません
-
-    Conflict:
-      description: 競合エラー（使用中のリソースは削除不可）
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [code, message]
-            properties:
-              code:
-                type: string
-                example: CONFLICT
-              message:
-                type: string
-                example: このリソースは使用中のため削除できません
-```
-
-API 要件がない場合はこのステップをスキップする。
-
-生成後、以下を実行してマージ済み `specs/openapi.yaml` を更新する:
-
-```bash
-node .claude/skills/spec-generator/scripts/merge-openapi.mjs
-```
-
-マージ後、以下の docker-compose.yml を `docker compose up` で起動すると Swagger UI で**全機能の**エンドポイントを確認できることをユーザーに伝える:
-
-```yaml
-services:
-  swagger-ui:
-    image: swaggerapi/swagger-ui
-    ports:
-      - '8080:8080'
-    environment:
-      SWAGGER_JSON: /specs/openapi.yaml
-    volumes:
-      - ./specs:/specs:ro
-```
-
-### Step 3.6: テスト戦略テーブル生成
-
-spec.md の「テスト戦略」セクションを生成する際、以下のルールに従って**全テストファイルを網羅する**。
-
-#### 必ず含める行
-
-| 対象                       | テスト種別  | ファイル                          |
-| -------------------------- | ----------- | --------------------------------- |
-| Zod スキーマ               | Unit        | `schema.test.ts`                  |
-| API ハンドラ（POST）       | Unit        | `server.test.ts`                  |
-| API ハンドラ（PUT/DELETE） | Unit        | `[id]/server.test.ts`             |
-| サービス層                 | Integration | `service.integration.test.ts`     |
-| load 関数                  | Integration | `page.server.integration.test.ts` |
-| ページコンポーネント       | Unit        | `page.svelte.test.ts`             |
-| E2E フロー                 | E2E         | `e2e/{feature}.e2e.ts`            |
-
-#### FE コンポーネントテストの追加ルール
-
-UI Requirements に**独立したコンポーネント**（フォーム・カード・ダイアログ等）が登場し、かつ対応する AC（特に FE バリデーション AC や操作 AC）が存在する場合、以下の行を追加する:
-
-```
-| AC-XXX〜YYY | Unit | components/{ComponentName}.svelte.test.ts | {コンポーネントの責務}の検証 |
-```
-
-**判定基準**: 以下のいずれかを満たすコンポーネントはテスト対象とする
-
-- FE バリデーション（フォームの入力チェック）を持つ
-- 独立した状態（`$state`）と操作を持つ
-- 複数の画面・ダイアログから再利用される
-
-**例**:
-
-```
-| AC-111〜112 | Unit | components/ExpenseForm.svelte.test.ts | FE バリデーション（金額・カテゴリ）の検証 |
-| AC-003      | Unit | components/RecipeCard.svelte.test.ts  | カードクリックの動作検証 |
-```
-
-この行を追加することで、scaffold-test-unit が「期待ファイルリスト」にコンポーネントテストを含め、scaffold-fe 実行前に RED テストとして生成できる。
-
-### Step 3.7: AC 品質チェック
+### Step 3.8: AC 品質チェック
 
 生成した AC が以下の品質基準を満たすか自己チェックし、満たさない場合は修正してから Step 4 に進む:
 
@@ -355,5 +216,21 @@ specs/{feature_name}/openapi.yaml
 
 ## リソース
 
-- テンプレート: `references/spec-template.md`
-- インデックステンプレート: `references/spec-index-template.md`（分割時）
+### テンプレート
+
+- `references/spec-template.md` - 単一ドメイン spec テンプレート
+- `references/spec-index-template.md` - 分割時のインデックステンプレート
+
+### ステップ別参照ドキュメント
+
+- `references/step-3.3-summary-sections.md` - サマリセクション生成
+- `references/step-3.35-business-rules.md` - Business Rules 生成
+- `references/step-3.4-ui-requirements.md` - UI Requirements 詳細化
+- `references/step-3.5-openapi-generation.md` - openapi.yaml 生成
+- `references/step-3.6-test-strategy.md` - テスト戦略テーブル生成
+
+### テンプレート・例
+
+- `references/openapi-templates.yaml` - components.responses 標準定義
+- `references/examples/business-rules-example.md` - Business Rules 生成例
+- `references/examples/ui-requirements-example.md` - UI Requirements 生成例
