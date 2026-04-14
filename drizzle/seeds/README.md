@@ -31,7 +31,13 @@ wrangler d1 execute home-hub --local --file=drizzle/seeds/recipes.sql
 wrangler d1 execute home-hub --local --file=drizzle/seeds/expenses.sql
 ```
 
-カテゴリ 5 件と支出 12 件（2〜3 月分）が登録される。3 月分に未承認の支出が含まれるため、ダッシュボードに警告バナーが表示される。
+カテゴリ 5 件と支出 17 件（2〜4 月分）が登録される。
+
+| 月      | 件数 | ステータス構成                                     |
+| ------- | ---- | -------------------------------------------------- |
+| 2026-02 | 6    | 全件 approved（過去の確定済み）                    |
+| 2026-03 | 6    | approved 3 / pending 2 / checked 1                 |
+| 2026-04 | 5    | unapproved 3 / checked 2（当月・ワークフローデモ） |
 
 ## ファイル一覧
 

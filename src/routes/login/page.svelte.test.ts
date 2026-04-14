@@ -8,9 +8,20 @@
  * @covers AC-001, AC-002, AC-104
  */
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { flushSync } from 'svelte';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import Page from './+page.svelte';
+
+// locator.fill() は Playwright CDP 経由でナビゲーション完了を待機するため
+// SvelteKit 環境では 15 秒タイムアウトが発生する。
+// element() + nativeInput で直接値を設定してこれを回避する。
+function fillInput(locator: ReturnType<typeof page.getByLabelText>, value: string) {
+	const el = locator.element() as HTMLInputElement;
+	el.value = value;
+	el.dispatchEvent(new Event('input', { bubbles: true }));
+	flushSync();
+}
 
 const { mockGoto, mockSignIn } = vi.hoisted(() => ({
 	mockGoto: vi.fn(),
@@ -39,9 +50,9 @@ describe('+page.svelte', () => {
 			mockSignIn.mockResolvedValue({ error: null });
 			render(Page);
 
-			await page.getByLabelText('メールアドレス').fill('test@example.com');
-			await page.getByLabelText('パスワード', { exact: true }).fill('password123');
-			await page.getByRole('button', { name: 'ログイン' }).click();
+			fillInput(page.getByLabelText('メールアドレス'), 'test@example.com');
+			fillInput(page.getByLabelText('パスワード', { exact: true }), 'password123');
+			page.getByRole('button', { name: 'ログイン' }).element().click();
 
 			await vi.waitFor(() => {
 				expect(mockGoto).toHaveBeenCalledWith('/');

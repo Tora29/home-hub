@@ -1,64 +1,82 @@
 /**
- * @file テスト: ExpenseFormDialog
+ * @file テスト: ExpenseFormDialog コンポーネント
  * @module src/routes/expenses/components/ExpenseFormDialog.svelte.test.ts
- * @testType integration
+ * @testType unit
  *
  * @target ./ExpenseFormDialog.svelte
  * @spec specs/expenses/spec.md
  * @covers AC-032, AC-033, AC-034
  */
 
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect, vi, afterEach } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import ExpenseFormDialog from './ExpenseFormDialog.svelte';
 
-const mockCategory = { id: 'cat-1', userId: 'user-1', name: '食費', createdAt: new Date() };
-const mockPayer = { id: 'payer-1', userId: 'user-1', name: '田中', createdAt: new Date() };
+afterEach(() => {
+	vi.clearAllMocks();
+});
 
-const mockExpense = {
-	id: 'exp-1',
-	userId: 'user-1',
-	amount: 1000,
-	categoryId: 'cat-1',
-	payerId: 'payer-1',
-	approvedAt: null,
-	finalizedAt: null,
-	createdAt: new Date(),
-	category: mockCategory,
-	payer: mockPayer
-};
-
-const baseProps = {
-	categories: [mockCategory],
-	payers: [mockPayer],
-	onSuccess: vi.fn(),
-	onCancel: vi.fn()
-};
+const categories = [
+	{ id: 'cat-1', userId: 'user-1', name: '食費', createdAt: '2026-01-01T00:00:00Z' }
+];
+const users = [
+	{ id: 'user-1', name: '主', email: 'main@example.com' },
+	{ id: 'user-2', name: '妻', email: 'wife@example.com' }
+];
 
 describe('ExpenseFormDialog', () => {
-	test('[SPEC: AC-032] open=false のときフォームが描画されない', async () => {
-		render(ExpenseFormDialog, { ...baseProps, open: false, mode: 'create' });
+	test('[SPEC: AC-032] open=false のときフォームが描画されない // spec:f42a205a', async () => {
+		render(ExpenseFormDialog, {
+			open: false,
+			mode: 'create',
+			categories,
+			users,
+			onClose: vi.fn(),
+			onSuccess: vi.fn()
+		});
 
 		await expect.element(page.getByTestId('expense-form')).not.toBeInTheDocument();
 	});
 
-	test('[SPEC: AC-033] open=true かつ mode=create のとき「支出を登録」フォームが表示される', async () => {
-		render(ExpenseFormDialog, { ...baseProps, open: true, mode: 'create' });
+	test('[SPEC: AC-033] mode=create のとき「支出を登録」フォームが表示される // spec:f42a205a', async () => {
+		render(ExpenseFormDialog, {
+			open: true,
+			mode: 'create',
+			categories,
+			users,
+			onClose: vi.fn(),
+			onSuccess: vi.fn()
+		});
 
-		await expect.element(page.getByTestId('expense-form')).toBeVisible();
+		await expect.element(page.getByTestId('expense-form')).toBeInTheDocument();
 		await expect.element(page.getByText('支出を登録')).toBeVisible();
 	});
 
-	test('[SPEC: AC-034] open=true かつ mode=edit のとき「支出を編集」フォームが表示される', async () => {
+	test('[SPEC: AC-034] mode=edit かつ expense を渡すと「支出を編集」フォームが表示される // spec:f42a205a', async () => {
+		const expense = {
+			id: 'exp-1',
+			userId: 'user-1',
+			amount: 1500,
+			categoryId: 'cat-1',
+			payerUserId: 'user-1',
+			status: 'unapproved' as const,
+			createdAt: '2026-03-01T00:00:00Z',
+			category: categories[0],
+			payer: users[0]
+		};
+
 		render(ExpenseFormDialog, {
-			...baseProps,
 			open: true,
 			mode: 'edit',
-			expense: mockExpense
+			expense,
+			categories,
+			users,
+			onClose: vi.fn(),
+			onSuccess: vi.fn()
 		});
 
-		await expect.element(page.getByTestId('expense-form')).toBeVisible();
+		await expect.element(page.getByTestId('expense-form')).toBeInTheDocument();
 		await expect.element(page.getByText('支出を編集')).toBeVisible();
 	});
 });

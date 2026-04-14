@@ -19,14 +19,14 @@
  */
 import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { expense, expenseCategory, expensePayer } from '$lib/server/tables';
+import { expense, expenseCategory, user as userTable } from '$lib/server/tables';
 import type * as schema from '$lib/server/tables';
 
 type Db = DrizzleD1Database<typeof schema>;
 
 type PayerSummary = {
 	payerId: string;
-	payerName: string;
+	payerName: string | null;
 	total: number;
 };
 
@@ -78,18 +78,18 @@ export async function getDashboardSummary(
 		.where(whereClause);
 
 	// 支払者別合計（多い順）
-	// payerId が NULL の行（migration 0007 で修正済み）は LEFT JOIN で expensePayer が null になるため除外される。
+	// payerUserId が NULL の行は LEFT JOIN で user が null になるため除外される。
 	const payerRows = await db
 		.select({
-			payerId: expensePayer.id,
-			payerName: expensePayer.name,
+			payerId: userTable.id,
+			payerName: userTable.name,
 			total: sql<number>`coalesce(sum(${expense.amount}), 0)`
 		})
 		.from(expense)
-		.leftJoin(expensePayer, eq(expense.payerId, expensePayer.id))
+		.leftJoin(userTable, eq(expense.payerUserId, userTable.id))
 		.where(whereClause)
-		.groupBy(expensePayer.id, expensePayer.name)
-		.having(sql`${expensePayer.id} is not null`)
+		.groupBy(userTable.id, userTable.name)
+		.having(sql`${userTable.id} is not null`)
 		.orderBy(desc(sql`sum(${expense.amount})`));
 
 	// カテゴリ別合計（多い順）
@@ -109,7 +109,7 @@ export async function getDashboardSummary(
 		overall: Number(overallRow.total),
 		byPayer: payerRows.map((r) => ({
 			payerId: r.payerId!,
-			payerName: r.payerName!,
+			payerName: r.payerName,
 			total: Number(r.total)
 		})),
 		byCategory: categoryRows.map((r) => ({

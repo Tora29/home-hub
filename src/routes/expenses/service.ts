@@ -5,31 +5,36 @@
  *
  * @description
  * 支出機能のビジネスロジックと DB 操作を担う。
+ * 承認ワークフロー（unapproved → checked → pending → approved）と
+ * LINE 通知連携を含む。一覧は全ユーザーの支出を返す（世帯合計モデル）。
  *
  * @spec specs/expenses/spec.md
- * @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-013, AC-014, AC-015
+ * @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009, AC-010, AC-013, AC-014
  *
  * @entity Expense
  *
  * @functions
- * - getExpenses          - 一覧取得（月フィルタ・ページネーション付き）
- * - createExpense        - 新規作成
- * - updateExpense        - 更新（承認フラグ含む）
- * - deleteExpense        - 削除
- * - finalizeExpense      - 確定（確認済み → 確定済み）
- * - approveExpense       - 承認（未承認 → 確認済み）
- * - unapproveExpense     - 承認取消（確認済み → 未承認）
+ * - getExpenses          - 一覧取得（月フィルタ・ページネーション付き・全ユーザー）
+ * - getUsers             - 全ユーザー取得（支払者選択用）
+ * - createExpense        - 新規作成（status=unapproved）
+ * - updateExpense        - 更新（FORBIDDEN: 他ユーザー, CONFLICT: pending/approved）
+ * - deleteExpense        - 削除（FORBIDDEN: 他ユーザー, CONFLICT: pending/approved）
+ * - checkExpense         - 確認（unapproved → checked）
+ * - uncheckExpense       - 確認取消（checked → unapproved）
+ * - requestExpenses      - 一括承認依頼（checked → pending + LINE 通知）
+ * - cancelExpenses       - 一括申請取り消し（pending → checked）
+ * - approveExpenses      - 一括承認（相手の pending → approved + LINE 通知）
  * - getUnapprovedCount   - 全期間の未承認件数取得（ダッシュボード用）
  *
  * @test ./service.integration.test.ts
  */
-import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lt, ne, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { AppError } from '$lib/server/errors';
-import { expense, expenseCategory, expensePayer } from '$lib/server/tables';
+import { expense, expenseCategory, user as userTable } from '$lib/server/tables';
 import type * as schema from '$lib/server/tables';
 import type { ExpenseCreate, ExpenseUpdate } from './schema';
-import type { ExpenseWithRelations } from './types';
+import type { ExpenseWithRelations, User } from './types';
 
 type Db = DrizzleD1Database<typeof schema>;
 
@@ -39,14 +44,20 @@ type ListOptions = {
 	limit?: number;
 };
 
+export type LineEnv = {
+	lineChannelAccessToken?: string;
+	lineUserIdPrimary?: string;
+	lineUserIdSpouse?: string;
+	lineMock?: string;
+};
+
 const expenseSelectFields = {
 	id: expense.id,
 	userId: expense.userId,
 	amount: expense.amount,
 	categoryId: expense.categoryId,
-	payerId: expense.payerId,
-	approvedAt: expense.approvedAt,
-	finalizedAt: expense.finalizedAt,
+	payerUserId: expense.payerUserId,
+	status: expense.status,
 	createdAt: expense.createdAt,
 	category: {
 		id: expenseCategory.id,
@@ -55,10 +66,9 @@ const expenseSelectFields = {
 		createdAt: expenseCategory.createdAt
 	},
 	payer: {
-		id: expensePayer.id,
-		userId: expensePayer.userId,
-		name: expensePayer.name,
-		createdAt: expensePayer.createdAt
+		id: userTable.id,
+		name: userTable.name,
+		email: userTable.email
 	}
 };
 
@@ -67,20 +77,53 @@ async function fetchExpenseWithRelations(db: Db, id: string): Promise<ExpenseWit
 		.select(expenseSelectFields)
 		.from(expense)
 		.innerJoin(expenseCategory, eq(expense.categoryId, expenseCategory.id))
-		.leftJoin(expensePayer, eq(expense.payerId, expensePayer.id))
+		.leftJoin(userTable, eq(expense.payerUserId, userTable.id))
 		.where(eq(expense.id, id))
 		.get();
 	if (!row) throw new AppError('INTERNAL_SERVER_ERROR', 500, 'サーバーエラーが発生しました');
-	return row as ExpenseWithRelations;
+	return {
+		...row,
+		payer: row.payer?.id ? (row.payer as User) : null
+	} as unknown as ExpenseWithRelations;
+}
+
+async function sendLineMessage(
+	lineUserId: string,
+	message: string,
+	lineChannelAccessToken: string
+): Promise<void> {
+	const res = await fetch('https://api.line.me/v2/bot/message/push', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${lineChannelAccessToken}`
+		},
+		body: JSON.stringify({
+			to: lineUserId,
+			messages: [{ type: 'text', text: message }]
+		})
+	});
+	if (!res.ok) {
+		throw new AppError(
+			'BAD_GATEWAY',
+			502,
+			'LINE 通知の送信に失敗したため承認フローを完了できませんでした'
+		);
+	}
+}
+
+function resolvePartnerLineUserId(role: string | null, lineEnv: LineEnv): string | undefined {
+	if (role === 'main') return lineEnv.lineUserIdSpouse;
+	if (role === 'partner') return lineEnv.lineUserIdPrimary;
+	return undefined; // role=null → 通知スキップ（AC-119）
 }
 
 /**
- * 指定月の支出一覧をページネーション付きで取得する。month 未指定時は当月。
- * @ac AC-001, AC-002, AC-013
+ * 指定月の全ユーザーの支出一覧をページネーション付きで取得する。month 未指定時は当月。
+ * @ac AC-001, AC-002, AC-014
  */
 export async function getExpenses(
 	db: Db,
-	userId: string,
 	options: ListOptions = {}
 ): Promise<{
 	items: ExpenseWithRelations[];
@@ -100,7 +143,6 @@ export async function getExpenses(
 	const monthStart = new Date(year, mon - 1, 1);
 	const monthEnd = new Date(year, mon, 1);
 	const monthFilter = and(gte(expense.createdAt, monthStart), lt(expense.createdAt, monthEnd));
-	const userFilter = eq(expense.userId, userId);
 
 	const [stats] = await db
 		.select({
@@ -108,20 +150,23 @@ export async function getExpenses(
 			monthTotal: sql<number>`coalesce(sum(${expense.amount}), 0)`
 		})
 		.from(expense)
-		.where(and(userFilter, monthFilter));
+		.where(monthFilter);
 
 	const rows = await db
 		.select(expenseSelectFields)
 		.from(expense)
 		.innerJoin(expenseCategory, eq(expense.categoryId, expenseCategory.id))
-		.leftJoin(expensePayer, eq(expense.payerId, expensePayer.id))
-		.where(and(userFilter, monthFilter))
+		.leftJoin(userTable, eq(expense.payerUserId, userTable.id))
+		.where(monthFilter)
 		.orderBy(desc(expense.createdAt))
 		.limit(limit)
 		.offset(offset);
 
 	return {
-		items: rows as ExpenseWithRelations[],
+		items: rows.map((r) => ({
+			...r,
+			payer: r.payer?.id ? (r.payer as User) : null
+		})) as unknown as ExpenseWithRelations[],
 		total: Number(stats.total),
 		page,
 		limit,
@@ -130,9 +175,19 @@ export async function getExpenses(
 }
 
 /**
- * 支出を新規作成する。
+ * 全ユーザー一覧を取得する（支払者選択用）。
  * @ac AC-003
- * @throws {NOT_FOUND} - 指定カテゴリまたは支払者が存在しない、または他ユーザーのものの場合
+ */
+export async function getUsers(db: Db): Promise<User[]> {
+	return db
+		.select({ id: userTable.id, name: userTable.name, email: userTable.email })
+		.from(userTable);
+}
+
+/**
+ * 支出を新規作成する。status は unapproved で初期化。
+ * @ac AC-003
+ * @throws {NOT_FOUND} - 指定カテゴリが存在しない場合
  */
 export async function createExpense(
 	db: Db,
@@ -146,13 +201,6 @@ export async function createExpense(
 		.get();
 	if (!category) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 
-	const payer = await db
-		.select()
-		.from(expensePayer)
-		.where(and(eq(expensePayer.id, data.payerId), eq(expensePayer.userId, userId)))
-		.get();
-	if (!payer) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
-
 	const id = crypto.randomUUID();
 	const now = new Date();
 
@@ -161,8 +209,8 @@ export async function createExpense(
 		userId,
 		amount: data.amount,
 		categoryId: data.categoryId,
-		payerId: data.payerId,
-		approvedAt: null,
+		payerUserId: data.payerUserId,
+		status: 'unapproved',
 		createdAt: now
 	});
 
@@ -170,10 +218,11 @@ export async function createExpense(
 }
 
 /**
- * 支出を更新する。承認操作は /approve・/unapprove エンドポイントで行う。
- * @ac AC-006, AC-113
- * @throws {NOT_FOUND} - 該当支出が存在しない場合、または他ユーザーの支出の場合
- * @throws {CONFLICT} - 確定済みの支出の場合
+ * 支出を更新する。pending/approved は変更不可。他ユーザーの支出は変更不可。
+ * @ac AC-006, AC-113, AC-114
+ * @throws {NOT_FOUND} - 該当支出が存在しない場合
+ * @throws {FORBIDDEN} - 他ユーザーの支出の場合
+ * @throws {CONFLICT} - pending/approved の支出の場合
  */
 export async function updateExpense(
 	db: Db,
@@ -181,13 +230,12 @@ export async function updateExpense(
 	id: string,
 	data: ExpenseUpdate
 ): Promise<ExpenseWithRelations> {
-	const existing = await db
-		.select()
-		.from(expense)
-		.where(and(eq(expense.id, id), eq(expense.userId, userId)))
-		.get();
+	const existing = await db.select().from(expense).where(eq(expense.id, id)).get();
 	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
-	if (existing.finalizedAt) throw new AppError('CONFLICT', 409, '確定済みの支出は変更できません');
+	if (existing.userId !== userId)
+		throw new AppError('FORBIDDEN', 403, '他のユーザーの支出は操作できません');
+	if (existing.status === 'pending' || existing.status === 'approved')
+		throw new AppError('CONFLICT', 409, '申請中または承認済みの支出は変更できません');
 
 	const category = await db
 		.select()
@@ -196,137 +244,208 @@ export async function updateExpense(
 		.get();
 	if (!category) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 
-	const payer = await db
-		.select()
-		.from(expensePayer)
-		.where(and(eq(expensePayer.id, data.payerId), eq(expensePayer.userId, userId)))
-		.get();
-	if (!payer) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
-
 	await db
 		.update(expense)
-		.set({
-			amount: data.amount,
-			categoryId: data.categoryId,
-			payerId: data.payerId
-		})
-		.where(and(eq(expense.id, id), eq(expense.userId, userId)));
+		.set({ amount: data.amount, categoryId: data.categoryId, payerUserId: data.payerUserId })
+		.where(eq(expense.id, id));
 
 	return fetchExpenseWithRelations(db, id);
 }
 
 /**
- * 支出を削除する。
- * @ac AC-007, AC-113
- * @throws {NOT_FOUND} - 該当支出が存在しない場合、または他ユーザーの支出の場合
- * @throws {CONFLICT} - 確定済みの支出の場合
+ * 支出を削除する。pending/approved は変更不可。他ユーザーの支出は変更不可。
+ * @ac AC-007, AC-113, AC-114
+ * @throws {NOT_FOUND} - 該当支出が存在しない場合
+ * @throws {FORBIDDEN} - 他ユーザーの支出の場合
+ * @throws {CONFLICT} - pending/approved の支出の場合
  */
 export async function deleteExpense(db: Db, userId: string, id: string): Promise<void> {
-	const existing = await db
-		.select()
-		.from(expense)
-		.where(and(eq(expense.id, id), eq(expense.userId, userId)))
-		.get();
+	const existing = await db.select().from(expense).where(eq(expense.id, id)).get();
 	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
-	if (existing.finalizedAt) throw new AppError('CONFLICT', 409, '確定済みの支出は変更できません');
+	if (existing.userId !== userId)
+		throw new AppError('FORBIDDEN', 403, '他のユーザーの支出は操作できません');
+	if (existing.status === 'pending' || existing.status === 'approved')
+		throw new AppError('CONFLICT', 409, '申請中または承認済みの支出は変更できません');
 
-	await db.delete(expense).where(and(eq(expense.id, id), eq(expense.userId, userId)));
+	await db.delete(expense).where(eq(expense.id, id));
 }
 
 /**
- * 確認済みの支出を確定する（確定後は変更不可）。
- * @ac AC-014
- * @throws {NOT_FOUND} - 該当支出が存在しない場合、または他ユーザーの支出の場合
- * @throws {CONFLICT} - すでに確定済みの場合、または未承認の場合
- */
-export async function finalizeExpense(
-	db: Db,
-	userId: string,
-	id: string
-): Promise<ExpenseWithRelations> {
-	const existing = await db
-		.select()
-		.from(expense)
-		.where(and(eq(expense.id, id), eq(expense.userId, userId)))
-		.get();
-	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
-	if (existing.finalizedAt) throw new AppError('CONFLICT', 409, '確定済みの支出は変更できません');
-	if (!existing.approvedAt)
-		throw new AppError('CONFLICT', 409, '確認済みにしてから確定してください');
-
-	const now = new Date();
-	await db
-		.update(expense)
-		.set({ finalizedAt: now })
-		.where(and(eq(expense.id, id), eq(expense.userId, userId)));
-
-	return fetchExpenseWithRelations(db, id);
-}
-
-/**
- * 未承認の支出を確認済みに更新する。
- * @ac AC-004
+ * 支出を unapproved → checked に更新する。
+ * @ac AC-004, AC-114
  * @throws {NOT_FOUND} - 該当支出が存在しない場合
- * @throws {CONFLICT} - 確定済みの支出の場合
+ * @throws {FORBIDDEN} - 他ユーザーの支出の場合
+ * @throws {CONFLICT} - unapproved 以外の支出の場合
  */
-export async function approveExpense(
+export async function checkExpense(
 	db: Db,
 	userId: string,
 	id: string
 ): Promise<ExpenseWithRelations> {
-	const existing = await db
-		.select()
-		.from(expense)
-		.where(and(eq(expense.id, id), eq(expense.userId, userId)))
-		.get();
+	const existing = await db.select().from(expense).where(eq(expense.id, id)).get();
 	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
-	if (existing.finalizedAt) throw new AppError('CONFLICT', 409, '確定済みの支出は変更できません');
+	if (existing.userId !== userId)
+		throw new AppError('FORBIDDEN', 403, '他のユーザーの支出は操作できません');
+	if (existing.status !== 'unapproved')
+		throw new AppError('CONFLICT', 409, '確認できる状態の支出ではありません');
 
-	const now = new Date();
-	await db
-		.update(expense)
-		.set({ approvedAt: now })
-		.where(and(eq(expense.id, id), eq(expense.userId, userId)));
+	await db.update(expense).set({ status: 'checked' }).where(eq(expense.id, id));
 
 	return fetchExpenseWithRelations(db, id);
 }
 
 /**
- * 確認済みの支出を未承認に戻す。
- * @ac AC-005
+ * 支出を checked → unapproved に戻す。
+ * @ac AC-005, AC-114
  * @throws {NOT_FOUND} - 該当支出が存在しない場合
- * @throws {CONFLICT} - 確定済みの支出の場合
+ * @throws {FORBIDDEN} - 他ユーザーの支出の場合
+ * @throws {CONFLICT} - checked 以外の支出の場合
  */
-export async function unapproveExpense(
+export async function uncheckExpense(
 	db: Db,
 	userId: string,
 	id: string
 ): Promise<ExpenseWithRelations> {
-	const existing = await db
-		.select()
-		.from(expense)
-		.where(and(eq(expense.id, id), eq(expense.userId, userId)))
-		.get();
+	const existing = await db.select().from(expense).where(eq(expense.id, id)).get();
 	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
-	if (existing.finalizedAt) throw new AppError('CONFLICT', 409, '確定済みの支出は変更できません');
+	if (existing.userId !== userId)
+		throw new AppError('FORBIDDEN', 403, '他のユーザーの支出は操作できません');
+	if (existing.status !== 'checked')
+		throw new AppError('CONFLICT', 409, '確認取消できる状態の支出ではありません');
 
-	await db
-		.update(expense)
-		.set({ approvedAt: null })
-		.where(and(eq(expense.id, id), eq(expense.userId, userId)));
+	await db.update(expense).set({ status: 'unapproved' }).where(eq(expense.id, id));
 
 	return fetchExpenseWithRelations(db, id);
 }
 
 /**
- * 全期間の未承認支出件数を取得する（ダッシュボード警告バナー用）。
+ * 自分の checked 支出を一括で pending に変更し、相手に LINE 通知を送信する。
+ * @ac AC-008, AC-115, AC-119, AC-120
+ * @throws {CONFLICT} - checked 支出が 0 件の場合
+ * @throws {BAD_GATEWAY} - LINE API 失敗の場合
+ */
+export async function requestExpenses(
+	db: Db,
+	userId: string,
+	currentUserRole: string | null,
+	lineEnv: LineEnv
+): Promise<{ count: number }> {
+	const checkedExpenses = await db
+		.select({ id: expense.id })
+		.from(expense)
+		.where(and(eq(expense.userId, userId), eq(expense.status, 'checked')));
+
+	if (checkedExpenses.length === 0)
+		throw new AppError('CONFLICT', 409, '確認済みの支出がありません');
+
+	const partnerLineUserId = resolvePartnerLineUserId(currentUserRole, lineEnv);
+	const shouldNotify =
+		partnerLineUserId && lineEnv.lineChannelAccessToken && lineEnv.lineMock !== 'true';
+
+	if (shouldNotify) {
+		// LINE 失敗時はロールバック（AC-120）
+		await db.transaction(async (tx) => {
+			await tx
+				.update(expense)
+				.set({ status: 'pending' })
+				.where(and(eq(expense.userId, userId), eq(expense.status, 'checked')));
+
+			await sendLineMessage(
+				partnerLineUserId!,
+				'承認依頼が届いています。確認してください。',
+				lineEnv.lineChannelAccessToken!
+			);
+		});
+	} else {
+		// role=null / lineUserId 未設定 / MOCK モード → 通知スキップ（AC-119, AC-125）
+		await db
+			.update(expense)
+			.set({ status: 'pending' })
+			.where(and(eq(expense.userId, userId), eq(expense.status, 'checked')));
+	}
+
+	return { count: checkedExpenses.length };
+}
+
+/**
+ * 自分の pending 支出を一括で checked に戻す。
+ * @ac AC-009, AC-116
+ * @throws {CONFLICT} - pending 支出が 0 件の場合
+ */
+export async function cancelExpenses(db: Db, userId: string): Promise<{ count: number }> {
+	const pendingExpenses = await db
+		.select({ id: expense.id })
+		.from(expense)
+		.where(and(eq(expense.userId, userId), eq(expense.status, 'pending')));
+
+	if (pendingExpenses.length === 0) throw new AppError('CONFLICT', 409, '申請中の支出がありません');
+
+	await db
+		.update(expense)
+		.set({ status: 'checked' })
+		.where(and(eq(expense.userId, userId), eq(expense.status, 'pending')));
+
+	return { count: pendingExpenses.length };
+}
+
+/**
+ * 自分以外の pending 支出を一括で approved に変更し、相手に LINE 通知を送信する。
+ * 自分の pending は対象外（AC-010）。
+ * @ac AC-010, AC-118, AC-119, AC-120
+ * @throws {CONFLICT} - 承認対象の pending 支出が 0 件の場合
+ * @throws {BAD_GATEWAY} - LINE API 失敗の場合
+ */
+export async function approveExpenses(
+	db: Db,
+	userId: string,
+	currentUserRole: string | null,
+	lineEnv: LineEnv
+): Promise<{ count: number }> {
+	const pendingExpenses = await db
+		.select({ id: expense.id })
+		.from(expense)
+		.where(and(ne(expense.userId, userId), eq(expense.status, 'pending')));
+
+	if (pendingExpenses.length === 0)
+		throw new AppError('CONFLICT', 409, '承認できる支出がありません');
+
+	const partnerLineUserId = resolvePartnerLineUserId(currentUserRole, lineEnv);
+	const shouldNotify =
+		partnerLineUserId && lineEnv.lineChannelAccessToken && lineEnv.lineMock !== 'true';
+
+	if (shouldNotify) {
+		// LINE 失敗時はロールバック（AC-120）
+		await db.transaction(async (tx) => {
+			await tx
+				.update(expense)
+				.set({ status: 'approved' })
+				.where(and(ne(expense.userId, userId), eq(expense.status, 'pending')));
+
+			await sendLineMessage(
+				partnerLineUserId!,
+				'支出が承認されました。',
+				lineEnv.lineChannelAccessToken!
+			);
+		});
+	} else {
+		await db
+			.update(expense)
+			.set({ status: 'approved' })
+			.where(and(ne(expense.userId, userId), eq(expense.status, 'pending')));
+	}
+
+	return { count: pendingExpenses.length };
+}
+
+/**
+ * 全期間の自分以外の pending 支出件数を取得する（ダッシュボード警告バナー用）。
  * @ac dashboard/AC-008, dashboard/AC-009
  */
 export async function getUnapprovedCount(db: Db, userId: string): Promise<number> {
 	const [{ cnt }] = await db
 		.select({ cnt: sql<number>`count(*)` })
 		.from(expense)
-		.where(and(eq(expense.userId, userId), sql`${expense.approvedAt} IS NULL`));
+		.where(and(ne(expense.userId, userId), eq(expense.status, 'pending')));
 
 	return Number(cnt);
 }
