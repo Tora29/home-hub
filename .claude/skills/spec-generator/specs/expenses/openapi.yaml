@@ -485,6 +485,11 @@ components:
         email:
           type: string
           description: メールアドレス
+        role:
+          type: string
+          enum: [main, partner]
+          nullable: true
+          description: "ロール。'main' | 'partner' | null。パートナー解決に使用"
 
   responses:
     ValidationError:
