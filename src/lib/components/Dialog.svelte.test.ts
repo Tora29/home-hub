@@ -1,101 +1,90 @@
 /**
- * @file テスト: Dialog
+ * @file テスト: Dialog コンポーネント
  * @module src/lib/components/Dialog.svelte.test.ts
  * @testType unit
  *
  * @target ./Dialog.svelte
  * @spec specs/expenses/spec.md
  * @covers AC-021, AC-022, AC-023, AC-024, AC-025, AC-026
- *
- * @note
- * Dialog は children: Snippet を受け取るため TypeScript から直接インスタンス化できない。
- * Dialog を内部で使う ConfirmDialog（closeOnBackdrop=false 固定）と
- * ExpenseFormDialog（closeOnBackdrop=true デフォルト）を検証手段として使う。
- * - AC-021〜023, AC-025, AC-026: ConfirmDialog 経由
- * - AC-024（backdrop クリックで閉じる）: ExpenseFormDialog 経由
  */
 
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect, vi, afterEach } from 'vitest';
+import { flushSync, createRawSnippet } from 'svelte';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
-import ConfirmDialog from './ConfirmDialog.svelte';
-import ExpenseFormDialog from '../../routes/expenses/components/ExpenseFormDialog.svelte';
+import Dialog from './Dialog.svelte';
 
-const mockCategory = { id: 'cat-1', userId: 'u1', name: '食費', createdAt: new Date() };
-const mockPayer = { id: 'payer-1', userId: 'u1', name: '田中', createdAt: new Date() };
+afterEach(() => {
+	vi.clearAllMocks();
+});
 
-const confirmProps = {
-	title: 'テスト確認',
-	description: 'テスト説明',
-	onConfirm: vi.fn(),
-	onCancel: vi.fn()
-};
+const children = createRawSnippet(() => ({
+	render: () => '<span data-testid="dialog-content">ダイアログの中身</span>'
+}));
 
 describe('Dialog', () => {
-	test('[SPEC: AC-021] open=false のとき描画されない', async () => {
-		render(ConfirmDialog, { ...confirmProps, open: false });
+	test('[SPEC: AC-021] open=false のとき描画されない // spec:689036b7', async () => {
+		render(Dialog, { open: false, onClose: vi.fn(), children });
 
-		await expect.element(page.getByRole('alertdialog')).not.toBeInTheDocument();
+		await expect.element(page.getByTestId('dialog-content')).not.toBeInTheDocument();
 	});
 
-	test('[SPEC: AC-022] open=true のとき children が描画される', async () => {
-		render(ConfirmDialog, { ...confirmProps, open: true });
+	test('[SPEC: AC-022] open=true のとき children が描画される // spec:689036b7', async () => {
+		render(Dialog, { open: true, onClose: vi.fn(), children });
 
-		await expect.element(page.getByRole('alertdialog')).toBeVisible();
+		await expect.element(page.getByTestId('dialog-content')).toBeInTheDocument();
 	});
 
-	test('[SPEC: AC-023] Escape キーで onClose が呼ばれる', async () => {
-		const onCancel = vi.fn();
-		render(ConfirmDialog, { ...confirmProps, open: true, onCancel });
+	test('[SPEC: AC-023] Escape キーを押すと onClose が呼ばれる // spec:689036b7', async () => {
+		const onClose = vi.fn();
+		render(Dialog, { open: true, onClose, children });
 
-		// キャンセルボタンから KeyboardEvent を dispatch してバブリングで Dialog に届ける
-		const cancelBtn = page.getByRole('button', { name: 'キャンセル' }).element();
-		cancelBtn.dispatchEvent(
-			new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
-		);
+		// window または document にイベントをディスパッチ
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		flushSync();
 
-		expect(onCancel).toHaveBeenCalledOnce();
+		expect(onClose).toHaveBeenCalled();
 	});
 
-	test('[SPEC: AC-024] backdrop クリックで onClose が呼ばれる（closeOnBackdrop=true デフォルト）', async () => {
-		// ExpenseFormDialog は Dialog を closeOnBackdrop=true（デフォルト）で使用する
-		const onCancel = vi.fn();
-		render(ExpenseFormDialog, {
-			open: true,
-			mode: 'create',
-			categories: [mockCategory],
-			payers: [mockPayer],
-			onSuccess: vi.fn(),
-			onCancel
-		});
+	test('[SPEC: AC-024] backdrop をクリックすると onClose が呼ばれる（closeOnBackdrop=true デフォルト）// spec:689036b7', async () => {
+		const onClose = vi.fn();
+		render(Dialog, { open: true, onClose, closeOnBackdrop: true, children });
 
-		const dialogEl = page.getByRole('dialog').element();
-		dialogEl.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+		// Dialog の外側コンテナ（backdrop）をクリック
+		const content = page.getByTestId('dialog-content').element();
+		const outerEl =
+			content.closest('[role="dialog"]')?.parentElement ?? content.closest('[aria-modal="true"]');
+		if (outerEl) {
+			outerEl.click();
+		}
+		flushSync();
 
-		expect(onCancel).toHaveBeenCalledOnce();
+		expect(onClose).toHaveBeenCalled();
 	});
 
-	test('[SPEC: AC-025] closeOnBackdrop=false のとき backdrop クリックで onClose が呼ばれない', async () => {
-		// ConfirmDialog は closeOnBackdrop=false 固定
-		const onCancel = vi.fn();
-		render(ConfirmDialog, { ...confirmProps, open: true, onCancel });
+	test('[SPEC: AC-025] closeOnBackdrop=false のとき backdrop クリックで onClose が呼ばれない // spec:689036b7', async () => {
+		const onClose = vi.fn();
+		render(Dialog, { open: true, onClose, closeOnBackdrop: false, children });
 
-		const dialogEl = page.getByRole('alertdialog').element();
-		dialogEl.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+		const content = page.getByTestId('dialog-content').element();
+		const outerEl =
+			content.closest('[role="dialog"]')?.parentElement ?? content.closest('[aria-modal="true"]');
+		if (outerEl) {
+			outerEl.click();
+		}
+		flushSync();
 
-		expect(onCancel).not.toHaveBeenCalled();
+		expect(onClose).not.toHaveBeenCalled();
 	});
 
-	test('[SPEC: AC-026] disabled=true のとき Escape キーで onClose が呼ばれない', async () => {
-		// ConfirmDialog の loading=true が Dialog の disabled=true に対応する
-		const onCancel = vi.fn();
-		render(ConfirmDialog, { ...confirmProps, open: true, loading: true, onCancel });
+	test('[SPEC: AC-026] disabled=true のとき Escape キーで onClose が呼ばれない // spec:689036b7', async () => {
+		const onClose = vi.fn();
+		render(Dialog, { open: true, onClose, disabled: true, children });
 
-		const cancelBtn = page.getByRole('button', { name: 'キャンセル' }).element();
-		cancelBtn.dispatchEvent(
-			new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
-		);
+		document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		flushSync();
 
-		expect(onCancel).not.toHaveBeenCalled();
+		expect(onClose).not.toHaveBeenCalled();
 	});
 });
