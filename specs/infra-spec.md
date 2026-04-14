@@ -29,19 +29,32 @@ src/
 │   ├── +page.svelte                 # トップページ
 │   ├── layout.css
 │   └── {feature}/
-│       ├── +page.svelte                          # FE: 画面
-│       ├── +page.svelte.test.ts                  # Unit テスト（画面コンポーネント）
-│       ├── +page.server.ts                       # FE: SSR load / form actions
-│       ├── +page.server.integration.test.ts      # Integration テスト（load 関数・実 D1 使用）
-│       ├── +server.ts                            # BE: API エンドポイント
-│       ├── +server.test.ts                       # Unit テスト（API ハンドラ）
-│       ├── schema.ts                             # FE/BE 共通: Zod スキーマ
-│       ├── schema.test.ts                        # Unit テスト（バリデーションロジック）
-│       ├── service.ts                            # BE: ビジネスロジック・DB 操作
-│       ├── service.integration.test.ts           # Integration テスト（実 D1 使用）
-│       └── components/
-│           ├── {ComponentName}.svelte            # FE: 機能固有コンポーネント
-│           └── {ComponentName}.svelte.test.ts    # Unit テスト（コンポーネント）
+│       ├── (actions)/                                  # アクション系エンドポイント（URL に影響しない・任意）
+│       │   └── {action}/
+│       │       ├── +server.ts
+│       │       └── server.test.ts                      # コロケーション
+│       ├── [id]/                                       # 任意
+│       │   ├── (actions)/
+│       │   │   └── {action}/
+│       │   │       ├── +server.ts
+│       │   │       └── server.test.ts                  # コロケーション
+│       │   ├── +server.ts
+│       │   └── server.test.ts                          # コロケーション
+│       ├── _lib/                                       # ビジネスロジック（SvelteKit ルーター無視）
+│       │   ├── schema.ts                               # FE/BE 共通: Zod スキーマ
+│       │   ├── schema.test.ts                          # Unit テスト（コロケーション）
+│       │   ├── service.ts                              # BE: ビジネスロジック・DB 操作
+│       │   ├── service.integration.test.ts             # Integration テスト（コロケーション）
+│       │   └── types.ts
+│       ├── components/
+│       │   ├── {ComponentName}.svelte                  # FE: 機能固有コンポーネント
+│       │   └── {ComponentName}.svelte.test.ts          # Unit テスト（コンポーネントと同階層）
+│       ├── +page.svelte                                # FE: 画面
+│       ├── +page.server.ts                             # FE: SSR load / form actions
+│       ├── +server.ts                                  # BE: API エンドポイント（一覧・作成）
+│       ├── page.svelte.test.ts                         # Unit テスト（画面コンポーネント）
+│       ├── page.server.integration.test.ts             # Integration テスト（load 関数）
+│       └── server.test.ts                              # Unit テスト（API ハンドラ）
 ├── lib/
 │   ├── server/
 │   │   ├── db.ts                    # DB 接続（createDb）※テスト対象外
@@ -62,9 +75,11 @@ e2e/                                 # E2E テスト（Playwright）
 
 ### コロケーションルール
 
-- `routes/{feature}/schema.ts` ― その機能だけで使う Zod スキーマ
-- `routes/{feature}/service.ts` ― その機能のサービス層（DB 操作を担う）
-- `routes/{feature}/components/` ― その機能専用コンポーネント
+- `routes/{feature}/_lib/schema.ts` ― その機能だけで使う Zod スキーマ（テストは隣に `schema.test.ts`）
+- `routes/{feature}/_lib/service.ts` ― その機能のサービス層（テストは隣に `service.integration.test.ts`）
+- `routes/{feature}/_lib/` ― `_` プレフィックスで SvelteKit ルーターが無視する
+- `routes/{feature}/(actions)/` ― アクション系エンドポイントを URL に影響なくグルーピング
+- `routes/{feature}/components/` ― その機能専用コンポーネント（テストは隣に `.svelte.test.ts`）
 - 複数機能で共有するコンポーネントは `src/lib/components/` へ
 - Drizzle テーブル定義（`src/lib/server/tables.ts`）はアプリ全体で1ファイルに集約
 

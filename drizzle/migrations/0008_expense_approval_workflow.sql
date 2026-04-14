@@ -11,7 +11,7 @@ ALTER TABLE User ADD COLUMN lineUserId TEXT;--> statement-breakpoint
 --    - payerId → payerUserId（FK参照先を ExpensePayer → User に変更）
 --    - status カラム追加（既存データは 'unapproved' または 'approved' にマップ）
 --    - approvedAt・finalizedAt を削除
-PRAGMA foreign_keys=OFF;--> statement-breakpoint
+--    - 既存データの payerId は ExpensePayer ID のため User ID にマップできない → NULL でコピー
 CREATE TABLE `__new_Expense` (
 	`id` TEXT NOT NULL PRIMARY KEY,
 	`userId` TEXT NOT NULL,
@@ -24,13 +24,13 @@ CREATE TABLE `__new_Expense` (
 	FOREIGN KEY (`payerUserId`) REFERENCES `User`(`id`) ON UPDATE no action ON DELETE restrict
 );--> statement-breakpoint
 INSERT INTO `__new_Expense`(`id`, `userId`, `amount`, `categoryId`, `payerUserId`, `status`, `createdAt`)
-SELECT `id`, `userId`, `amount`, `categoryId`, `payerId`,
+SELECT `id`, `userId`, `amount`, `categoryId`,
+	NULL,
 	CASE WHEN `approvedAt` IS NOT NULL THEN 'approved' ELSE 'unapproved' END,
 	`createdAt`
 FROM `Expense`;--> statement-breakpoint
 DROP TABLE `Expense`;--> statement-breakpoint
 ALTER TABLE `__new_Expense` RENAME TO `Expense`;--> statement-breakpoint
-PRAGMA foreign_keys=ON;--> statement-breakpoint
 
 -- 3. ExpensePayer テーブル削除
 DROP TABLE IF EXISTS `ExpensePayer`;

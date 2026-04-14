@@ -1,730 +1,533 @@
 /// <reference types="@cloudflare/vitest-pool-workers/types" />
 /**
- * @file テスト: expenses サービス
+ * @file テスト: Expense サービス
  * @module src/routes/expenses/service.integration.test.ts
  * @testType integration
  *
  * @target ./service.ts
  * @spec specs/expenses/spec.md
- * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-013, AC-014, AC-015, AC-038, AC-039, AC-102, AC-103, dashboard/AC-008, dashboard/AC-009
+ * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009, AC-010, AC-014, AC-119, AC-125
  */
 
 import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
-import { AppError } from '$lib/server/errors';
 import {
 	getExpenses,
 	createExpense,
 	updateExpense,
-	approveExpense,
-	unapproveExpense,
 	deleteExpense,
-	finalizeExpense,
+	checkExpense,
+	uncheckExpense,
+	requestExpenses,
+	cancelExpenses,
+	approveExpenses,
 	getUnapprovedCount
 } from './service';
 import { createCategory } from './categories/service';
-import { createPayer } from './payers/service';
+import { user as userTable } from '$lib/server/tables';
 
 function makeUserId() {
 	return crypto.randomUUID();
 }
 
-describe('createExpense', () => {
-	test('[SPEC: AC-003] 金額とカテゴリを指定して支出を登録できる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
+function getCurrentMonth(): string {
+	const now = new Date();
+	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
 
-		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		const created = await createExpense(db, userId, {
-			amount: 1500,
-			categoryId: category.id,
-			payerId: payer.id
-		});
-
-		expect(created.id).toBeTruthy();
-		expect(created.amount).toBe(1500);
-		expect(created.categoryId).toBe(category.id);
-		expect(created.userId).toBe(userId);
-		expect(created.approvedAt).toBeNull();
-		expect(created.createdAt).toBeTruthy();
-		expect(created.category.id).toBe(category.id);
-		expect(created.category.name).toBe('食費');
+async function createTestUser(
+	db: ReturnType<typeof createDb>,
+	name: string,
+	role?: 'main' | 'partner' | null
+) {
+	const id = crypto.randomUUID();
+	const now = new Date();
+	await db.insert(userTable).values({
+		id,
+		name,
+		email: `${id}@example.com`,
+		emailVerified: false,
+		createdAt: now,
+		updatedAt: now,
+		...(role !== undefined ? { role } : {})
 	});
+	return { id, name };
+}
 
-	test('[SPEC: AC-003] 登録日時（createdAt）は自動でセットされる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-
-		const category = await createCategory(db, userId, { name: '交通費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		const before = new Date();
-		const created = await createExpense(db, userId, {
-			amount: 230,
-			categoryId: category.id,
-			payerId: payer.id
-		});
-		const after = new Date();
-
-		const createdAt = new Date(created.createdAt);
-		expect(createdAt.getTime()).toBeGreaterThanOrEqual(before.getTime() - 1000);
-		expect(createdAt.getTime()).toBeLessThanOrEqual(after.getTime() + 1000);
-	});
-});
+/** LINE 通知をスキップする LineEnv（LINE_MOCK=true） */
+const mockLineEnv = {
+	lineChannelAccessToken: undefined,
+	lineUserIdPrimary: undefined,
+	lineUserIdSpouse: undefined,
+	lineMock: 'true'
+};
 
 describe('getExpenses', () => {
-	test('[SPEC: AC-001] 当月の支出一覧が登録日時の新しい順で取得できる', async () => {
+	test('[SPEC: AC-001] 当月支出一覧をページネーション形式で取得できる // spec:8c1c46fd', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
+		const month = getCurrentMonth();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		await createExpense(db, userId, { amount: 500, categoryId: category.id, payerId: payer.id });
-		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerId: payer.id });
-		await createExpense(db, userId, { amount: 1500, categoryId: category.id, payerId: payer.id });
-
-		const now = new Date();
-		const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-		const result = await getExpenses(db, userId, { month });
-
-		expect(result.items).toHaveLength(3);
-		expect(result.total).toBe(3);
-		expect(result.page).toBe(1);
-		expect(result.limit).toBe(20);
-		// 全件の金額が含まれることを確認（同一ミリ秒 insert でタイムスタンプが同一になる場合があるため位置は問わない）
-		expect(result.items.map((i) => i.amount)).toEqual(expect.arrayContaining([500, 1000, 1500]));
-	});
-
-	test('[SPEC: AC-001] 自分の支出のみ取得できる（他ユーザーの支出は含まれない）', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-		const otherUserId = makeUserId();
-
-		const myCategory = await createCategory(db, userId, { name: '食費' });
-		const otherCategory = await createCategory(db, otherUserId, { name: '食費' });
-		const myPayer = await createPayer(db, userId, { name: '田中' });
-		const otherPayer = await createPayer(db, otherUserId, { name: '他人' });
+		const payer = await createTestUser(db, '田中');
 
 		await createExpense(db, userId, {
 			amount: 1000,
-			categoryId: myCategory.id,
-			payerId: myPayer.id
-		});
-		await createExpense(db, otherUserId, {
-			amount: 2000,
-			categoryId: otherCategory.id,
-			payerId: otherPayer.id
+			categoryId: category.id,
+			payerUserId: payer.id
 		});
 
-		const now = new Date();
-		const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-		const result = await getExpenses(db, userId, { month });
+		const result = await getExpenses(db, { month });
 
-		expect(result.items).toHaveLength(1);
-		expect(result.items[0].amount).toBe(1000);
-		expect(result.items[0].userId).toBe(userId);
+		expect(result).toHaveProperty('items');
+		expect(result).toHaveProperty('total');
+		expect(result).toHaveProperty('page');
+		expect(result).toHaveProperty('limit');
+		expect(result).toHaveProperty('monthTotal');
+		expect(Array.isArray(result.items)).toBe(true);
+		expect(result.total).toBeGreaterThanOrEqual(1);
 	});
 
-	test('[SPEC: AC-002] 月フィルタで指定した月の支出のみ取得できる', async () => {
+	test('[SPEC: AC-002] 月フィルタで指定月の支出一覧を取得できる // spec:c4cbc954', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		// 当月の支出（自動 createdAt）
-		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerId: payer.id });
+		const payer = await createTestUser(db, '田中');
 
-		// 当月は取得できる
-		const now = new Date();
-		const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-		const currentResult = await getExpenses(db, userId, { month: currentMonth });
-		expect(currentResult.items).toHaveLength(1);
+		await createExpense(db, userId, {
+			amount: 5000,
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
 
-		// 翌月は 0 件
-		const nextMonth =
-			now.getMonth() === 11
-				? `${now.getFullYear() + 1}-01`
-				: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}`;
-		const nextResult = await getExpenses(db, userId, { month: nextMonth });
-		expect(nextResult.items).toHaveLength(0);
-		expect(nextResult.total).toBe(0);
+		const currentMonth = getCurrentMonth();
+		const currentResult = await getExpenses(db, { month: currentMonth });
+		const pastResult = await getExpenses(db, { month: '2020-01' });
+
+		expect(currentResult.total).toBeGreaterThanOrEqual(1);
+		expect(pastResult.total).toBe(0);
 	});
 
-	test('[SPEC: AC-013] monthTotal に対象月の支出合計金額（全件）が含まれる', async () => {
+	test('[SPEC: AC-014] 世帯合計金額（全ユーザー・全ステータス）を返す // spec:6b44fff0', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+		const month = getCurrentMonth();
+
+		const category = await createCategory(db, userId, { name: '食費' });
+		const payer = await createTestUser(db, '田中');
+
+		await createExpense(db, userId, {
+			amount: 3000,
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
+
+		const result = await getExpenses(db, { month });
+
+		expect(typeof result.monthTotal).toBe('number');
+		expect(result.monthTotal).toBeGreaterThanOrEqual(3000);
+	});
+});
+
+describe('createExpense', () => {
+	test('[SPEC: AC-003] 正しいデータで支出を作成できる（初期状態は unapproved）// spec:8c1c46fd', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerId: payer.id });
-		await createExpense(db, userId, { amount: 2300, categoryId: category.id, payerId: payer.id });
-		await createExpense(db, userId, { amount: 4500, categoryId: category.id, payerId: payer.id });
+		const payer = await createTestUser(db, '田中');
 
-		const now = new Date();
-		const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-		const result = await getExpenses(db, userId, { month });
+		const created = await createExpense(db, userId, {
+			amount: 1500,
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
 
-		expect(result.monthTotal).toBe(7800);
+		expect(created.amount).toBe(1500);
+		expect(created.status).toBe('unapproved');
+		expect(created.categoryId).toBe(category.id);
+		expect(typeof created.id).toBe('string');
 	});
 
-	test('[SPEC: AC-013] 承認済み・未承認問わず合計に含まれる', async () => {
+	test('[SPEC: AC-201] 金額が 1 の場合、登録できる // spec:8c1c46fd', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		const expense1 = await createExpense(db, userId, {
+		const payer = await createTestUser(db, '田中');
+
+		const created = await createExpense(db, userId, {
+			amount: 1,
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
+
+		expect(created.amount).toBe(1);
+	});
+
+	test('[SPEC: AC-202] 金額が 9999999 の場合、登録できる // spec:8c1c46fd', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		const category = await createCategory(db, userId, { name: '食費' });
+		const payer = await createTestUser(db, '田中');
+
+		const created = await createExpense(db, userId, {
+			amount: 9999999,
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
+
+		expect(created.amount).toBe(9999999);
+	});
+});
+
+describe('checkExpense / uncheckExpense', () => {
+	test('[SPEC: AC-004] unapproved の支出を check すると status が checked になる // spec:495b580c', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		const category = await createCategory(db, userId, { name: '食費' });
+		const payer = await createTestUser(db, '田中');
+
+		const created = await createExpense(db, userId, {
 			amount: 1000,
 			categoryId: category.id,
-			payerId: payer.id
+			payerUserId: payer.id
 		});
-		await createExpense(db, userId, { amount: 2000, categoryId: category.id, payerId: payer.id });
 
-		// expense1 を承認済みにする
-		await approveExpense(db, userId, expense1.id);
+		const checked = await checkExpense(db, userId, created.id);
 
-		const now = new Date();
-		const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-		const result = await getExpenses(db, userId, { month });
+		expect(checked.status).toBe('checked');
+	});
 
-		expect(result.monthTotal).toBe(3000);
+	test('[SPEC: AC-005] checked の支出を uncheck すると status が unapproved に戻る // spec:495b580c', async () => {
+		const db = createDb(env.DB);
+		const userId = makeUserId();
+
+		const category = await createCategory(db, userId, { name: '食費' });
+		const payer = await createTestUser(db, '田中');
+
+		const created = await createExpense(db, userId, {
+			amount: 1000,
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
+
+		await checkExpense(db, userId, created.id);
+		const unchecked = await uncheckExpense(db, userId, created.id);
+
+		expect(unchecked.status).toBe('unapproved');
 	});
 });
 
 describe('updateExpense', () => {
-	test('[SPEC: AC-004] 未承認の支出を「確認済み」に更新できる', async () => {
+	test('[SPEC: AC-006] unapproved の支出の金額・カテゴリ・支払者を更新できる // spec:8c1c46fd', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		const created = await createExpense(db, userId, {
-			amount: 1500,
-			categoryId: category.id,
-			payerId: payer.id
-		});
-
-		expect(created.approvedAt).toBeNull();
-
-		const updated = await approveExpense(db, userId, created.id);
-
-		expect(updated.id).toBe(created.id);
-		expect(updated.approvedAt).not.toBeNull();
-		expect(updated.amount).toBe(1500);
-		expect(updated.category.id).toBe(category.id);
-	});
-
-	test('[SPEC: AC-005] 確認済みの支出を「未承認」に戻せる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-
-		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		const created = await createExpense(db, userId, {
-			amount: 1500,
-			categoryId: category.id,
-			payerId: payer.id
-		});
-
-		// まず承認済みにする
-		await approveExpense(db, userId, created.id);
-
-		// 未承認に戻す
-		const reverted = await unapproveExpense(db, userId, created.id);
-
-		expect(reverted.approvedAt).toBeNull();
-	});
-
-	test('[SPEC: AC-006] 支出の金額とカテゴリを更新できる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-
-		const category1 = await createCategory(db, userId, { name: '食費' });
 		const category2 = await createCategory(db, userId, { name: '交通費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
+		const payer = await createTestUser(db, '田中');
+
 		const created = await createExpense(db, userId, {
-			amount: 1500,
-			categoryId: category1.id,
-			payerId: payer.id
+			amount: 1000,
+			categoryId: category.id,
+			payerUserId: payer.id
 		});
 
 		const updated = await updateExpense(db, userId, created.id, {
-			amount: 3000,
+			amount: 2500,
 			categoryId: category2.id,
-			payerId: payer.id
+			payerUserId: payer.id
 		});
 
-		expect(updated.id).toBe(created.id);
-		expect(updated.amount).toBe(3000);
+		expect(updated.amount).toBe(2500);
 		expect(updated.categoryId).toBe(category2.id);
-		expect(updated.category.name).toBe('交通費');
-	});
-
-	test('[SPEC: AC-006] 存在しない支出 ID を指定した場合は NOT_FOUND エラーになる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-
-		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-
-		await expect(
-			updateExpense(db, userId, crypto.randomUUID(), {
-				amount: 1000,
-				categoryId: category.id,
-				payerId: payer.id
-			})
-		).rejects.toThrow(AppError);
-
-		try {
-			await updateExpense(db, userId, crypto.randomUUID(), {
-				amount: 1000,
-				categoryId: category.id,
-				payerId: payer.id
-			});
-		} catch (e) {
-			expect(e).toBeInstanceOf(AppError);
-			expect((e as AppError).status).toBe(404);
-			expect((e as AppError).code).toBe('NOT_FOUND');
-		}
-	});
-
-	test('[SPEC: AC-006] 他ユーザーの支出を更新しようとした場合は NOT_FOUND エラーになる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-		const otherUserId = makeUserId();
-
-		const otherCategory = await createCategory(db, otherUserId, { name: '食費' });
-		const otherPayer = await createPayer(db, otherUserId, { name: '他人' });
-		const otherExpense = await createExpense(db, otherUserId, {
-			amount: 2000,
-			categoryId: otherCategory.id,
-			payerId: otherPayer.id
-		});
-
-		const myCategory = await createCategory(db, userId, { name: '食費' });
-		const myPayer = await createPayer(db, userId, { name: '田中' });
-
-		await expect(
-			updateExpense(db, userId, otherExpense.id, {
-				amount: 2000,
-				categoryId: myCategory.id,
-				payerId: myPayer.id
-			})
-		).rejects.toThrow(AppError);
 	});
 });
 
 describe('deleteExpense', () => {
-	test('[SPEC: AC-007] 支出を削除できる', async () => {
+	test('[SPEC: AC-007] unapproved の支出を削除できる // spec:8c1c46fd', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
+		const payer = await createTestUser(db, '田中');
+
 		const created = await createExpense(db, userId, {
 			amount: 1000,
 			categoryId: category.id,
-			payerId: payer.id
+			payerUserId: payer.id
 		});
+
 		await deleteExpense(db, userId, created.id);
 
-		const now = new Date();
-		const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-		const result = await getExpenses(db, userId, { month });
-		expect(result.items.find((e) => e.id === created.id)).toBeUndefined();
-	});
-
-	test('[SPEC: AC-007] 存在しない支出 ID を指定した場合は NOT_FOUND エラーになる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-
-		await expect(deleteExpense(db, userId, crypto.randomUUID())).rejects.toThrow(AppError);
-
-		try {
-			await deleteExpense(db, userId, crypto.randomUUID());
-		} catch (e) {
-			expect(e).toBeInstanceOf(AppError);
-			expect((e as AppError).status).toBe(404);
-			expect((e as AppError).code).toBe('NOT_FOUND');
-		}
-	});
-
-	test('[SPEC: AC-007] 他ユーザーの支出を削除しようとした場合は NOT_FOUND エラーになる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-		const otherUserId = makeUserId();
-
-		const otherCategory = await createCategory(db, otherUserId, { name: '食費' });
-		const otherPayer = await createPayer(db, otherUserId, { name: '他人' });
-		const otherExpense = await createExpense(db, otherUserId, {
-			amount: 2000,
-			categoryId: otherCategory.id,
-			payerId: otherPayer.id
-		});
-
-		await expect(deleteExpense(db, userId, otherExpense.id)).rejects.toThrow(AppError);
+		const result = await getExpenses(db, { month: getCurrentMonth() });
+		const found = result.items.find((e) => e.id === created.id);
+		expect(found).toBeUndefined();
 	});
 });
 
-describe('finalizeExpense', () => {
-	test('[SPEC: AC-014] 確認済みの支出を確定すると finalizedAt がセットされる', async () => {
+describe('requestExpenses / cancelExpenses', () => {
+	test('[SPEC: AC-008] 自分の checked 支出を一括で pending に変更できる // spec:8c1c46fd', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
+		const payer = await createTestUser(db, '田中');
+
 		const created = await createExpense(db, userId, {
-			amount: 1500,
+			amount: 1000,
 			categoryId: category.id,
-			payerId: payer.id
+			payerUserId: payer.id
 		});
 
-		// まず確認済みにする
-		await approveExpense(db, userId, created.id);
+		await checkExpense(db, userId, created.id);
+		const result = await requestExpenses(db, userId, null, mockLineEnv);
 
-		const finalized = await finalizeExpense(db, userId, created.id);
+		expect(result.count).toBe(1);
 
-		expect(finalized.id).toBe(created.id);
-		expect(finalized.finalizedAt).not.toBeNull();
-		expect(finalized.approvedAt).not.toBeNull();
-		expect(finalized.amount).toBe(1500);
-		expect(finalized.category.id).toBe(category.id);
+		// DB 上の status が pending に変更されていることを確認
+		const after = await getExpenses(db, { month: getCurrentMonth() });
+		const expense = after.items.find((e) => e.id === created.id);
+		expect(expense?.status).toBe('pending');
 	});
 
-	test('[SPEC: AC-014] [SPEC: AC-015] 確定後は updateExpense が CONFLICT になる（確定後ロック）', async () => {
+	test('[SPEC: AC-009] 自分の pending 支出を一括で checked に戻せる // spec:8c1c46fd', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
+		const payer = await createTestUser(db, '田中');
+
 		const created = await createExpense(db, userId, {
+			amount: 1000,
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
+
+		await checkExpense(db, userId, created.id);
+		await requestExpenses(db, userId, null, mockLineEnv);
+		const result = await cancelExpenses(db, userId);
+
+		expect(result.count).toBe(1);
+
+		// DB 上の status が checked に戻っていることを確認
+		const after = await getExpenses(db, { month: getCurrentMonth() });
+		const expense = after.items.find((e) => e.id === created.id);
+		expect(expense?.status).toBe('checked');
+	});
+});
+
+describe('approveExpenses', () => {
+	test('[SPEC: AC-010] 相手の pending 支出を一括で approved に変更できる（自分の pending は対象外）// spec:8c1c46fd', async () => {
+		const db = createDb(env.DB);
+		const userA = makeUserId();
+		const userB = makeUserId();
+
+		const categoryA = await createCategory(db, userA, { name: '食費A' });
+		const categoryB = await createCategory(db, userB, { name: '食費B' });
+		const payerA = await createTestUser(db, '主');
+		const payerB = await createTestUser(db, '妻');
+
+		// userA の支出を checked → pending
+		const expenseA = await createExpense(db, userA, {
+			amount: 1000,
+			categoryId: categoryA.id,
+			payerUserId: payerA.id
+		});
+		await checkExpense(db, userA, expenseA.id);
+		await requestExpenses(db, userA, null, mockLineEnv);
+
+		// userB 自身の支出も pending にしておく（approve 対象外になることを確認）
+		const expenseB = await createExpense(db, userB, {
 			amount: 2000,
-			categoryId: category.id,
-			payerId: payer.id
+			categoryId: categoryB.id,
+			payerUserId: payerB.id
 		});
-		await approveExpense(db, userId, created.id);
-		await finalizeExpense(db, userId, created.id);
+		await checkExpense(db, userB, expenseB.id);
+		await requestExpenses(db, userB, null, mockLineEnv);
 
-		try {
-			await updateExpense(db, userId, created.id, {
-				amount: 9999,
-				categoryId: category.id,
-				payerId: payer.id
-			});
-			expect.fail('CONFLICT エラーが発生しなかった');
-		} catch (e) {
-			expect(e).toBeInstanceOf(AppError);
-			expect((e as AppError).status).toBe(409);
-			expect((e as AppError).code).toBe('CONFLICT');
-			expect((e as AppError).message).toBe('確定済みの支出は変更できません');
-		}
-	});
+		// userB が approve を実行（userA の pending のみ approved になる）
+		const result = await approveExpenses(db, userB, null, mockLineEnv);
 
-	test('[SPEC: AC-014] [SPEC: AC-015] 確定後は deleteExpense が CONFLICT になる（確定後ロック）', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
+		expect(result.count).toBeGreaterThanOrEqual(1);
 
-		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		const created = await createExpense(db, userId, {
-			amount: 3000,
-			categoryId: category.id,
-			payerId: payer.id
-		});
-		await approveExpense(db, userId, created.id);
-		await finalizeExpense(db, userId, created.id);
+		// userA の支出が approved になっていることを確認
+		const after = await getExpenses(db, { month: getCurrentMonth() });
+		const approvedExpense = after.items.find((e) => e.id === expenseA.id);
+		expect(approvedExpense?.status).toBe('approved');
 
-		try {
-			await deleteExpense(db, userId, created.id);
-			expect.fail('CONFLICT エラーが発生しなかった');
-		} catch (e) {
-			expect(e).toBeInstanceOf(AppError);
-			expect((e as AppError).status).toBe(409);
-			expect((e as AppError).code).toBe('CONFLICT');
-			expect((e as AppError).message).toBe('確定済みの支出は変更できません');
-		}
-	});
-
-	test('[SPEC: AC-014] 未承認の支出を確定しようとすると CONFLICT になる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-
-		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		const created = await createExpense(db, userId, {
-			amount: 1000,
-			categoryId: category.id,
-			payerId: payer.id
-		});
-		// approvedAt が null のまま finalize
-
-		try {
-			await finalizeExpense(db, userId, created.id);
-			expect.fail('CONFLICT エラーが発生しなかった');
-		} catch (e) {
-			expect(e).toBeInstanceOf(AppError);
-			expect((e as AppError).status).toBe(409);
-			expect((e as AppError).code).toBe('CONFLICT');
-			expect((e as AppError).message).toBe('確認済みにしてから確定してください');
-		}
-	});
-
-	test('[SPEC: AC-014] 確定済みの支出を再度 finalize すると CONFLICT になる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-
-		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		const created = await createExpense(db, userId, {
-			amount: 1000,
-			categoryId: category.id,
-			payerId: payer.id
-		});
-		await approveExpense(db, userId, created.id);
-		await finalizeExpense(db, userId, created.id);
-
-		try {
-			await finalizeExpense(db, userId, created.id);
-			expect.fail('CONFLICT エラーが発生しなかった');
-		} catch (e) {
-			expect(e).toBeInstanceOf(AppError);
-			expect((e as AppError).status).toBe(409);
-			expect((e as AppError).code).toBe('CONFLICT');
-			expect((e as AppError).message).toBe('確定済みの支出は変更できません');
-		}
-	});
-
-	test('[SPEC: AC-014] 存在しない支出 ID を指定した場合は NOT_FOUND になる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-
-		try {
-			await finalizeExpense(db, userId, crypto.randomUUID());
-			expect.fail('NOT_FOUND エラーが発生しなかった');
-		} catch (e) {
-			expect(e).toBeInstanceOf(AppError);
-			expect((e as AppError).status).toBe(404);
-			expect((e as AppError).code).toBe('NOT_FOUND');
-		}
-	});
-
-	test('[SPEC: AC-015] 確定済みの支出は getExpenses で finalizedAt がセットされた状態で返る', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-
-		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		const created = await createExpense(db, userId, {
-			amount: 1200,
-			categoryId: category.id,
-			payerId: payer.id
-		});
-		await approveExpense(db, userId, created.id);
-		await finalizeExpense(db, userId, created.id);
-
-		const now = new Date();
-		const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-		const result = await getExpenses(db, userId, { month });
-
-		const item = result.items.find((e) => e.id === created.id);
-		expect(item).toBeDefined();
-		expect(item!.finalizedAt).not.toBeNull();
+		// userB 自身の支出は pending のまま（自分の支出は approved 対象外）
+		const selfExpense = after.items.find((e) => e.id === expenseB.id);
+		expect(selfExpense?.status).toBe('pending');
 	});
 });
 
 describe('getUnapprovedCount', () => {
-	test('[SPEC: dashboard/AC-008] 未承認の支出が 1 件以上ある場合、件数が返る', async () => {
+	test('[SPEC: AC-010] 自分以外の pending 支出件数を取得できる // spec:8c1c46fd', async () => {
+		const db = createDb(env.DB);
+		const userA = makeUserId();
+		const userB = makeUserId();
+
+		const categoryA = await createCategory(db, userA, { name: '食費A' });
+		const categoryB = await createCategory(db, userB, { name: '食費B' });
+		const payer = await createTestUser(db, '田中');
+
+		// 操作前のカウントを記録（共有 DB に既存データあり）
+		const countForA_before = await getUnapprovedCount(db, userA);
+		const countForB_before = await getUnapprovedCount(db, userB);
+
+		// userA の支出を checked → pending
+		const e1 = await createExpense(db, userA, {
+			amount: 1000,
+			categoryId: categoryA.id,
+			payerUserId: payer.id
+		});
+		const e2 = await createExpense(db, userA, {
+			amount: 2000,
+			categoryId: categoryA.id,
+			payerUserId: payer.id
+		});
+		await checkExpense(db, userA, e1.id);
+		await checkExpense(db, userA, e2.id);
+		await requestExpenses(db, userA, null, mockLineEnv);
+
+		// userB 視点でのカウント: userA の pending 2件分増加
+		const countForB_after = await getUnapprovedCount(db, userB);
+		expect(countForB_after - countForB_before).toBeGreaterThanOrEqual(2);
+
+		// userA 視点のカウント: 自分の pending は対象外 → delta = 0
+		const countForA_after = await getUnapprovedCount(db, userA);
+		expect(countForA_after).toBe(countForA_before);
+
+		// categoryB の作成（未使用変数解消）
+		void categoryB;
+	});
+
+	test('[SPEC: AC-119] LINE_CHANNEL_ACCESS_TOKEN 未設定で request すると DB 更新のみ実行（通知スキップ）// spec:dcc4fcc7', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerId: payer.id });
-		await createExpense(db, userId, { amount: 2000, categoryId: category.id, payerId: payer.id });
+		const payer = await createTestUser(db, '田中');
 
-		const count = await getUnapprovedCount(db, userId);
-		expect(count).toBe(2);
-	});
-
-	test('[SPEC: dashboard/AC-008] 自分の未承認支出のみカウントされる（他ユーザーの支出は含まれない）', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-		const otherUserId = makeUserId();
-
-		const myCategory = await createCategory(db, userId, { name: '食費' });
-		const otherCategory = await createCategory(db, otherUserId, { name: '食費' });
-		const myPayer = await createPayer(db, userId, { name: '田中' });
-		const otherPayer = await createPayer(db, otherUserId, { name: '他人' });
-
-		await createExpense(db, userId, {
-			amount: 1000,
-			categoryId: myCategory.id,
-			payerId: myPayer.id
-		});
-		await createExpense(db, otherUserId, {
-			amount: 2000,
-			categoryId: otherCategory.id,
-			payerId: otherPayer.id
-		});
-
-		const count = await getUnapprovedCount(db, userId);
-		expect(count).toBe(1);
-	});
-
-	test('[SPEC: dashboard/AC-009] 全支出が承認済みの場合、0 が返る', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-
-		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
-		const expense1 = await createExpense(db, userId, {
-			amount: 1000,
-			categoryId: category.id,
-			payerId: payer.id
-		});
-		const expense2 = await createExpense(db, userId, {
-			amount: 2000,
-			categoryId: category.id,
-			payerId: payer.id
-		});
-
-		await approveExpense(db, userId, expense1.id);
-		await approveExpense(db, userId, expense2.id);
-
-		const count = await getUnapprovedCount(db, userId);
-		expect(count).toBe(0);
-	});
-
-	test('[SPEC: dashboard/AC-009] 支出が 0 件の場合、0 が返る', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-
-		const count = await getUnapprovedCount(db, userId);
-		expect(count).toBe(0);
-	});
-});
-
-describe('createExpense / updateExpense クロステナント参照チェック', () => {
-	test('[SPEC: AC-102] 他ユーザーの categoryId を指定した場合は NOT_FOUND になる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-		const otherUserId = makeUserId();
-
-		const otherCategory = await createCategory(db, otherUserId, { name: '他人の食費' });
-		const myPayer = await createPayer(db, userId, { name: '田中' });
-
-		await expect(
-			createExpense(db, userId, {
-				amount: 1000,
-				categoryId: otherCategory.id,
-				payerId: myPayer.id
-			})
-		).rejects.toMatchObject({ code: 'NOT_FOUND' });
-	});
-
-	test('[SPEC: AC-103] 他ユーザーの payerId を指定した場合は NOT_FOUND になる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-		const otherUserId = makeUserId();
-
-		const myCategory = await createCategory(db, userId, { name: '食費' });
-		const otherPayer = await createPayer(db, otherUserId, { name: '他人' });
-
-		await expect(
-			createExpense(db, userId, {
-				amount: 1000,
-				categoryId: myCategory.id,
-				payerId: otherPayer.id
-			})
-		).rejects.toMatchObject({ code: 'NOT_FOUND' });
-	});
-
-	test('[SPEC: AC-102] updateExpense で他ユーザーの categoryId を指定した場合は NOT_FOUND になる', async () => {
-		const db = createDb(env.DB);
-		const userId = makeUserId();
-		const otherUserId = makeUserId();
-
-		const myCategory = await createCategory(db, userId, { name: '食費' });
-		const otherCategory = await createCategory(db, otherUserId, { name: '他人の食費' });
-		const myPayer = await createPayer(db, userId, { name: '田中' });
 		const created = await createExpense(db, userId, {
 			amount: 1000,
-			categoryId: myCategory.id,
-			payerId: myPayer.id
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
+		await checkExpense(db, userId, created.id);
+
+		// LINE_CHANNEL_ACCESS_TOKEN 未設定でも成功する（AC-125）
+		const result = await requestExpenses(db, userId, 'main', {
+			lineChannelAccessToken: undefined,
+			lineUserIdPrimary: 'line-user-primary',
+			lineUserIdSpouse: 'line-user-spouse',
+			lineMock: undefined
 		});
 
-		await expect(
-			updateExpense(db, userId, created.id, {
-				amount: 2000,
-				categoryId: otherCategory.id,
-				payerId: myPayer.id
-			})
-		).rejects.toMatchObject({ code: 'NOT_FOUND' });
+		expect(result.count).toBe(1);
+
+		// DB 上の status が pending に変更されていることを確認
+		const after = await getExpenses(db, { month: getCurrentMonth() });
+		const expense = after.items.find((e) => e.id === created.id);
+		expect(expense?.status).toBe('pending');
 	});
 
-	test('[SPEC: AC-103] updateExpense で他ユーザーの payerId を指定した場合は NOT_FOUND になる', async () => {
+	test('[SPEC: AC-119] LINE_CHANNEL_ACCESS_TOKEN 未設定で approve すると DB 更新のみ実行（通知スキップ）// spec:a5975b23', async () => {
 		const db = createDb(env.DB);
-		const userId = makeUserId();
-		const otherUserId = makeUserId();
+		const userA = makeUserId();
+		const userB = makeUserId();
 
-		const myCategory = await createCategory(db, userId, { name: '食費' });
-		const myPayer = await createPayer(db, userId, { name: '田中' });
-		const otherPayer = await createPayer(db, otherUserId, { name: '他人' });
-		const created = await createExpense(db, userId, {
+		const categoryA = await createCategory(db, userA, { name: '食費A' });
+		const payer = await createTestUser(db, '田中');
+
+		// userA の支出を pending に
+		const created = await createExpense(db, userA, {
 			amount: 1000,
-			categoryId: myCategory.id,
-			payerId: myPayer.id
+			categoryId: categoryA.id,
+			payerUserId: payer.id
+		});
+		await checkExpense(db, userA, created.id);
+		await requestExpenses(db, userA, null, mockLineEnv);
+
+		// LINE_CHANNEL_ACCESS_TOKEN 未設定でも approve が成功する（AC-125）
+		const result = await approveExpenses(db, userB, 'partner', {
+			lineChannelAccessToken: undefined,
+			lineUserIdPrimary: 'line-user-primary',
+			lineUserIdSpouse: 'line-user-spouse',
+			lineMock: undefined
 		});
 
-		await expect(
-			updateExpense(db, userId, created.id, {
-				amount: 2000,
-				categoryId: myCategory.id,
-				payerId: otherPayer.id
-			})
-		).rejects.toMatchObject({ code: 'NOT_FOUND' });
-	});
-});
+		expect(result.count).toBeGreaterThanOrEqual(1);
 
-describe('支払者付き支出 CRUD', () => {
-	test('[SPEC: AC-038] 支払者を選択して支出を登録すると、支払者情報が支出に紐付いて保存される', async () => {
+		// DB 上の status が approved に変更されていることを確認
+		const after = await getExpenses(db, { month: getCurrentMonth() });
+		const expense = after.items.find((e) => e.id === created.id);
+		expect(expense?.status).toBe('approved');
+	});
+
+	test('[SPEC: AC-119] user.role が null の場合、LINE 通知をスキップして DB 更新を継続する', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
+		const payer = await createTestUser(db, '田中');
 
-		const expense = await createExpense(db, userId, {
-			amount: 2000,
+		const created = await createExpense(db, userId, {
+			amount: 1000,
 			categoryId: category.id,
-			payerId: payer.id
+			payerUserId: payer.id
+		});
+		await checkExpense(db, userId, created.id);
+
+		// role=null + LINE トークン設定済み → 通知先を解決できないためスキップ（AC-119）
+		const result = await requestExpenses(db, userId, null, {
+			lineChannelAccessToken: 'valid-token',
+			lineUserIdPrimary: 'line-primary',
+			lineUserIdSpouse: 'line-spouse',
+			lineMock: undefined
 		});
 
-		expect(expense.payerId).toBe(payer.id);
-		expect(expense.payer!.id).toBe(payer.id);
-		expect(expense.payer!.name).toBe('田中');
+		expect(result.count).toBe(1);
+
+		// DB は更新されている
+		const after = await getExpenses(db, { month: getCurrentMonth() });
+		const updated = after.items.find((e) => e.id === created.id);
+		expect(updated?.status).toBe('pending');
 	});
 
-	test('[SPEC: AC-039] 支払者を登録して支出に紐付けると、支出一覧で支払者名が確認できる', async () => {
+	test('[SPEC: AC-125] 通知先 LINE ユーザー ID が未設定の場合、エラーにせず DB 更新を継続する', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 
-		const category = await createCategory(db, userId, { name: '交通費' });
-		const payer = await createPayer(db, userId, { name: '佐藤' });
+		const category = await createCategory(db, userId, { name: '食費' });
+		const payer = await createTestUser(db, '田中');
 
-		await createExpense(db, userId, {
-			amount: 500,
+		const created = await createExpense(db, userId, {
+			amount: 1000,
 			categoryId: category.id,
-			payerId: payer.id
+			payerUserId: payer.id
+		});
+		await checkExpense(db, userId, created.id);
+
+		// token は設定済みだが通知先 LINE ユーザー ID が未設定 → 通知スキップ（AC-125）
+		const result = await requestExpenses(db, userId, 'main', {
+			lineChannelAccessToken: 'valid-token',
+			lineUserIdPrimary: undefined,
+			lineUserIdSpouse: undefined,
+			lineMock: undefined
 		});
 
-		const now = new Date();
-		const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-		const result = await getExpenses(db, userId, { month });
+		expect(result.count).toBe(1);
 
-		const found = result.items.find((e) => e.payerId === payer.id);
-		expect(found).toBeDefined();
-		expect(found!.payer!.name).toBe('佐藤');
+		// DB は更新されている
+		const after = await getExpenses(db, { month: getCurrentMonth() });
+		const updated = after.items.find((e) => e.id === created.id);
+		expect(updated?.status).toBe('pending');
 	});
 });

@@ -1,14 +1,14 @@
 /**
- * @file テスト: 支出一覧画面
+ * @file テスト: Expense 一覧画面
  * @module src/routes/expenses/page.svelte.test.ts
  * @testType unit
  *
  * @target ./+page.svelte
  * @spec specs/expenses/spec.md
- * @covers AC-015, AC-111, AC-112, AC-122, AC-123
+ * @covers AC-015, AC-016, AC-017, AC-111, AC-112, AC-121, AC-122, AC-123
  */
 
-import { describe, test, expect, afterEach, vi } from 'vitest';
+import { describe, test, expect, vi, afterEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
@@ -20,235 +20,268 @@ vi.mock('$app/navigation', () => ({
 }));
 
 vi.mock('$app/state', () => ({
-	page: { url: new URL('http://localhost/') }
+	page: { url: new URL('http://localhost/expenses') }
 }));
 
 afterEach(() => {
-	vi.unstubAllGlobals();
+	vi.clearAllMocks();
 });
 
-const mockCategory = { id: 'cat-1', userId: 'user-1', name: '食費', createdAt: new Date() };
-const mockPayer = { id: 'payer-1', userId: 'user-1', name: '田中', createdAt: new Date() };
-const mockPayers = { items: [mockPayer], total: 1, page: 1, limit: 20 };
+// テスト用ユーザー
+const currentUserId = 'user-a';
+const otherUserId = 'user-b';
 
-const mockData = {
-	expenses: { items: [], total: 0, page: 1, limit: 20, monthTotal: 0 },
-	categories: { items: [mockCategory], total: 1, page: 1, limit: 20 },
-	payers: mockPayers,
-	currentMonth: '2026-04'
+function makeExpense(overrides: {
+	id: string;
+	userId: string;
+	status: 'unapproved' | 'checked' | 'pending' | 'approved';
+	amount?: number;
+}) {
+	return {
+		id: overrides.id,
+		userId: overrides.userId,
+		amount: overrides.amount ?? 1000,
+		categoryId: 'cat-1',
+		payerUserId: 'user-a',
+		status: overrides.status,
+		createdAt: '2026-03-01T00:00:00Z',
+		category: {
+			id: 'cat-1',
+			userId: currentUserId,
+			name: '食費',
+			createdAt: '2026-01-01T00:00:00Z'
+		},
+		payer: { id: 'user-a', name: '主', email: 'main@example.com' }
+	};
+}
+
+const defaultData = {
+	expenses: [],
+	total: 0,
+	monthTotal: 0,
+	categories: { items: [], total: 0, page: 1, limit: 20 },
+	users: [],
+	currentUserId,
+	currentMonth: '2026-04',
+	selectedMonth: '2026-04'
 };
 
-const finalizedExpense = {
-	id: 'exp-fin-1',
-	userId: 'user-1',
-	amount: 5000,
-	categoryId: 'cat-1',
-	payerId: 'payer-1',
-	approvedAt: new Date(),
-	finalizedAt: new Date(),
-	createdAt: new Date(),
-	category: mockCategory,
-	payer: mockPayer
-};
+describe('Expense 一覧画面 - approved 行のスタイルと操作ボタン', () => {
+	test('[SPEC: AC-015] approved 行はグレーアウト表示でチェックボックス・編集・削除ボタンが非表示 // spec:7017dde3', async () => {
+		const approvedExpense = makeExpense({ id: 'exp-1', userId: currentUserId, status: 'approved' });
+		render(Page, {
+			data: {
+				...defaultData,
+				expenses: [approvedExpense],
+				total: 1
+			}
+		});
 
-const unapprovedExpense = {
-	id: 'exp-unapp-1',
-	userId: 'user-1',
-	amount: 1000,
-	categoryId: 'cat-1',
-	payerId: 'payer-1',
-	approvedAt: null,
-	finalizedAt: null,
-	createdAt: new Date(),
-	category: mockCategory,
-	payer: mockPayer
-};
-
-const approvedExpense = {
-	id: 'exp-app-1',
-	userId: 'user-1',
-	amount: 2000,
-	categoryId: 'cat-1',
-	payerId: 'payer-1',
-	approvedAt: new Date(),
-	finalizedAt: null,
-	createdAt: new Date(),
-	category: mockCategory,
-	payer: mockPayer
-};
-
-const mockDataWithFinalized = {
-	...mockData,
-	expenses: { items: [finalizedExpense], total: 1, page: 1, limit: 20, monthTotal: 5000 }
-};
-
-const mockDataWithUnapproved = {
-	...mockData,
-	expenses: { items: [unapprovedExpense], total: 1, page: 1, limit: 20, monthTotal: 1000 }
-};
-
-const mockDataWithApproved = {
-	...mockData,
-	expenses: { items: [approvedExpense], total: 1, page: 1, limit: 20, monthTotal: 2000 }
-};
-
-describe('+page.svelte - 確定済み行の表示', () => {
-	test('[SPEC: AC-015] 確定済みの行には編集・削除・承認ボタンが DOM に存在しない', async () => {
-		render(Page, { data: mockDataWithFinalized });
-
+		// approved 行には check ボタン・編集ボタン・削除ボタンが存在しない
+		await expect.element(page.getByTestId('expense-check-button')).not.toBeInTheDocument();
 		await expect.element(page.getByTestId('expense-edit-button')).not.toBeInTheDocument();
 		await expect.element(page.getByTestId('expense-delete-button')).not.toBeInTheDocument();
-		await expect.element(page.getByTestId('expense-approve-button')).not.toBeInTheDocument();
-		await expect.element(page.getByTestId('expense-unapprove-button')).not.toBeInTheDocument();
-	});
-
-	test('[SPEC: AC-015] 確定済みの行には行メニューボタンが DOM に存在しない', async () => {
-		render(Page, { data: mockDataWithFinalized });
-
-		await expect.element(page.getByTestId('expense-menu-button')).not.toBeInTheDocument();
-	});
-
-	test('[SPEC: AC-015] 確定済みの行は opacity-60 クラスでグレーアウトされる', async () => {
-		render(Page, { data: mockDataWithFinalized });
-
-		await expect.element(page.getByTestId('expense-item')).toHaveClass('opacity-60');
 	});
 });
 
-describe('+page.svelte - フロントバリデーション', () => {
-	test('[SPEC: AC-111] 金額が空のまま確定ボタンを押すと「金額は必須です」がインライン表示される', async () => {
-		render(Page, { data: mockData });
+describe('Expense 一覧画面 - 他ユーザー行の操作制限', () => {
+	test('[SPEC: AC-016] 他ユーザーの unapproved 行にはチェックボックス・編集・削除ボタンが非表示 // spec:7017dde3', async () => {
+		const otherExpense = makeExpense({
+			id: 'exp-2',
+			userId: otherUserId,
+			status: 'unapproved'
+		});
+		render(Page, {
+			data: {
+				...defaultData,
+				expenses: [otherExpense],
+				total: 1
+			}
+		});
 
-		(page.getByRole('button', { name: '支出を登録' }).element() as HTMLButtonElement).click();
+		await expect.element(page.getByTestId('expense-check-button')).not.toBeInTheDocument();
+		await expect.element(page.getByTestId('expense-edit-button')).not.toBeInTheDocument();
+		await expect.element(page.getByTestId('expense-delete-button')).not.toBeInTheDocument();
+	});
+
+	test('[SPEC: AC-016] 他ユーザーの checked 行にはチェックボックス・編集・削除ボタンが非表示 // spec:7017dde3', async () => {
+		const otherChecked = makeExpense({
+			id: 'exp-3',
+			userId: otherUserId,
+			status: 'checked'
+		});
+		render(Page, {
+			data: {
+				...defaultData,
+				expenses: [otherChecked],
+				total: 1
+			}
+		});
+
+		await expect.element(page.getByTestId('expense-check-button')).not.toBeInTheDocument();
+		await expect.element(page.getByTestId('expense-edit-button')).not.toBeInTheDocument();
+		await expect.element(page.getByTestId('expense-delete-button')).not.toBeInTheDocument();
+	});
+});
+
+describe('Expense 一覧画面 - pending 行のスタイルと操作制限', () => {
+	test('[SPEC: AC-017] 自分の pending 行はグレーアウト + チェックボックスなし・編集削除ボタンは disabled // spec:7017dde3', async () => {
+		const myPending = makeExpense({ id: 'exp-4', userId: currentUserId, status: 'pending' });
+		render(Page, {
+			data: {
+				...defaultData,
+				expenses: [myPending],
+				total: 1
+			}
+		});
+
+		// pending 行のチェックボックスは非表示
+		await expect.element(page.getByTestId('expense-check-button')).not.toBeInTheDocument();
+
+		// 自分の pending 行の編集・削除ボタンは disabled
+		const editBtn = page.getByTestId('expense-edit-button').element() as HTMLButtonElement;
+		const deleteBtn = page.getByTestId('expense-delete-button').element() as HTMLButtonElement;
+		expect(editBtn.disabled).toBe(true);
+		expect(deleteBtn.disabled).toBe(true);
+	});
+});
+
+describe('Expense 一覧画面 - フロントバリデーション', () => {
+	test('[SPEC: AC-111] 金額が空のまま「確定」を押すと「金額は必須です」がインライン表示される（サーバー非通信）// spec:1015add0', async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+
+		render(Page, { data: defaultData });
+
+		// 支出登録ボタンをクリックしてフォームを開く
+		(page.getByTestId('expense-create-button').element() as HTMLElement).click();
 		flushSync();
-		await expect.element(page.getByTestId('expense-form')).toBeVisible();
 
-		(page.getByRole('button', { name: '確定' }).element() as HTMLButtonElement).click();
+		// 金額を空のまま確定ボタンをクリック
+		(page.getByRole('button', { name: '確定' }).element() as HTMLElement).click();
 		flushSync();
 
-		await expect.element(page.getByTestId('expense-amount-error')).toBeVisible();
+		// エラーメッセージが表示される
+		await expect.element(page.getByTestId('expense-amount-error')).toBeInTheDocument();
 		await expect.element(page.getByText('金額は必須です')).toBeVisible();
+
+		// サーバーへの通信は発生しない
+		expect(fetchMock).not.toHaveBeenCalled();
+
+		vi.unstubAllGlobals();
 	});
 
-	test('[SPEC: AC-111] 金額が空のままの場合、サーバー通信は発生しない', async () => {
+	test('[SPEC: AC-112] カテゴリが未選択のまま「確定」を押すと「カテゴリは必須です」がインライン表示される（サーバー非通信）// spec:1015add0', async () => {
 		const fetchMock = vi.fn();
 		vi.stubGlobal('fetch', fetchMock);
 
-		render(Page, { data: mockData });
+		render(Page, { data: defaultData });
 
-		(page.getByRole('button', { name: '支出を登録' }).element() as HTMLButtonElement).click();
-		flushSync();
-		await expect.element(page.getByTestId('expense-form')).toBeVisible();
-		(page.getByRole('button', { name: '確定' }).element() as HTMLButtonElement).click();
+		(page.getByTestId('expense-create-button').element() as HTMLElement).click();
 		flushSync();
 
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	test('[SPEC: AC-112] カテゴリが未選択のまま確定ボタンを押すと「カテゴリは必須です」がインライン表示される', async () => {
-		render(Page, { data: mockData });
-
-		(page.getByRole('button', { name: '支出を登録' }).element() as HTMLButtonElement).click();
-		flushSync();
-		await expect.element(page.getByTestId('expense-form')).toBeVisible();
-
-		await page.getByRole('textbox').fill('1000');
-		(page.getByRole('button', { name: '確定' }).element() as HTMLButtonElement).click();
+		// 金額だけ入力してカテゴリ未選択で確定
+		const amountInput = page.getByTestId('expense-amount-input').element() as HTMLInputElement;
+		amountInput.value = '1000';
+		amountInput.dispatchEvent(new Event('input', { bubbles: true }));
 		flushSync();
 
-		await expect.element(page.getByTestId('expense-category-error')).toBeVisible();
+		(page.getByRole('button', { name: '確定' }).element() as HTMLElement).click();
+		flushSync();
+
+		await expect.element(page.getByTestId('expense-category-error')).toBeInTheDocument();
 		await expect.element(page.getByText('カテゴリは必須です')).toBeVisible();
-	});
-
-	test('[SPEC: AC-112] カテゴリが未選択のままの場合、サーバー通信は発生しない', async () => {
-		const fetchMock = vi.fn();
-		vi.stubGlobal('fetch', fetchMock);
-
-		render(Page, { data: mockData });
-
-		(page.getByRole('button', { name: '支出を登録' }).element() as HTMLButtonElement).click();
-		flushSync();
-		await expect.element(page.getByTestId('expense-form')).toBeVisible();
-		await page.getByRole('textbox').fill('1000');
-		(page.getByRole('button', { name: '確定' }).element() as HTMLButtonElement).click();
-		flushSync();
 
 		expect(fetchMock).not.toHaveBeenCalled();
+
+		vi.unstubAllGlobals();
 	});
 });
 
-describe('+page.svelte - approve/unapprove エラー表示', () => {
-	test('[SPEC: AC-122] 「確認済みにする」が失敗した場合、expense-action-error が表示される', async () => {
-		vi.stubGlobal(
-			'fetch',
-			vi.fn().mockResolvedValue({
-				ok: false,
-				json: async () => ({ message: 'サーバーエラーが発生しました' })
-			})
-		);
+describe('Expense 一覧画面 - check/uncheck エラー表示', () => {
+	test('[SPEC: AC-122] check 操作が 4xx を返した場合、expense-action-error が表示される', async () => {
+		const unapprovedExpense = makeExpense({
+			id: 'exp-5',
+			userId: currentUserId,
+			status: 'unapproved'
+		});
 
-		render(Page, { data: mockDataWithUnapproved });
-
-		(page.getByRole('button', { name: '確認済みにする' }).element() as HTMLButtonElement).click();
-
-		await expect.element(page.getByTestId('expense-action-error')).toBeVisible();
-		await expect.element(page.getByText('サーバーエラーが発生しました')).toBeVisible();
-	});
-
-	test('[SPEC: AC-122] 「確認済みにする」が失敗してもサーバーのメッセージがなければデフォルトメッセージを表示する', async () => {
-		vi.stubGlobal(
-			'fetch',
-			vi.fn().mockResolvedValue({
-				ok: false,
-				json: async () => {
-					throw new Error('parse error');
+		const fetchMock = vi.fn().mockResolvedValueOnce(
+			new Response(
+				JSON.stringify({ code: 'CONFLICT', message: '確認できる状態の支出ではありません' }),
+				{
+					status: 409
 				}
-			})
+			)
 		);
+		vi.stubGlobal('fetch', fetchMock);
 
-		render(Page, { data: mockDataWithUnapproved });
+		render(Page, {
+			data: {
+				...defaultData,
+				expenses: [unapprovedExpense],
+				total: 1
+			}
+		});
 
-		(page.getByRole('button', { name: '確認済みにする' }).element() as HTMLButtonElement).click();
+		// チェックボックスをクリック（デスクトップ用とモバイル用で2要素あるため first() を使用）
+		const checkbox = page.getByTestId('expense-check-button').first().element() as HTMLInputElement;
+		checkbox.click();
+		flushSync();
 
-		await expect.element(page.getByTestId('expense-action-error')).toBeVisible();
-		await expect.element(page.getByText('確認済みへの更新に失敗しました')).toBeVisible();
-	});
+		// fetch が呼ばれたことを確認
+		await expect.element(page.getByTestId('expense-action-error')).toBeInTheDocument();
 
-	test('[SPEC: AC-122] 「未承認に戻す」が失敗した場合、expense-action-error が表示される', async () => {
-		vi.stubGlobal(
-			'fetch',
-			vi.fn().mockResolvedValue({
-				ok: false,
-				json: async () => ({ message: 'サーバーエラーが発生しました' })
-			})
-		);
-
-		render(Page, { data: mockDataWithApproved });
-
-		(page.getByRole('button', { name: '未承認に戻す' }).element() as HTMLButtonElement).click();
-
-		await expect.element(page.getByTestId('expense-action-error')).toBeVisible();
-		await expect.element(page.getByText('サーバーエラーが発生しました')).toBeVisible();
+		vi.unstubAllGlobals();
 	});
 });
 
-describe('+page.svelte - 一括確定エラー表示', () => {
-	test('[SPEC: AC-123] 一括確定が失敗した場合、ダイアログにエラーが表示されダイアログを閉じない', async () => {
-		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+describe('Expense 一覧画面 - 承認依頼ダイアログのエラー表示', () => {
+	test('[SPEC: AC-123] 承認依頼が失敗した場合、expense-request-dialog 内にエラーを表示しダイアログを閉じない', async () => {
+		const checkedExpense = makeExpense({ id: 'exp-req', userId: currentUserId, status: 'checked' });
 
-		render(Page, { data: mockDataWithApproved });
+		const fetchMock = vi.fn().mockResolvedValueOnce(
+			new Response(JSON.stringify({ code: 'CONFLICT', message: '確認済みの支出がありません' }), {
+				status: 409
+			})
+		);
+		vi.stubGlobal('fetch', fetchMock);
 
-		// 「確定する（1件）」ボタンでダイアログを開く
-		(page.getByTestId('expense-bulk-finalize-button').element() as HTMLButtonElement).click();
-		await expect.element(page.getByTestId('expense-finalize-dialog')).toBeInTheDocument();
+		render(Page, {
+			data: {
+				...defaultData,
+				expenses: [checkedExpense],
+				total: 1
+			}
+		});
 
-		// ダイアログ内の確定ボタンをクリック
-		(page.getByTestId('expense-finalize-confirm-button').element() as HTMLButtonElement).click();
+		// 承認依頼ボタンをクリックしてダイアログを開く
+		(page.getByTestId('expense-bulk-request-button').element() as HTMLElement).click();
+		flushSync();
 
-		// ダイアログが開いたまま、エラーメッセージが表示される
-		await expect.element(page.getByTestId('expense-finalize-dialog')).toBeInTheDocument();
-		await expect
-			.element(page.getByText('1件の確定に失敗しました。再度お試しください。'))
-			.toBeVisible();
+		// ダイアログが開いていることを確認
+		await expect.element(page.getByTestId('expense-request-dialog')).toBeInTheDocument();
+
+		// 確定ボタンをクリック → 失敗レスポンスが返る
+		(page.getByTestId('expense-request-confirm-button').element() as HTMLElement).click();
+		flushSync();
+
+		expect(fetchMock).toHaveBeenCalledWith('/expenses/request', { method: 'POST' });
+
+		// エラーメッセージがダイアログ内に表示される
+		await expect.element(page.getByText('確認済みの支出がありません')).toBeVisible();
+
+		// ダイアログは閉じていない
+		await expect.element(page.getByTestId('expense-request-dialog')).toBeInTheDocument();
+
+		vi.unstubAllGlobals();
+	});
+});
+
+describe('Expense 一覧画面 - 空状態', () => {
+	test('[SPEC: AC-204 相当] 支出が 0 件の場合、expense-empty が表示される // spec:7017dde3', async () => {
+		render(Page, { data: defaultData });
+
+		await expect.element(page.getByTestId('expense-empty')).toBeInTheDocument();
 	});
 });

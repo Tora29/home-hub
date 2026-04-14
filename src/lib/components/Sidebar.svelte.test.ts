@@ -9,6 +9,7 @@
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { flushSync } from 'svelte';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 
@@ -48,7 +49,8 @@ describe('Sidebar', () => {
 			render(Sidebar);
 
 			const mealCategory = page.getByRole('button', { name: '献立系' });
-			await mealCategory.click();
+			mealCategory.element().click();
+			flushSync();
 
 			await expect.element(mealCategory).toHaveAttribute('aria-expanded', 'false');
 		});
