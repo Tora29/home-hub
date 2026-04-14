@@ -24,10 +24,10 @@
 
 このプロジェクトには2種類のスキーマがある。混同しないこと。
 
-| ファイル                         | 種類                           | テスト対象          |
-| -------------------------------- | ------------------------------ | ------------------- |
-| `src/lib/server/tables.ts`       | Drizzle テーブル定義（型宣言） | 対象外              |
-| `src/routes/{feature}/schema.ts` | Zod バリデーションスキーマ     | **Unit テスト対象** |
+| ファイル                              | 種類                           | テスト対象          |
+| ------------------------------------- | ------------------------------ | ------------------- |
+| `src/lib/server/tables.ts`            | Drizzle テーブル定義（型宣言） | 対象外              |
+| `src/routes/{feature}/_lib/schema.ts` | Zod バリデーションスキーマ     | **Unit テスト対象** |
 
 Zod スキーマは純粋関数（`.parse()` / `.safeParse()`）なので D1 不要でユニットテストが書ける。
 
@@ -53,28 +53,48 @@ Zod スキーマは純粋関数（`.parse()` / `.safeParse()`）なので D1 不
 
 `specs/infra-spec.md` のディレクトリ構成に従う。
 
+テストファイルは実装ファイルのコロケーション配置を原則とする。
+
+- ビジネスロジック（`schema.ts` / `service.ts`）は `_lib/` にまとめ、テストを隣に置く
+- アクション系エンドポイントは `(actions)/` route group にまとめ、テストを隣に置く
+- ルーティング層（`+page.svelte` / `+page.server.ts` / `+server.ts`）のテストは feature ルートに置く
+- コンポーネントテストはコンポーネントと同階層に置く（1:1 対応）
+
 ```
 src/routes/{feature}/
-  schema.ts
-  schema.test.ts                       ← Zod バリデーション Unit テスト
-  +server.ts
-  +server.test.ts                      ← API ハンドラ Unit テスト
-  +page.svelte
-  page.svelte.test.ts                  ← 画面コンポーネント Unit テスト（`+` は SvelteKit 予約のため省略）
-  +page.server.ts
-  page.server.integration.test.ts      ← load 関数 Integration テスト（`+` は SvelteKit 予約のため省略）
-  service.ts
-  service.integration.test.ts          ← サービス層 Integration テスト
+  (actions)/                               ← アクション系エンドポイント（URL に影響しない・任意）
+    {action}/
+      +server.ts
+      server.test.ts                       ← コロケーション
+  [id]/                                    ← 任意
+    (actions)/
+      {action}/
+        +server.ts
+        server.test.ts                     ← コロケーション
+    +server.ts
+    server.test.ts                         ← コロケーション
+  _lib/                                    ← ビジネスロジック（SvelteKit ルーター無視）
+    schema.ts
+    schema.test.ts                         ← Zod バリデーション Unit テスト（コロケーション）
+    service.ts
+    service.integration.test.ts            ← サービス層 Integration テスト（コロケーション）
+    types.ts
   components/
     {ComponentName}.svelte
-    {ComponentName}.svelte.test.ts     ← コンポーネント Unit テスト
+    {ComponentName}.svelte.test.ts         ← コンポーネント Unit テスト（コンポーネントと同階層）
+  +page.svelte
+  +page.server.ts
+  +server.ts
+  page.svelte.test.ts                      ← 画面コンポーネント Unit テスト
+  page.server.integration.test.ts          ← load 関数 Integration テスト
+  server.test.ts                           ← API ハンドラ Unit テスト
 
 src/lib/server/
   errors.ts
-  errors.test.ts                       ← AppError Unit テスト
+  errors.test.ts                           ← AppError Unit テスト
 
 e2e/
-  {feature}.e2e.ts                     ← E2E テスト
+  {feature}.e2e.ts                         ← E2E テスト
 ```
 
 ## テスト-仕様連携

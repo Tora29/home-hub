@@ -18,12 +18,24 @@
  * - /expenses - 支出一覧
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+const TEST_EMAIL = process.env.TEST_EMAIL ?? 'test@example.com';
+const TEST_PASSWORD = process.env.TEST_PASSWORD ?? 'password123';
+
+async function login(page: Page): Promise<void> {
+	await page.goto('/login');
+	await page.getByTestId('login-email-input').fill(TEST_EMAIL);
+	await page.getByTestId('login-password-input').fill(TEST_PASSWORD);
+	await page.getByTestId('login-submit-button').click();
+	await page.waitForURL('/');
+}
 
 test.describe('Expense 一覧 - 月選択', () => {
 	test('[SPEC: AC-002b] 月選択肢は常に当月を含む過去 13 か月分が固定表示される // spec:cdb7c297', async ({
 		page
 	}) => {
+		await login(page);
 		await page.goto('/expenses');
 
 		const monthSelect = page.getByTestId('expense-month-select');
@@ -43,6 +55,7 @@ test.describe('Expense 一覧 - 月選択', () => {
 	test('[SPEC: AC-002b] 過去月を選択後も月選択肢は当月を含む固定リストのまま // spec:cdb7c297', async ({
 		page
 	}) => {
+		await login(page);
 		await page.goto('/expenses');
 
 		const monthSelect = page.getByTestId('expense-month-select');
@@ -68,6 +81,7 @@ test.describe('Expense 一覧 - 不正な月パラメータ', () => {
 	test('[SPEC: AC-002c] 不正な月パラメータが渡された場合 /expenses にリダイレクトして当月一覧を表示する // spec:83a227b2', async ({
 		page
 	}) => {
+		await login(page);
 		await page.goto('/expenses?month=2026-13');
 
 		// リダイレクト後 /expenses にいること
@@ -130,6 +144,7 @@ test.describe('Expense 一覧 - 空状態', () => {
 		page
 	}) => {
 		// 支出のない月を指定（テストデータが入っていない月）
+		await login(page);
 		await page.goto('/expenses?month=2020-01');
 
 		await expect(page.getByTestId('expense-empty')).toBeVisible();
@@ -138,6 +153,7 @@ test.describe('Expense 一覧 - 空状態', () => {
 	test('[SPEC: AC-205] 支出が 0 件のとき合計金額は「¥0」と表示される // spec:9be16731', async ({
 		page
 	}) => {
+		await login(page);
 		await page.goto('/expenses?month=2020-01');
 
 		const total = page.getByTestId('expense-total');

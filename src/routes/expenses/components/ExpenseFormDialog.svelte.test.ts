@@ -33,7 +33,7 @@ describe('ExpenseFormDialog', () => {
 			categories,
 			users,
 			onClose: vi.fn(),
-			onSubmit: vi.fn()
+			onSuccess: vi.fn()
 		});
 
 		await expect.element(page.getByTestId('expense-form')).not.toBeInTheDocument();
@@ -46,7 +46,7 @@ describe('ExpenseFormDialog', () => {
 			categories,
 			users,
 			onClose: vi.fn(),
-			onSubmit: vi.fn()
+			onSuccess: vi.fn()
 		});
 
 		await expect.element(page.getByTestId('expense-form')).toBeInTheDocument();
@@ -73,7 +73,7 @@ describe('ExpenseFormDialog', () => {
 			categories,
 			users,
 			onClose: vi.fn(),
-			onSubmit: vi.fn()
+			onSuccess: vi.fn()
 		});
 
 		await expect.element(page.getByTestId('expense-form')).toBeInTheDocument();

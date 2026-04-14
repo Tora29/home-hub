@@ -30,12 +30,12 @@ describe('ExpenseForm - バリデーション', () => {
 	test('[SPEC: AC-111] 金額が空のまま「確定」を押すと「金額は必須です」がインライン表示される（サーバー非通信）// spec:90cc1bc8', async () => {
 		const fetchMock = vi.fn();
 		vi.stubGlobal('fetch', fetchMock);
-		const onSubmit = vi.fn();
+		const onSuccess = vi.fn();
 
-		render(ExpenseForm, { categories, users, onSubmit, onCancel: vi.fn() });
+		render(ExpenseForm, { mode: 'create', categories, users, onSuccess, onCancel: vi.fn() });
 
 		// 金額を空のまま確定
-		page.getByTestId('expense-submit-button').element().click();
+		(page.getByTestId('expense-submit-button').element() as HTMLElement).click();
 		flushSync();
 
 		await expect.element(page.getByTestId('expense-amount-error')).toBeInTheDocument();
@@ -43,7 +43,7 @@ describe('ExpenseForm - バリデーション', () => {
 
 		// サーバーへの通信は発生しない
 		expect(fetchMock).not.toHaveBeenCalled();
-		expect(onSubmit).not.toHaveBeenCalled();
+		expect(onSuccess).not.toHaveBeenCalled();
 
 		vi.unstubAllGlobals();
 	});
@@ -51,9 +51,9 @@ describe('ExpenseForm - バリデーション', () => {
 	test('[SPEC: AC-112] カテゴリが未選択のまま「確定」を押すと「カテゴリは必須です」がインライン表示される（サーバー非通信）// spec:90cc1bc8', async () => {
 		const fetchMock = vi.fn();
 		vi.stubGlobal('fetch', fetchMock);
-		const onSubmit = vi.fn();
+		const onSuccess = vi.fn();
 
-		render(ExpenseForm, { categories, users, onSubmit, onCancel: vi.fn() });
+		render(ExpenseForm, { mode: 'create', categories, users, onSuccess, onCancel: vi.fn() });
 
 		// 金額だけ入力してカテゴリ未選択
 		const amountInput = page.getByTestId('expense-amount-input').element() as HTMLInputElement;
@@ -61,14 +61,14 @@ describe('ExpenseForm - バリデーション', () => {
 		amountInput.dispatchEvent(new Event('input', { bubbles: true }));
 		flushSync();
 
-		page.getByTestId('expense-submit-button').element().click();
+		(page.getByTestId('expense-submit-button').element() as HTMLElement).click();
 		flushSync();
 
 		await expect.element(page.getByTestId('expense-category-error')).toBeInTheDocument();
 		await expect.element(page.getByText('カテゴリは必須です')).toBeVisible();
 
 		expect(fetchMock).not.toHaveBeenCalled();
-		expect(onSubmit).not.toHaveBeenCalled();
+		expect(onSuccess).not.toHaveBeenCalled();
 
 		vi.unstubAllGlobals();
 	});
@@ -76,7 +76,13 @@ describe('ExpenseForm - バリデーション', () => {
 
 describe('ExpenseForm - 金額欄の変換', () => {
 	test('[SPEC: AC-206] 金額欄に全角数字を入力すると半角数字に自動変換される // spec:08c70745', async () => {
-		render(ExpenseForm, { categories, users, onSubmit: vi.fn(), onCancel: vi.fn() });
+		render(ExpenseForm, {
+			mode: 'create',
+			categories,
+			users,
+			onSuccess: vi.fn(),
+			onCancel: vi.fn()
+		});
 
 		const amountInput = page.getByTestId('expense-amount-input').element() as HTMLInputElement;
 
@@ -90,7 +96,13 @@ describe('ExpenseForm - 金額欄の変換', () => {
 	});
 
 	test('[SPEC: AC-207] 金額欄の入力値がカンマ区切りで整形される // spec:08c70745', async () => {
-		render(ExpenseForm, { categories, users, onSubmit: vi.fn(), onCancel: vi.fn() });
+		render(ExpenseForm, {
+			mode: 'create',
+			categories,
+			users,
+			onSuccess: vi.fn(),
+			onCancel: vi.fn()
+		});
 
 		const amountInput = page.getByTestId('expense-amount-input').element() as HTMLInputElement;
 

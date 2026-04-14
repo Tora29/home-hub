@@ -42,7 +42,7 @@ describe('ConfirmDialog', () => {
 			onCancel
 		});
 
-		page.getByRole('button', { name: 'キャンセル' }).element().click();
+		(page.getByRole('button', { name: 'キャンセル' }).element() as HTMLElement).click();
 		flushSync();
 
 		expect(onCancel).toHaveBeenCalledTimes(1);
@@ -58,7 +58,7 @@ describe('ConfirmDialog', () => {
 			onCancel: vi.fn()
 		});
 
-		page.getByRole('button', { name: '確定' }).element().click();
+		(page.getByRole('button', { name: '確定' }).element() as HTMLElement).click();
 		flushSync();
 
 		expect(onConfirm).toHaveBeenCalledTimes(1);

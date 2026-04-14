@@ -7,15 +7,16 @@
   支出の登録・編集フォームダイアログ内コンポーネント。
   登録時は POST /expenses、編集時は PUT /expenses/[id] を呼ぶ。
   FE バリデーションで空入力・未選択を即時フィードバックする。
+  全角数字を半角に自動変換し、金額をカンマ区切りで整形する（AC-206, AC-207）。
 
   @spec specs/expenses/spec.md
-  @acceptance AC-003, AC-006, AC-038, AC-039, AC-111, AC-112, AC-120
+  @acceptance AC-003, AC-006, AC-033, AC-034, AC-111, AC-112, AC-206, AC-207
 
   @props
   - mode: 'create' | 'edit' - フォームモード
-  - expense?: ExpenseWithCategory - 編集対象（edit mode のみ）
+  - expense?: ExpenseWithRelations - 編集対象（edit mode のみ）
   - categories: Category[] - カテゴリ一覧
-  - payers: Payer[] - 支払者一覧
+  - users: User[] - システムユーザー一覧（支払者選択用）
   - onSuccess: () => void | Promise<void> - 送信成功時コールバック
   - onCancel: () => void - キャンセル時コールバック
 -->
@@ -25,20 +26,20 @@
 	import Input from '$lib/components/Input.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import Button from '$lib/components/Button.svelte';
-	import type { ExpenseCategory, ExpensePayer, ExpenseWithRelations } from '../types';
+	import type { Category, User, ExpenseWithRelations } from '../types';
 
 	let {
 		mode,
 		expense,
 		categories,
-		payers = [],
+		users,
 		onSuccess,
 		onCancel
 	}: {
 		mode: 'create' | 'edit';
 		expense?: ExpenseWithRelations;
-		categories: ExpenseCategory[];
-		payers: ExpensePayer[];
+		categories: Category[];
+		users: User[];
 		onSuccess: () => void | Promise<void>;
 		onCancel: () => void;
 	} = $props();
@@ -46,7 +47,7 @@
 	// 内部値はカンマなしの半角数字文字列
 	let amountRaw = $state(untrack(() => (expense ? String(expense.amount) : '')));
 	let categoryId = $state(untrack(() => expense?.categoryId ?? ''));
-	let payerId = $state(untrack(() => expense?.payerId ?? ''));
+	let payerUserId = $state(untrack(() => expense?.payerUserId ?? ''));
 	let amountError = $state('');
 	let categoryError = $state('');
 	let payerError = $state('');
@@ -61,7 +62,10 @@
 			.replace(/[,，]/g, '')
 			.replace(/[^0-9]/g, '');
 		amountRaw = raw;
+		// カンマ整形で再描画
 		input.value = raw ? Number(raw).toLocaleString('ja-JP') : '';
+		// 入力変更時にエラーをクリア（AC: タイミング）
+		if (amountError) amountError = '';
 	}
 
 	function validate(): boolean {
@@ -89,7 +93,7 @@
 			valid = false;
 		}
 
-		if (!payerId) {
+		if (!payerUserId) {
 			payerError = '支払者は必須です';
 			valid = false;
 		}
@@ -104,7 +108,7 @@
 		serverError = '';
 
 		const amount = Number(amountRaw);
-		const body = { amount, categoryId, payerId };
+		const body = { amount, categoryId, payerUserId };
 
 		const url = mode === 'create' ? '/expenses' : `/expenses/${expense!.id}`;
 		const method = mode === 'create' ? 'POST' : 'PUT';
@@ -126,7 +130,7 @@
 					for (const f of err.fields) {
 						if (f.field === 'amount') amountError = f.message;
 						if (f.field === 'categoryId') categoryError = f.message;
-						if (f.field === 'payerId') payerError = f.message;
+						if (f.field === 'payerUserId') payerError = f.message;
 					}
 				} else {
 					serverError = err.message ?? 'エラーが発生しました';
@@ -136,7 +140,7 @@
 
 			await onSuccess();
 		} catch {
-			serverError = 'エラーが発生しました';
+			serverError = '通信エラーが発生しました';
 		} finally {
 			isSubmitting = false;
 		}
@@ -150,13 +154,14 @@
 
 	<form
 		data-testid="expense-form"
+		class="flex flex-col gap-4"
 		onsubmit={(e) => {
 			e.preventDefault();
 			void handleSubmit();
 		}}
 	>
 		<!-- 金額 -->
-		<div class="mb-4">
+		<div>
 			<label for="expense-amount" class="mb-1 block text-sm font-medium text-label">
 				金額（円）<span class="ml-1 text-destructive">*</span>
 			</label>
@@ -178,7 +183,7 @@
 		</div>
 
 		<!-- カテゴリ -->
-		<div class="mb-4">
+		<div>
 			<label for="expense-category" class="mb-1 block text-sm font-medium text-label">
 				カテゴリ<span class="ml-1 text-destructive">*</span>
 			</label>
@@ -186,6 +191,9 @@
 				id="expense-category"
 				data-testid="expense-category-select"
 				bind:value={categoryId}
+				onchange={() => {
+					if (categoryError) categoryError = '';
+				}}
 				class="w-full"
 			>
 				<option value="">選択してください</option>
@@ -201,19 +209,22 @@
 		</div>
 
 		<!-- 支払者 -->
-		<div class="mb-6">
+		<div>
 			<label for="expense-payer" class="mb-1 block text-sm font-medium text-label">
 				支払者<span class="ml-1 text-destructive">*</span>
 			</label>
 			<Select
 				id="expense-payer"
 				data-testid="expense-payer-select"
-				bind:value={payerId}
+				bind:value={payerUserId}
+				onchange={() => {
+					if (payerError) payerError = '';
+				}}
 				class="w-full"
 			>
 				<option value="">選択してください</option>
-				{#each payers as payer (payer.id)}
-					<option value={payer.id}>{payer.name}</option>
+				{#each users as u (u.id)}
+					<option value={u.id}>{u.name}</option>
 				{/each}
 			</Select>
 			{#if payerError}
@@ -224,7 +235,7 @@
 		</div>
 
 		{#if serverError}
-			<p class="mb-4 text-sm text-destructive">{serverError}</p>
+			<p role="alert" class="text-sm text-destructive">{serverError}</p>
 		{/if}
 
 		<div class="flex justify-end gap-3">
