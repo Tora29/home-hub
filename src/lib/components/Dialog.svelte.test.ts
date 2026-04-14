@@ -39,9 +39,12 @@ describe('Dialog', () => {
 		const onClose = vi.fn();
 		render(Dialog, { open: true, onClose, children });
 
-		// window または document にイベントをディスパッチ
-		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-		document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		// onkeydown はバックドロップ div に設定されているため直接ディスパッチ
+		const backdrop = page
+			.getByTestId('dialog-content')
+			.element()
+			.closest('[aria-modal="true"]') as HTMLElement;
+		backdrop?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 		flushSync();
 
 		expect(onClose).toHaveBeenCalled();
@@ -51,13 +54,12 @@ describe('Dialog', () => {
 		const onClose = vi.fn();
 		render(Dialog, { open: true, onClose, closeOnBackdrop: true, children });
 
-		// Dialog の外側コンテナ（backdrop）をクリック
-		const content = page.getByTestId('dialog-content').element();
-		const outerEl =
-			content.closest('[role="dialog"]')?.parentElement ?? content.closest('[aria-modal="true"]');
-		if (outerEl) {
-			outerEl.click();
-		}
+		// onclick は e.target === e.currentTarget のときのみ発火するため、バックドロップ div を直接クリック
+		const backdrop = page
+			.getByTestId('dialog-content')
+			.element()
+			.closest('[aria-modal="true"]') as HTMLElement;
+		backdrop?.click();
 		flushSync();
 
 		expect(onClose).toHaveBeenCalled();
@@ -67,12 +69,11 @@ describe('Dialog', () => {
 		const onClose = vi.fn();
 		render(Dialog, { open: true, onClose, closeOnBackdrop: false, children });
 
-		const content = page.getByTestId('dialog-content').element();
-		const outerEl =
-			content.closest('[role="dialog"]')?.parentElement ?? content.closest('[aria-modal="true"]');
-		if (outerEl) {
-			outerEl.click();
-		}
+		const backdrop = page
+			.getByTestId('dialog-content')
+			.element()
+			.closest('[aria-modal="true"]') as HTMLElement;
+		backdrop?.click();
 		flushSync();
 
 		expect(onClose).not.toHaveBeenCalled();
@@ -82,7 +83,11 @@ describe('Dialog', () => {
 		const onClose = vi.fn();
 		render(Dialog, { open: true, onClose, disabled: true, children });
 
-		document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		const backdrop = page
+			.getByTestId('dialog-content')
+			.element()
+			.closest('[aria-modal="true"]') as HTMLElement;
+		backdrop?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 		flushSync();
 
 		expect(onClose).not.toHaveBeenCalled();

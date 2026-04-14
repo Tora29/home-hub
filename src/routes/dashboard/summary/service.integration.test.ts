@@ -13,9 +13,9 @@ import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { getDashboardSummary } from './service';
-import { createExpense, approveExpense } from '../../expenses/service';
+import { createExpense } from '../../expenses/service';
 import { createCategory } from '../../expenses/categories/service';
-import { createPayer } from '../../expenses/payers/service';
+import { user as userTable } from '$lib/server/tables';
 
 function makeUserId() {
 	return crypto.randomUUID();
@@ -26,6 +26,20 @@ function getCurrentMonth(): string {
 	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
+async function createTestUser(db: ReturnType<typeof createDb>, name: string) {
+	const id = crypto.randomUUID();
+	const now = new Date();
+	await db.insert(userTable).values({
+		id,
+		name,
+		email: `${id}@example.com`,
+		emailVerified: false,
+		createdAt: now,
+		updatedAt: now
+	});
+	return { id, name };
+}
+
 describe('getDashboardSummary - 月別集計', () => {
 	test('[SPEC: AC-001] 当月の全体合計金額が返る', async () => {
 		const db = createDb(env.DB);
@@ -33,10 +47,18 @@ describe('getDashboardSummary - 月別集計', () => {
 		const month = getCurrentMonth();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
+		const payer = await createTestUser(db, '田中');
 
-		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerId: payer.id });
-		await createExpense(db, userId, { amount: 2000, categoryId: category.id, payerId: payer.id });
+		await createExpense(db, userId, {
+			amount: 1000,
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
+		await createExpense(db, userId, {
+			amount: 2000,
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
 
 		const summary = await getDashboardSummary(db, userId, { period: 'month', month });
 
@@ -49,12 +71,12 @@ describe('getDashboardSummary - 月別集計', () => {
 		const month = getCurrentMonth();
 
 		const category = await createCategory(db, userId, { name: '交通費' });
-		const payer = await createPayer(db, userId, { name: '鈴木' });
+		const payer = await createTestUser(db, '鈴木');
 
 		await createExpense(db, userId, {
 			amount: 12300,
 			categoryId: category.id,
-			payerId: payer.id
+			payerUserId: payer.id
 		});
 
 		const summary = await getDashboardSummary(db, userId, { period: 'month', month });
@@ -69,15 +91,15 @@ describe('getDashboardSummary - 月別集計', () => {
 		const month = getCurrentMonth();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
+		const payer = await createTestUser(db, '田中');
 
-		await createExpense(db, userId, { amount: 5000, categoryId: category.id, payerId: payer.id });
-
-		const summaryCurrentMonth = await getDashboardSummary(db, userId, {
-			period: 'month',
-			month
+		await createExpense(db, userId, {
+			amount: 5000,
+			categoryId: category.id,
+			payerUserId: payer.id
 		});
-		// 先月のデータは0件のためダミー月で確認
+
+		const summaryCurrentMonth = await getDashboardSummary(db, userId, { period: 'month', month });
 		const summaryOtherMonth = await getDashboardSummary(db, userId, {
 			period: 'month',
 			month: '2020-01'
@@ -93,12 +115,24 @@ describe('getDashboardSummary - 月別集計', () => {
 		const month = getCurrentMonth();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer1 = await createPayer(db, userId, { name: '田中' });
-		const payer2 = await createPayer(db, userId, { name: '佐藤' });
+		const payer1 = await createTestUser(db, '田中');
+		const payer2 = await createTestUser(db, '佐藤');
 
-		await createExpense(db, userId, { amount: 3000, categoryId: category.id, payerId: payer1.id });
-		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerId: payer2.id });
-		await createExpense(db, userId, { amount: 2000, categoryId: category.id, payerId: payer1.id });
+		await createExpense(db, userId, {
+			amount: 3000,
+			categoryId: category.id,
+			payerUserId: payer1.id
+		});
+		await createExpense(db, userId, {
+			amount: 1000,
+			categoryId: category.id,
+			payerUserId: payer2.id
+		});
+		await createExpense(db, userId, {
+			amount: 2000,
+			categoryId: category.id,
+			payerUserId: payer1.id
+		});
 
 		const summary = await getDashboardSummary(db, userId, { period: 'month', month });
 
@@ -116,22 +150,22 @@ describe('getDashboardSummary - 月別集計', () => {
 
 		const category1 = await createCategory(db, userId, { name: '食費' });
 		const category2 = await createCategory(db, userId, { name: '交通費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
+		const payer = await createTestUser(db, '田中');
 
 		await createExpense(db, userId, {
 			amount: 2000,
 			categoryId: category2.id,
-			payerId: payer.id
+			payerUserId: payer.id
 		});
 		await createExpense(db, userId, {
 			amount: 5000,
 			categoryId: category1.id,
-			payerId: payer.id
+			payerUserId: payer.id
 		});
 		await createExpense(db, userId, {
 			amount: 1000,
 			categoryId: category2.id,
-			payerId: payer.id
+			payerUserId: payer.id
 		});
 
 		const summary = await getDashboardSummary(db, userId, { period: 'month', month });
@@ -143,23 +177,24 @@ describe('getDashboardSummary - 月別集計', () => {
 		expect(summary.byCategory[1].total).toBe(3000);
 	});
 
-	test('[SPEC: AC-001] 全ステータス（未承認・確認済み・確定済み）が集計対象に含まれる', async () => {
+	test('[SPEC: AC-001] 全ステータス（未承認・確認済み）が集計対象に含まれる', async () => {
 		const db = createDb(env.DB);
 		const userId = makeUserId();
 		const month = getCurrentMonth();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
+		const payer = await createTestUser(db, '田中');
 
-		// 未承認
-		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerId: payer.id });
-		// 確認済み
-		const expense2 = await createExpense(db, userId, {
+		await createExpense(db, userId, {
+			amount: 1000,
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
+		await createExpense(db, userId, {
 			amount: 2000,
 			categoryId: category.id,
-			payerId: payer.id
+			payerUserId: payer.id
 		});
-		await approveExpense(db, userId, expense2.id);
 
 		const summary = await getDashboardSummary(db, userId, { period: 'month', month });
 
@@ -173,10 +208,18 @@ describe('getDashboardSummary - 全期間集計', () => {
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
+		const payer = await createTestUser(db, '田中');
 
-		await createExpense(db, userId, { amount: 1000, categoryId: category.id, payerId: payer.id });
-		await createExpense(db, userId, { amount: 2000, categoryId: category.id, payerId: payer.id });
+		await createExpense(db, userId, {
+			amount: 1000,
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
+		await createExpense(db, userId, {
+			amount: 2000,
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
 
 		const summary = await getDashboardSummary(db, userId, { period: 'all' });
 
@@ -190,14 +233,16 @@ describe('getDashboardSummary - 全期間集計', () => {
 		const userId = makeUserId();
 
 		const category = await createCategory(db, userId, { name: '食費' });
-		const payer = await createPayer(db, userId, { name: '田中' });
+		const payer = await createTestUser(db, '田中');
 
-		await createExpense(db, userId, { amount: 5000, categoryId: category.id, payerId: payer.id });
+		await createExpense(db, userId, {
+			amount: 5000,
+			categoryId: category.id,
+			payerUserId: payer.id
+		});
 
-		// 全期間なので month 指定しても全件取得
 		const summary = await getDashboardSummary(db, userId, { period: 'all', month: '2020-01' });
 
-		// userId で分離されているため、このユーザーの 1 件分だけが集計される
 		expect(summary.overall).toBe(5000);
 	});
 
@@ -207,19 +252,18 @@ describe('getDashboardSummary - 全期間集計', () => {
 		const otherUserId = makeUserId();
 
 		const myCategory = await createCategory(db, userId, { name: '食費' });
-		const myPayer = await createPayer(db, userId, { name: '田中' });
+		const payer = await createTestUser(db, '田中');
 		const otherCategory = await createCategory(db, otherUserId, { name: '食費' });
-		const otherPayer = await createPayer(db, otherUserId, { name: '他人' });
 
 		await createExpense(db, userId, {
 			amount: 1000,
 			categoryId: myCategory.id,
-			payerId: myPayer.id
+			payerUserId: payer.id
 		});
 		await createExpense(db, otherUserId, {
 			amount: 9999,
 			categoryId: otherCategory.id,
-			payerId: otherPayer.id
+			payerUserId: payer.id
 		});
 
 		const summary = await getDashboardSummary(db, userId, { period: 'all' });

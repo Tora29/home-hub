@@ -38,7 +38,7 @@ beforeEach(() => {
 });
 
 describe('GET /expense/categories', () => {
-	test('[SPEC: AC-010] カテゴリ一覧を取得できる', async () => {
+	test('[SPEC: AC-011] カテゴリ一覧を取得できる', async () => {
 		const mockResponse = {
 			items: [
 				{
@@ -69,7 +69,7 @@ describe('GET /expense/categories', () => {
 
 describe('POST /expense/categories', () => {
 	describe('正常系', () => {
-		test('[SPEC: AC-010] 有効なカテゴリ名で登録すると、201 を返す', async () => {
+		test('[SPEC: AC-011] 有効なカテゴリ名で登録すると、201 を返す', async () => {
 			const mockCreated = {
 				id: 'cat-new',
 				userId: 'user-1',
