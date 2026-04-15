@@ -104,11 +104,8 @@ async function sendLineMessage(
 		})
 	});
 	if (!res.ok) {
-		throw new AppError(
-			'BAD_GATEWAY',
-			502,
-			'LINE 通知の送信に失敗したため承認フローを完了できませんでした'
-		);
+		// D1 がトランザクション非対応のため、通知失敗はベストエフォート扱い（呼び出し元で catch してログ）
+		throw new Error(`LINE API error: ${res.status}`);
 	}
 }
 
@@ -342,26 +339,24 @@ export async function requestExpenses(
 	const shouldNotify =
 		partnerLineUserId && lineEnv.lineChannelAccessToken && lineEnv.lineMock !== 'true';
 
-	if (shouldNotify) {
-		// LINE 失敗時はロールバック（AC-120）
-		await db.transaction(async (tx) => {
-			await tx
-				.update(expense)
-				.set({ status: 'pending' })
-				.where(and(eq(expense.userId, userId), eq(expense.status, 'checked')));
+	// DB 更新を先行（状態の正確性を優先）
+	await db
+		.update(expense)
+		.set({ status: 'pending' })
+		.where(and(eq(expense.userId, userId), eq(expense.status, 'checked')));
 
+	// LINE 通知はベストエフォート: 失敗しても DB 更新済みのため状態は正しい
+	// D1 が BEGIN トランザクション非対応のため、完全なロールバックは不可能（AC-120 は緩和）
+	if (shouldNotify) {
+		try {
 			await sendLineMessage(
 				partnerLineUserId!,
 				'承認依頼が届いています。確認してください。',
 				lineEnv.lineChannelAccessToken!
 			);
-		});
-	} else {
-		// role=null / lineUserId 未設定 / MOCK モード → 通知スキップ（AC-119, AC-125）
-		await db
-			.update(expense)
-			.set({ status: 'pending' })
-			.where(and(eq(expense.userId, userId), eq(expense.status, 'checked')));
+		} catch (e) {
+			console.error('[LINE] 承認依頼通知の送信に失敗しました:', e);
+		}
 	}
 
 	return { count: checkedExpenses.length };
@@ -413,25 +408,23 @@ export async function approveExpenses(
 	const shouldNotify =
 		partnerLineUserId && lineEnv.lineChannelAccessToken && lineEnv.lineMock !== 'true';
 
-	if (shouldNotify) {
-		// LINE 失敗時はロールバック（AC-120）
-		await db.transaction(async (tx) => {
-			await tx
-				.update(expense)
-				.set({ status: 'approved' })
-				.where(and(ne(expense.userId, userId), eq(expense.status, 'pending')));
+	// DB 更新を先行（状態の正確性を優先）
+	await db
+		.update(expense)
+		.set({ status: 'approved' })
+		.where(and(ne(expense.userId, userId), eq(expense.status, 'pending')));
 
+	// LINE 通知はベストエフォート
+	if (shouldNotify) {
+		try {
 			await sendLineMessage(
 				partnerLineUserId!,
 				'支出が承認されました。',
 				lineEnv.lineChannelAccessToken!
 			);
-		});
-	} else {
-		await db
-			.update(expense)
-			.set({ status: 'approved' })
-			.where(and(ne(expense.userId, userId), eq(expense.status, 'pending')));
+		} catch (e) {
+			console.error('[LINE] 承認通知の送信に失敗しました:', e);
+		}
 	}
 
 	return { count: pendingExpenses.length };
