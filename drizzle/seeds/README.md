@@ -25,6 +25,11 @@ wrangler d1 execute home-hub --local --file=drizzle/seeds/recipes.sql
 
 肉じゃが・豚の生姜焼き・麻婆豆腐など 8 件のレシピが登録される。
 
+- `imageUrl` あり 7 件 / なし 1 件
+- `sourceUrl` あり 8 件
+- `rating` は `excellent / good / poor / NULL` を含む
+- `lastCookedAt` は 2026-02〜2026-04 + `NULL` を含む
+
 ### 3. 支出のサンプルデータを投入する
 
 ```bash

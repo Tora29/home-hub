@@ -4,7 +4,7 @@
  * @testType e2e
  *
  * @spec specs/recipes/spec.md
- * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-008, AC-009, AC-010, AC-011, AC-012, AC-013, AC-204
+ * @covers AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-008, AC-009, AC-010, AC-011, AC-012, AC-013, AC-014, AC-015, AC-016, AC-017, AC-204
  *
  * @scenarios
  * - レシピ一覧の初期表示（登録順）
@@ -16,6 +16,10 @@
  * - ソート切り替え（しばらく作ってない順 / よく作る順 / 評価が高い順）
  * - AI 献立相談（質問送信 → 回答表示）
  * - AI レシピ抽出（テキスト貼り付け → フォーム自動入力 → sourceUrl 引き継ぎ）
+ * - 画像 D&D アップロード → ローカルプレビュー表示 → フォーム送信時に R2 へアップロード
+ * - 画像クリック選択 → ローカルプレビュー表示 → フォーム送信時に R2 へアップロード
+ * - 画像クリアボタンでプレビューを削除
+ * - レシピ削除時に R2 画像も削除される
  *
  * @pages
  * - /recipes - レシピ一覧画面
@@ -417,5 +421,183 @@ test.describe('AI レシピ抽出', () => {
 
 		// ダイアログを閉じる（キャンセル）
 		await page.keyboard.press('Escape');
+	});
+});
+
+// ============================================================
+// 画像アップロード
+// ============================================================
+
+test.describe('画像アップロード', () => {
+	test.beforeEach(async ({ page }) => {
+		await login(page);
+	});
+
+	test('[SPEC: AC-014] 画像エリアにファイルをドロップするとローカルプレビューが表示され、フォーム送信時に R2 へアップロードされる', async ({
+		page
+	}) => {
+		let uploadCalled = false;
+		await page.route('**/recipes/upload', (route) => {
+			uploadCalled = true;
+			return route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ url: 'https://example.com/images/test-drag-drop.jpg' })
+			});
+		});
+
+		await page.goto('/recipes');
+		await page.getByTestId('recipes-create-button').click();
+		await page.getByRole('button', { name: '手動入力' }).click();
+		await expect(page.getByTestId('recipes-form')).toBeVisible();
+
+		// ドロップイベントでファイルをシミュレート
+		await page.evaluate(() => {
+			const target = document.querySelector('[data-testid="recipes-image-upload-area"]');
+			const file = new File(['fake-jpeg-content'], 'test.jpg', { type: 'image/jpeg' });
+			const dataTransfer = new DataTransfer();
+			dataTransfer.items.add(file);
+			target?.dispatchEvent(new DragEvent('drop', { dataTransfer, bubbles: true }));
+		});
+
+		// ドロップ後にローカルプレビューが表示されることを確認
+		await expect(page.getByTestId('recipes-image-preview')).toBeVisible();
+		await expect(page.getByTestId('recipes-image-remove-button')).toBeVisible();
+
+		// フォームを送信（送信時に R2 へアップロード）
+		await page.getByTestId('recipes-name-input').fill('画像テストレシピ DnD');
+		await page.getByTestId('recipes-submit-button').click();
+
+		// ダイアログが閉じることを確認
+		await expect(page.getByTestId('recipes-form')).not.toBeVisible();
+		expect(uploadCalled).toBe(true);
+
+		// クリーンアップ
+		const res = await page.request.get('/recipes?limit=100');
+		const data = (await res.json()) as { items: { id: string; name: string }[] };
+		const created = data.items.find((r) => r.name === '画像テストレシピ DnD');
+		if (created) await deleteRecipe(page, created.id);
+	});
+
+	test('[SPEC: AC-015] 画像エリアをクリックしてファイルを選択するとローカルプレビューが表示され、フォーム送信時に R2 へアップロードされる', async ({
+		page
+	}) => {
+		let uploadCalled = false;
+		await page.route('**/recipes/upload', (route) => {
+			uploadCalled = true;
+			return route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ url: 'https://example.com/images/test-click-select.png' })
+			});
+		});
+
+		await page.goto('/recipes');
+		await page.getByTestId('recipes-create-button').click();
+		await page.getByRole('button', { name: '手動入力' }).click();
+		await expect(page.getByTestId('recipes-form')).toBeVisible();
+
+		// hidden ファイル入力に直接ファイルをセット（クリック選択の代替）
+		const fileInput = page.getByTestId('recipes-image-upload-input');
+		await fileInput.setInputFiles({
+			name: 'test-image.png',
+			mimeType: 'image/png',
+			buffer: Buffer.from('fake-png-content')
+		});
+
+		// ファイル選択後にローカルプレビューが表示されることを確認
+		await expect(page.getByTestId('recipes-image-preview')).toBeVisible();
+		await expect(page.getByTestId('recipes-image-remove-button')).toBeVisible();
+
+		// フォームを送信（送信時に R2 へアップロード）
+		await page.getByTestId('recipes-name-input').fill('画像テストレシピ クリック選択');
+		await page.getByTestId('recipes-submit-button').click();
+
+		// ダイアログが閉じることを確認
+		await expect(page.getByTestId('recipes-form')).not.toBeVisible();
+		expect(uploadCalled).toBe(true);
+
+		// クリーンアップ
+		const res = await page.request.get('/recipes?limit=100');
+		const data = (await res.json()) as { items: { id: string; name: string }[] };
+		const created = data.items.find((r) => r.name === '画像テストレシピ クリック選択');
+		if (created) await deleteRecipe(page, created.id);
+	});
+
+	test('[SPEC: AC-016] クリアボタンを押すとプレビューが消え imageUrl がクリアされる', async ({
+		page
+	}) => {
+		await page.goto('/recipes');
+		await page.getByTestId('recipes-create-button').click();
+		await page.getByRole('button', { name: '手動入力' }).click();
+		await expect(page.getByTestId('recipes-form')).toBeVisible();
+
+		// ファイルを選択してプレビューを表示
+		const fileInput = page.getByTestId('recipes-image-upload-input');
+		await fileInput.setInputFiles({
+			name: 'test-image.jpg',
+			mimeType: 'image/jpeg',
+			buffer: Buffer.from('fake-jpeg-content')
+		});
+
+		// プレビューとクリアボタンが表示されることを確認
+		await expect(page.getByTestId('recipes-image-preview')).toBeVisible();
+		await expect(page.getByTestId('recipes-image-remove-button')).toBeVisible();
+
+		// クリアボタンをクリック
+		await page.getByTestId('recipes-image-remove-button').click();
+
+		// プレビューとクリアボタンが消えることを確認
+		await expect(page.getByTestId('recipes-image-preview')).not.toBeVisible();
+		await expect(page.getByTestId('recipes-image-remove-button')).not.toBeVisible();
+
+		// キャンセルでダイアログを閉じる
+		await page.keyboard.press('Escape');
+	});
+
+	test('[SPEC: AC-017] レシピ削除時に R2 の画像ファイルも削除される（DELETE リクエストが送信され、レシピが一覧から消える）', async ({
+		page
+	}) => {
+		// imageUrl を持つレシピを API で作成
+		const recipe = await createRecipe(page, {
+			name: '削除テスト画像レシピ E2E',
+			imageUrl: 'https://example.com/images/to-be-deleted.jpg'
+		});
+
+		let deleteRequestSent = false;
+		page.on('request', (req) => {
+			if (req.method() === 'DELETE' && req.url().includes(`/recipes/${recipe.id}`)) {
+				deleteRequestSent = true;
+			}
+		});
+
+		await page.goto(`/recipes/${recipe.id}`);
+		await page.getByTestId('recipes-delete-button').click();
+
+		// 削除確認ダイアログが表示されることを確認
+		await expect(page.getByTestId('recipes-delete-dialog')).toBeVisible();
+		await expect(page.getByTestId('recipes-delete-dialog')).toContainText(
+			'削除テスト画像レシピ E2E'
+		);
+
+		// 確定ボタンをクリック
+		await page.getByTestId('recipes-delete-confirm-button').click();
+
+		// /recipes にリダイレクトされることを確認
+		await expect(page).toHaveURL('/recipes');
+
+		// DELETE リクエストが送信されたことを確認（BE がR2削除を処理）
+		expect(deleteRequestSent).toBe(true);
+
+		// 削除したレシピが一覧に表示されていないことを確認
+		await expect(
+			page.getByTestId('recipes-item').filter({ hasText: '削除テスト画像レシピ E2E' })
+		).toHaveCount(0);
+
+		// API でもレシピが存在しないことを確認
+		const res = await page.request.get('/recipes?limit=100');
+		const data = (await res.json()) as { items: { id: string }[] };
+		const found = data.items.find((r) => r.id === recipe.id);
+		expect(found).toBeUndefined();
 	});
 });
