@@ -244,11 +244,15 @@ export async function updateRecipe(
 }
 
 /**
- * レシピを削除する。
+ * レシピを削除する。削除したレシピの imageUrl を返す（R2 クリーンアップ用）。
  * @ac AC-005
  * @throws {NOT_FOUND} - 該当レシピが存在しない場合、または他ユーザーのレシピの場合
  */
-export async function deleteRecipe(db: Db, userId: string, id: string): Promise<void> {
+export async function deleteRecipe(
+	db: Db,
+	userId: string,
+	id: string
+): Promise<{ imageUrl: string | null }> {
 	const existing = await db
 		.select()
 		.from(recipe)
@@ -257,4 +261,5 @@ export async function deleteRecipe(db: Db, userId: string, id: string): Promise<
 	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 
 	await db.delete(recipe).where(and(eq(recipe.id, id), eq(recipe.userId, userId)));
+	return { imageUrl: existing.imageUrl };
 }

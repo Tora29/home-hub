@@ -9,7 +9,7 @@
   編集時は手動入力タブのみ表示する。
 
   @spec specs/recipes/spec.md
-  @acceptance AC-002, AC-004, AC-007, AC-011, AC-012, AC-101
+  @acceptance AC-002, AC-004, AC-007, AC-011, AC-012, AC-014, AC-015, AC-016, AC-101, AC-116, AC-117
 
   @props
   - mode: 'create' | 'edit' - フォームモード
@@ -19,7 +19,7 @@
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { LoaderCircle, Plus, Trash2, X } from '@lucide/svelte';
+	import { ImagePlus, LoaderCircle, Plus, Trash2, X } from '@lucide/svelte';
 	import Input from '$lib/components/Input.svelte';
 	import Textarea from '$lib/components/Textarea.svelte';
 	import Select from '$lib/components/Select.svelte';
@@ -95,6 +95,64 @@
 	// Submit state
 	let isSubmitting = $state(false);
 	let nameError = $state('');
+
+	// Image upload state
+	const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+	const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+
+	let imageFile = $state<File | null>(null);
+	let imagePreviewUrl = $state<string | null>(null);
+	let isDragOver = $state(false);
+	let imageError = $state('');
+	let imageInputEl = $state<HTMLInputElement | undefined>();
+
+	let imagePreviewSrc = $derived(imagePreviewUrl ?? (imageUrl || null));
+
+	function processFile(file: File) {
+		imageError = '';
+		if (!ALLOWED_TYPES.includes(file.type)) {
+			imageError = 'JPEG / PNG / WebP 形式のファイルを選択してください';
+			return;
+		}
+		if (file.size > MAX_SIZE) {
+			imageError = '5 MB 以下のファイルを選択してください';
+			return;
+		}
+		if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+		imageFile = file;
+		imagePreviewUrl = URL.createObjectURL(file);
+	}
+
+	function handleFileSelect(e: Event) {
+		const file = (e.target as HTMLInputElement).files?.[0];
+		if (file) processFile(file);
+	}
+
+	function handleDragOver(e: DragEvent) {
+		e.preventDefault();
+		isDragOver = true;
+	}
+
+	function handleDragLeave() {
+		isDragOver = false;
+	}
+
+	function handleDrop(e: DragEvent) {
+		e.preventDefault();
+		isDragOver = false;
+		const file = e.dataTransfer?.files[0];
+		if (file) processFile(file);
+	}
+
+	function handleImageRemove() {
+		imageFile = null;
+		if (imagePreviewUrl) {
+			URL.revokeObjectURL(imagePreviewUrl);
+			imagePreviewUrl = null;
+		}
+		imageUrl = '';
+		if (imageInputEl) imageInputEl.value = '';
+	}
 
 	// Dynamic list helpers
 	function addIngredient() {
@@ -176,6 +234,23 @@
 
 		isSubmitting = true;
 		try {
+			// 画像アップロード（ファイルが選択されている場合）
+			if (imageFile) {
+				const formData = new FormData();
+				formData.append('file', imageFile);
+				const uploadRes = await fetch('/recipes/upload', {
+					method: 'POST',
+					body: formData
+				});
+				if (!uploadRes.ok) {
+					const err = (await uploadRes.json().catch(() => ({}))) as { message?: string };
+					imageError = err.message ?? '画像のアップロードに失敗しました';
+					return;
+				}
+				const uploadData = (await uploadRes.json()) as { url: string };
+				imageUrl = uploadData.url;
+			}
+
 			let res: Response;
 
 			if (mode === 'create') {
@@ -561,18 +636,59 @@
 				{/each}
 			</div>
 
-			<!-- Image URL -->
+			<!-- Image upload -->
 			<div class="flex flex-col gap-1">
-				<label for="recipe-image-url" class="text-sm font-medium text-label">画像 URL</label>
-				<Input
-					id="recipe-image-url"
-					type="url"
-					data-testid="recipes-image-url-input"
-					bind:value={imageUrl}
-					placeholder="https://..."
-					size="lg"
-					class="w-full"
+				<span class="text-sm font-medium text-label">画像</span>
+				{#if imagePreviewSrc}
+					<div class="relative">
+						<img
+							data-testid="recipes-image-preview"
+							src={imagePreviewSrc}
+							alt="プレビュー"
+							class="h-48 w-full rounded-2xl object-cover"
+						/>
+						<button
+							type="button"
+							data-testid="recipes-image-remove-button"
+							onclick={handleImageRemove}
+							aria-label="画像を削除"
+							class="absolute top-2 right-2 rounded-full bg-bg-card/80 p-1.5 text-secondary transition-colors hover:text-destructive"
+						>
+							<X size={16} />
+						</button>
+					</div>
+				{:else}
+					<div
+						data-testid="recipes-image-upload-area"
+						role="button"
+						tabindex={0}
+						ondragover={handleDragOver}
+						ondragleave={handleDragLeave}
+						ondrop={handleDrop}
+						onclick={() => imageInputEl?.click()}
+						onkeydown={(e) => e.key === 'Enter' && imageInputEl?.click()}
+						class="flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed transition-colors {isDragOver
+							? 'border-accent bg-accent/5'
+							: 'border-separator hover:border-accent/50 hover:bg-bg-secondary'}"
+					>
+						<ImagePlus size={24} class="text-tertiary" />
+						<p class="text-center text-sm text-secondary">
+							<span class="hidden sm:inline">ここにドロップ または </span>クリック/タップして選択
+						</p>
+						<p class="text-xs text-tertiary">JPEG / PNG / WebP · 5 MB 以下</p>
+					</div>
+				{/if}
+				<input
+					bind:this={imageInputEl}
+					data-testid="recipes-image-upload-input"
+					type="file"
+					accept=".jpg,.jpeg,.png,.webp"
+					class="hidden"
+					onchange={handleFileSelect}
 				/>
+				{#if imageError}
+					<p class="text-xs text-destructive">{imageError}</p>
+				{/if}
 			</div>
 
 			<!-- Source URL -->

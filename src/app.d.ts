@@ -14,6 +14,8 @@ declare global {
 			env: {
 				DB: import('@cloudflare/workers-types').D1Database;
 				AI: import('@cloudflare/workers-types').Ai;
+				RECIPE_IMAGES: import('@cloudflare/workers-types').R2Bucket;
+				RECIPE_IMAGES_PUBLIC_URL: string;
 				BETTER_AUTH_SECRET: string;
 				USE_REAL_AI?: string;
 				LINE_CHANNEL_ACCESS_TOKEN?: string;
