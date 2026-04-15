@@ -80,8 +80,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		);
 	}
 
-	if (dev && !platform?.env?.USE_REAL_AI) {
-		return json({ url: 'https://placehold.co/400x300?text=Recipe+Image' });
+	if (dev) {
+		return json({ url: 'https://placehold.co/400x300?text=Recipe+Image', key: null });
 	}
 
 	try {
@@ -94,7 +94,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		});
 
 		const url = `${platform!.env.RECIPE_IMAGES_PUBLIC_URL}/${key}`;
-		return json({ url });
+		return json({ url, key });
 	} catch (e) {
 		console.error(e);
 		return json(

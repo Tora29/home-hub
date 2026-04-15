@@ -102,6 +102,7 @@ test.describe('Expense 一覧 - モバイル行メニュー', () => {
 	test('[SPEC: AC-018] モバイルで自分の unapproved 行の行メニューボタンをタップするとメニューが開く // spec:04456c16', async ({
 		page
 	}) => {
+		await login(page);
 		await page.setViewportSize({ width: 375, height: 812 });
 		await page.goto('/expenses');
 
@@ -110,7 +111,7 @@ test.describe('Expense 一覧 - モバイル行メニュー', () => {
 		const menuButtonVisible = await menuButton.isVisible().catch(() => false);
 
 		if (menuButtonVisible) {
-			await menuButton.tap();
+			await menuButton.click();
 			await expect(page.getByTestId('expense-menu')).toBeVisible();
 		} else {
 			test.skip();
@@ -120,6 +121,7 @@ test.describe('Expense 一覧 - モバイル行メニュー', () => {
 	test('[SPEC: AC-019] expense-menu 表示中にメニュー外をクリックするとメニューが閉じる // spec:04456c16', async ({
 		page
 	}) => {
+		await login(page);
 		await page.setViewportSize({ width: 375, height: 812 });
 		await page.goto('/expenses');
 
@@ -127,7 +129,7 @@ test.describe('Expense 一覧 - モバイル行メニュー', () => {
 		const menuButtonVisible = await menuButton.isVisible().catch(() => false);
 
 		if (menuButtonVisible) {
-			await menuButton.tap();
+			await menuButton.click();
 			await expect(page.getByTestId('expense-menu')).toBeVisible();
 
 			// メニュー外をクリック

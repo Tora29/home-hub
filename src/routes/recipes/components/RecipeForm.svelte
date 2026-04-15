@@ -35,6 +35,7 @@
 		name: string;
 		description: string | null;
 		imageUrl: string | null;
+		r2ImageKey: string | null;
 		ingredients: Ingredient[] | null;
 		steps: string[] | null;
 		sourceUrl: string | null;
@@ -79,6 +80,7 @@
 	let name = $state(untrack(() => recipe?.name ?? ''));
 	let description = $state(untrack(() => recipe?.description ?? ''));
 	let imageUrl = $state(untrack(() => recipe?.imageUrl ?? ''));
+	let r2ImageKey = $state<string | null>(untrack(() => recipe?.r2ImageKey ?? null));
 	let sourceUrl = $state(untrack(() => recipe?.sourceUrl ?? ''));
 	let servingsStr = $state(untrack(() => recipe?.servings?.toString() ?? ''));
 	let cookingTimeStr = $state(untrack(() => recipe?.cookingTimeMinutes?.toString() ?? ''));
@@ -247,8 +249,9 @@
 					imageError = err.message ?? '画像のアップロードに失敗しました';
 					return;
 				}
-				const uploadData = (await uploadRes.json()) as { url: string };
+				const uploadData = (await uploadRes.json()) as { url: string; key: string | null };
 				imageUrl = uploadData.url;
+				r2ImageKey = uploadData.key;
 			}
 
 			let res: Response;
@@ -257,6 +260,7 @@
 				const payload: Record<string, unknown> = { name };
 				if (description) payload.description = description;
 				if (imageUrl) payload.imageUrl = imageUrl;
+				if (r2ImageKey) payload.r2ImageKey = r2ImageKey;
 				if (sourceUrl) payload.sourceUrl = sourceUrl;
 				if (servings !== undefined && !isNaN(servings)) payload.servings = servings;
 				if (cookingTimeMinutes !== undefined && !isNaN(cookingTimeMinutes))
@@ -279,6 +283,7 @@
 					cookedCount,
 					description: description || null,
 					imageUrl: imageUrl || null,
+					r2ImageKey: r2ImageKey,
 					sourceUrl: sourceUrl || null,
 					servings: servings !== undefined && !isNaN(servings) ? servings : null,
 					cookingTimeMinutes:

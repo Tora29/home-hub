@@ -26,11 +26,6 @@ import { createDb } from '$lib/server/db';
 import { recipeUpdateSchema } from '$recipes/_lib/schema';
 import { deleteRecipe, getRecipeById, updateRecipe } from '$recipes/_lib/service';
 
-function extractR2Key(imageUrl: string, publicUrl: string): string | null {
-	if (!imageUrl.startsWith(publicUrl)) return null;
-	return imageUrl.slice(publicUrl.length).replace(/^\//, '');
-}
-
 /**
  * レシピを更新する。recipeUpdateSchema で入力値を検証後、service に委譲する。
  * imageUrl が R2 URL から変更された場合、旧ファイルを R2 から削除する。
@@ -69,17 +64,14 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
 		const existing = await getRecipeById(db, locals.user!.id, params.id);
 		const updated = await updateRecipe(db, locals.user!.id, params.id, result.data);
 
-		// imageUrl が変更され、旧 URL が R2 URL の場合はファイルを削除する
+		// imageUrl が変更された場合、旧 r2ImageKey（信頼済み）で R2 オブジェクトを削除する
+		// r2ImageKey はユーザー入力 URL ではなくアップロード時に DB へ保存した値を使用する
 		// R2 削除失敗は DB 更新済みのため、ログだけ出して成功扱いにする
-		const publicUrl = platform!.env.RECIPE_IMAGES_PUBLIC_URL;
-		if (existing.imageUrl && existing.imageUrl !== updated.imageUrl && publicUrl) {
-			const key = extractR2Key(existing.imageUrl, publicUrl);
-			if (key) {
-				try {
-					await platform!.env.RECIPE_IMAGES.delete(key);
-				} catch (r2Err) {
-					console.error('R2 旧画像の削除に失敗しました（DB 更新は完了済み）', r2Err);
-				}
+		if (existing.r2ImageKey && existing.imageUrl !== updated.imageUrl) {
+			try {
+				await platform!.env.RECIPE_IMAGES.delete(existing.r2ImageKey);
+			} catch (r2Err) {
+				console.error('R2 旧画像の削除に失敗しました（DB 更新は完了済み）', r2Err);
 			}
 		}
 
@@ -104,19 +96,15 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
 export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 	try {
 		const db = createDb(platform!.env.DB);
-		const { imageUrl } = await deleteRecipe(db, locals.user!.id, params.id);
+		const { r2ImageKey } = await deleteRecipe(db, locals.user!.id, params.id);
 
-		// R2 画像が存在する場合は削除する
+		// r2ImageKey（信頼済み）で R2 オブジェクトを削除する
 		// R2 削除失敗は DB 削除済みのため、ログだけ出して成功扱いにする
-		const publicUrl = platform!.env.RECIPE_IMAGES_PUBLIC_URL;
-		if (imageUrl && publicUrl) {
-			const key = extractR2Key(imageUrl, publicUrl);
-			if (key) {
-				try {
-					await platform!.env.RECIPE_IMAGES.delete(key);
-				} catch (r2Err) {
-					console.error('R2 画像の削除に失敗しました（DB 削除は完了済み）', r2Err);
-				}
+		if (r2ImageKey) {
+			try {
+				await platform!.env.RECIPE_IMAGES.delete(r2ImageKey);
+			} catch (r2Err) {
+				console.error('R2 画像の削除に失敗しました（DB 削除は完了済み）', r2Err);
 			}
 		}
 
