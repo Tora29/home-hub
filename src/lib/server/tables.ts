@@ -95,6 +95,7 @@ export const recipe = sqliteTable('Recipe', {
 	name: text('name').notNull(),
 	description: text('description'),
 	imageUrl: text('imageUrl'),
+	r2ImageKey: text('r2ImageKey'),
 	ingredients: text('ingredients'), // JSON: { name: string; amount?: string }[]
 	steps: text('steps'), // JSON: string[]
 	sourceUrl: text('sourceUrl'),

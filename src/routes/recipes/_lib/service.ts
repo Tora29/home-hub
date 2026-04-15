@@ -38,6 +38,7 @@ type Recipe = {
 	name: string;
 	description: string | null;
 	imageUrl: string | null;
+	r2ImageKey: string | null;
 	ingredients: Ingredient[] | null;
 	steps: string[] | null;
 	sourceUrl: string | null;
@@ -163,6 +164,7 @@ export async function createRecipe(db: Db, userId: string, data: RecipeCreate): 
 			name: data.name,
 			description: data.description ?? null,
 			imageUrl: data.imageUrl ?? null,
+			r2ImageKey: data.r2ImageKey ?? null,
 			ingredients: data.ingredients ? JSON.stringify(data.ingredients) : null,
 			steps: data.steps ? JSON.stringify(data.steps) : null,
 			sourceUrl: data.sourceUrl ?? null,
@@ -208,6 +210,7 @@ export async function updateRecipe(
 			cookedCount: data.cookedCount,
 			description: data.description !== undefined ? data.description : existing.description,
 			imageUrl: data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl,
+			r2ImageKey: data.r2ImageKey !== undefined ? data.r2ImageKey : existing.r2ImageKey,
 			ingredients:
 				data.ingredients !== undefined
 					? data.ingredients
@@ -244,11 +247,15 @@ export async function updateRecipe(
 }
 
 /**
- * レシピを削除する。
+ * レシピを削除する。削除したレシピの imageUrl を返す（R2 クリーンアップ用）。
  * @ac AC-005
  * @throws {NOT_FOUND} - 該当レシピが存在しない場合、または他ユーザーのレシピの場合
  */
-export async function deleteRecipe(db: Db, userId: string, id: string): Promise<void> {
+export async function deleteRecipe(
+	db: Db,
+	userId: string,
+	id: string
+): Promise<{ r2ImageKey: string | null }> {
 	const existing = await db
 		.select()
 		.from(recipe)
@@ -257,4 +264,5 @@ export async function deleteRecipe(db: Db, userId: string, id: string): Promise<
 	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 
 	await db.delete(recipe).where(and(eq(recipe.id, id), eq(recipe.userId, userId)));
+	return { r2ImageKey: existing.r2ImageKey };
 }

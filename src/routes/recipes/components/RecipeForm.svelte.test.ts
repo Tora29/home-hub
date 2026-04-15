@@ -23,6 +23,7 @@ const testRecipe = {
 	name: 'テストレシピ',
 	description: null,
 	imageUrl: null,
+	r2ImageKey: null,
 	ingredients: null,
 	steps: null,
 	sourceUrl: null,
