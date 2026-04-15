@@ -34,7 +34,7 @@
 	import Select from '$lib/components/Select.svelte';
 	import ExpenseItem from './components/ExpenseItem.svelte';
 	import ExpenseFormDialog from './components/ExpenseFormDialog.svelte';
-	import type { ExpenseWithRelations } from './types';
+	import type { ExpenseWithRelations } from './_lib/types';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

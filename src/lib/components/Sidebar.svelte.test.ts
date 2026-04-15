@@ -49,7 +49,7 @@ describe('Sidebar', () => {
 			render(Sidebar);
 
 			const mealCategory = page.getByRole('button', { name: '献立系' });
-			mealCategory.element().click();
+			(mealCategory.element() as HTMLElement).click();
 			flushSync();
 
 			await expect.element(mealCategory).toHaveAttribute('aria-expanded', 'false');
