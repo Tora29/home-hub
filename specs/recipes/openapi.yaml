@@ -139,6 +139,38 @@ paths:
         '400':
           $ref: '#/components/responses/ValidationError'
 
+  /recipes/upload:
+    post:
+      tags: [recipes]
+      summary: 画像アップロード
+      operationId: uploadRecipeImage
+      description: |
+        画像ファイルを Cloudflare R2 にアップロードし、公開 URL を返す。
+        対応形式: JPEG / PNG / WebP、上限サイズ: 5 MB。
+        ローカル開発環境（dev=true）では R2 呼び出しをスキップし、固定のダミー URL を返す。
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 画像ファイル（JPEG / PNG / WebP、5 MB 以下）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeUploadResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
   /recipes/ask:
     post:
       tags: [recipes-ai]
@@ -469,6 +501,16 @@ components:
         answer:
           type: string
           description: Workers AI による回答
+
+    RecipeUploadResponse:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: R2 にアップロードされた画像の公開 URL
 
     AppError:
       type: object
