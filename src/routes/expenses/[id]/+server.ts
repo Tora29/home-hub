@@ -16,15 +16,15 @@
  * - DELETE /expenses/[id] → 204 - 削除
  *   @errors 404(NOT_FOUND), 409(CONFLICT)
  *
- * @service ../service.ts
- * @schema ../schema.ts
+ * @service ../_lib/service.ts
+ * @schema ../_lib/schema.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
-import { expenseUpdateSchema } from '../schema';
-import { deleteExpense, updateExpense } from '../service';
+import { expenseUpdateSchema } from '$expenses/_lib/schema';
+import { deleteExpense, updateExpense } from '$expenses/_lib/service';
 
 /**
  * 支出を更新する。expenseUpdateSchema で入力値を検証後、service に委譲する。

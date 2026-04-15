@@ -1,6 +1,6 @@
 /**
  * @file テスト: API Expense カテゴリ 詳細
- * @module src/routes/expense/categories/[id]/+server.test.ts
+ * @module src/routes/expenses/categories/[id]/server.test.ts
  * @testType unit
  *
  * @target ./+server.ts
@@ -15,7 +15,7 @@ vi.mock('$lib/server/db', () => ({
 	createDb: vi.fn().mockReturnValue({})
 }));
 
-vi.mock('../service', () => ({
+vi.mock('$expenses/categories/_lib/service', () => ({
 	updateCategory: vi.fn(),
 	deleteCategory: vi.fn()
 }));
@@ -26,7 +26,7 @@ vi.mock('$lib/server/errors', async (importOriginal) => {
 });
 
 import { PUT, DELETE } from './+server';
-import * as service from '../service';
+import * as service from '$expenses/categories/_lib/service';
 import { AppError } from '$lib/server/errors';
 
 const mockLocals = { user: { id: 'user-1' } };

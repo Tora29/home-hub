@@ -11,7 +11,7 @@
  */
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
-import { getCategories } from './service';
+import { getCategories } from '$expenses/categories/_lib/service';
 
 export const load: PageServerLoad = async ({ platform, locals }) => {
 	const db = createDb(platform!.env.DB);

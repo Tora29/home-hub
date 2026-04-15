@@ -15,7 +15,7 @@ vi.mock('$lib/server/db', () => ({
 	createDb: vi.fn().mockReturnValue({})
 }));
 
-vi.mock('../service', () => ({
+vi.mock('$recipes/_lib/service', () => ({
 	getRecipeById: vi.fn(),
 	updateRecipe: vi.fn(),
 	deleteRecipe: vi.fn()
@@ -193,7 +193,7 @@ describe('PUT /recipes/[id]', () => {
 
 	describe('NOT_FOUND', () => {
 		test('[SPEC: AC-107] 存在しない ID に対して PUT した場合 404 NOT_FOUND を返す', async () => {
-			const { updateRecipe } = await import('../service');
+			const { updateRecipe } = await import('$recipes/_lib/service');
 			vi.mocked(updateRecipe).mockRejectedValue(
 				new AppError('NOT_FOUND', 404, '該当データが見つかりません')
 			);
@@ -214,7 +214,7 @@ describe('DELETE /recipes/[id]', () => {
 
 	describe('NOT_FOUND', () => {
 		test('[SPEC: AC-107] 存在しない ID に対して DELETE した場合 404 NOT_FOUND を返す', async () => {
-			const { deleteRecipe } = await import('../service');
+			const { deleteRecipe } = await import('$recipes/_lib/service');
 			vi.mocked(deleteRecipe).mockRejectedValue(
 				new AppError('NOT_FOUND', 404, '該当データが見つかりません')
 			);

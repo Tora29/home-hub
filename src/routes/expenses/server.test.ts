@@ -1,6 +1,6 @@
 /**
  * @file テスト: API Expense
- * @module src/routes/expense/+server.test.ts
+ * @module src/routes/expenses/server.test.ts
  * @testType unit
  *
  * @target ./+server.ts
@@ -17,13 +17,13 @@ vi.mock('$lib/server/db', () => ({
 	createDb: vi.fn().mockReturnValue({})
 }));
 
-vi.mock('./service', () => ({
+vi.mock('$expenses/_lib/service', () => ({
 	getExpenses: vi.fn(),
 	createExpense: vi.fn()
 }));
 
 import { GET, POST } from './+server';
-import * as service from './service';
+import * as service from '$expenses/_lib/service';
 
 const mockLocals = { user: { id: 'user-1' } };
 const mockPlatform = { env: { DB: {} } };

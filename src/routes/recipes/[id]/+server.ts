@@ -16,15 +16,15 @@
  * - DELETE /recipes/[id] → 204 - 削除
  *   @errors 404(NOT_FOUND)
  *
- * @service ../service.ts
- * @schema ../schema.ts
+ * @service ../_lib/service.ts
+ * @schema ../_lib/schema.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { AppError } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
-import { recipeUpdateSchema } from '../schema';
-import { deleteRecipe, updateRecipe } from '../service';
+import { recipeUpdateSchema } from '$recipes/_lib/schema';
+import { deleteRecipe, updateRecipe } from '$recipes/_lib/service';
 
 /**
  * レシピを更新する。recipeUpdateSchema で入力値を検証後、service に委譲する。

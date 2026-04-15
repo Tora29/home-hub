@@ -18,7 +18,7 @@
 	import { goto } from '$app/navigation';
 	import { Eye, EyeOff } from '@lucide/svelte';
 	import { authClient } from '$lib/auth-client';
-	import { loginSchema } from './schema';
+	import { loginSchema } from './_lib/schema';
 	import Input from '$lib/components/Input.svelte';
 	import Button from '$lib/components/Button.svelte';
 

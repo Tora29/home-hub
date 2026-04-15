@@ -17,9 +17,9 @@ import {
 	checkExpense,
 	requestExpenses,
 	getUnapprovedCount
-} from './expenses/service';
-import { createCategory } from './expenses/categories/service';
-import { getDashboardSummary } from './dashboard/summary/service';
+} from '$expenses/_lib/service';
+import { createCategory } from '$expenses/categories/_lib/service';
+import { getDashboardSummary } from '$dashboard/summary/_lib/service';
 import { user as userTable } from '$lib/server/tables';
 
 function makeUserId() {

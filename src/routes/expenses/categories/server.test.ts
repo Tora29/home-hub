@@ -1,6 +1,6 @@
 /**
  * @file テスト: API Expense カテゴリ
- * @module src/routes/expense/categories/+server.test.ts
+ * @module src/routes/expenses/categories/server.test.ts
  * @testType unit
  *
  * @target ./+server.ts
@@ -14,13 +14,13 @@ vi.mock('$lib/server/db', () => ({
 	createDb: vi.fn().mockReturnValue({})
 }));
 
-vi.mock('./service', () => ({
+vi.mock('$expenses/categories/_lib/service', () => ({
 	getCategories: vi.fn(),
 	createCategory: vi.fn()
 }));
 
 import { GET, POST } from './+server';
-import * as service from './service';
+import * as service from '$expenses/categories/_lib/service';
 
 const mockLocals = { user: { id: 'user-1' } };
 const mockPlatform = { env: { DB: {} } };
