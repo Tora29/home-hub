@@ -52,7 +52,7 @@ describe('+page.svelte', () => {
 
 			fillInput(page.getByLabelText('メールアドレス'), 'test@example.com');
 			fillInput(page.getByLabelText('パスワード', { exact: true }), 'password123');
-			page.getByRole('button', { name: 'ログイン' }).element().click();
+			(page.getByRole('button', { name: 'ログイン' }).element() as HTMLElement).click();
 
 			await vi.waitFor(() => {
 				expect(mockGoto).toHaveBeenCalledWith('/');

@@ -12,8 +12,8 @@
  */
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
-import { listRecipesQuerySchema } from './schema';
-import { getRecipes } from './service';
+import { listRecipesQuerySchema } from '$recipes/_lib/schema';
+import { getRecipes } from '$recipes/_lib/service';
 
 export const load: PageServerLoad = async ({ url, platform, locals }) => {
 	const rawQuery = Object.fromEntries(url.searchParams.entries());

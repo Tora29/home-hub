@@ -16,15 +16,15 @@
  *   @body expenseCreateSchema
  *   @errors 400(VALIDATION_ERROR)
  *
- * @service ./service.ts
- * @schema ./schema.ts
+ * @service ./_lib/service.ts
+ * @schema ./_lib/schema.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
-import { expenseCreateSchema, expenseQuerySchema } from './schema';
-import { createExpense, getExpenses } from './service';
+import { expenseCreateSchema, expenseQuerySchema } from '$expenses/_lib/schema';
+import { createExpense, getExpenses } from '$expenses/_lib/service';
 
 /**
  * 指定月の支出一覧を取得する。month 未指定時は当月。
