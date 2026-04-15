@@ -70,10 +70,17 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
 		const updated = await updateRecipe(db, locals.user!.id, params.id, result.data);
 
 		// imageUrl が変更され、旧 URL が R2 URL の場合はファイルを削除する
+		// R2 削除失敗は DB 更新済みのため、ログだけ出して成功扱いにする
 		const publicUrl = platform!.env.RECIPE_IMAGES_PUBLIC_URL;
 		if (existing.imageUrl && existing.imageUrl !== updated.imageUrl && publicUrl) {
 			const key = extractR2Key(existing.imageUrl, publicUrl);
-			if (key) await platform!.env.RECIPE_IMAGES.delete(key);
+			if (key) {
+				try {
+					await platform!.env.RECIPE_IMAGES.delete(key);
+				} catch (r2Err) {
+					console.error('R2 旧画像の削除に失敗しました（DB 更新は完了済み）', r2Err);
+				}
+			}
 		}
 
 		return json(updated);
@@ -100,10 +107,17 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 		const { imageUrl } = await deleteRecipe(db, locals.user!.id, params.id);
 
 		// R2 画像が存在する場合は削除する
+		// R2 削除失敗は DB 削除済みのため、ログだけ出して成功扱いにする
 		const publicUrl = platform!.env.RECIPE_IMAGES_PUBLIC_URL;
 		if (imageUrl && publicUrl) {
 			const key = extractR2Key(imageUrl, publicUrl);
-			if (key) await platform!.env.RECIPE_IMAGES.delete(key);
+			if (key) {
+				try {
+					await platform!.env.RECIPE_IMAGES.delete(key);
+				} catch (r2Err) {
+					console.error('R2 画像の削除に失敗しました（DB 削除は完了済み）', r2Err);
+				}
+			}
 		}
 
 		return new Response(null, { status: 204 });
