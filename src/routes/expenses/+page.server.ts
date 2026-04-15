@@ -13,9 +13,9 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
-import { getExpenses, getUsers } from './service';
-import { getCategories } from './categories/service';
-import { expenseQuerySchema } from './schema';
+import { getExpenses, getUsers } from '$expenses/_lib/service';
+import { getCategories } from '$expenses/categories/_lib/service';
+import { expenseQuerySchema } from '$expenses/_lib/schema';
 
 export const load: PageServerLoad = async ({ platform, locals, url }) => {
 	const db = createDb(platform!.env.DB);

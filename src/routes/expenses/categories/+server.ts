@@ -15,15 +15,15 @@
  *   @body categoryCreateSchema
  *   @errors 400(VALIDATION_ERROR)
  *
- * @service ./service.ts
- * @schema ./schema.ts
+ * @service ./_lib/service.ts
+ * @schema ./_lib/schema.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
-import { categoryCreateSchema } from './schema';
-import { createCategory, getCategories } from './service';
+import { categoryCreateSchema } from '$expenses/categories/_lib/schema';
+import { createCategory, getCategories } from '$expenses/categories/_lib/service';
 
 /**
  * カテゴリ一覧を取得する（全件）。

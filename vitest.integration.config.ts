@@ -9,7 +9,10 @@ export default defineConfig(async () => {
 	return {
 		resolve: {
 			alias: {
-				$lib: path.resolve('./src/lib')
+				$lib: path.resolve('./src/lib'),
+				$expenses: path.resolve('./src/routes/expenses'),
+				$recipes: path.resolve('./src/routes/recipes'),
+				$dashboard: path.resolve('./src/routes/dashboard')
 			}
 		},
 		plugins: [

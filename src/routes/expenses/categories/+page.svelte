@@ -25,7 +25,7 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Input from '$lib/components/Input.svelte';
 
-	import type { Category } from '../types';
+	import type { Category } from '../_lib/types';
 
 	let { data } = $props();
 

@@ -16,15 +16,15 @@
  * - DELETE /expenses/categories/[id] → 204 - カテゴリ削除
  *   @errors 404(NOT_FOUND), 409(CONFLICT)
  *
- * @service ../service.ts
- * @schema ../schema.ts
+ * @service ../_lib/service.ts
+ * @schema ../_lib/schema.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
-import { categoryUpdateSchema } from '../schema';
-import { deleteCategory, updateCategory } from '../service';
+import { categoryUpdateSchema } from '$expenses/categories/_lib/schema';
+import { deleteCategory, updateCategory } from '$expenses/categories/_lib/service';
 
 /**
  * カテゴリを更新する。categoryUpdateSchema で入力値を検証後、service に委譲する。

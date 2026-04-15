@@ -12,9 +12,9 @@
 import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
-import { getExpenses } from './service';
-import { createCategory } from './categories/service';
-import { expenseQuerySchema } from './schema';
+import { getExpenses } from '$expenses/_lib/service';
+import { createCategory } from '$expenses/categories/_lib/service';
+import { expenseQuerySchema } from '$expenses/_lib/schema';
 import { user as userTable } from '$lib/server/tables';
 
 function makeUserId() {

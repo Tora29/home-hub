@@ -14,7 +14,7 @@ vi.mock('$lib/server/db', () => ({
 	createDb: vi.fn().mockReturnValue({})
 }));
 
-vi.mock('./service', () => ({
+vi.mock('$recipes/_lib/service', () => ({
 	getRecipes: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 }),
 	createRecipe: vi.fn()
 }));
