@@ -1,0 +1,36 @@
+name: Verify App
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify-app:
+    name: verify-app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check types
+        run: npm run check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm run test:unit -- --run
+
+      - name: Run integration tests
+        run: npm run test:integration -- --run
+
+      - name: Build
+        run: npm run build
