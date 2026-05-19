@@ -21,15 +21,12 @@
 新機能を実装する際は以下の順序でスキルを実行する。
 
 ```
-/spec-generator
-  │ spec.md + openapi.yaml を生成
-  ↓
-/scaffold-ui-mockup          ← 任意（実装前に UI イメージを確認したい場合）
-  │ specs/{feature}/ui-mockup.html を生成
-  │ spec の修正・確認が完了してから次へ進む
+/scaffold-ui-mockup
+  │ specs/{feature}/ui-mockup.html を生成（data-* 属性・@api コメント付き）
+  │ ← ユーザーが mockup を確認・修正する（= 仕様レビュー）
   ↓
 /scaffold-contract
-  │ schema.ts + tables.ts + migrations を生成・コミット
+  │ schema.ts + tables.ts + migrations + openapi.yaml を生成・コミット
   │ ← ここが be / fe / test-unit の共通 worktree ベース
   ↓
   ├─ /scaffold-be        ── worktree で実行（別ターミナル可）
@@ -42,7 +39,7 @@
       テストファイルを生成 → main に取り込み
   ↓（3つの取り込み完了後）
 /test-and-fix unit
-  │ be / fe / test-unit の不整合を吸収して unit + integration を GREEN に
+  │ unit + integration を GREEN に
   ↓
 /scaffold-test-e2e
   │ E2E テストを生成
@@ -50,16 +47,10 @@
 /test-and-fix all
   │ unit + integration + e2e テストを GREEN に
   ↓
-/spec-coverage
-  │ spec と実装の値ドリフトを検出
-  ↓（ドリフトがある場合）
-/spec-sync
-  │ ドリフトをインタラクティブに解消
-  ↓
 /verify-app
   │ 型チェック → Lint → 全テスト → ビルド
   ↓
 /commit-push-pr
 ```
 
-> **並列化の根拠**: be / fe / test-unit はいずれも `spec.md` + `openapi.yaml` を入力とし、互いの成果物を参照しない。ズレは `/test-and-fix` が吸収する。
+> **並列化の根拠**: be / fe / test-unit はいずれも ui-mockup.html を基点とし、互いの成果物を参照しない。ズレは `/test-and-fix` が吸収する。

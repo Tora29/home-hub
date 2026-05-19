@@ -1,20 +1,19 @@
 ---
 name: scaffold-test-unit
-description: openapi.yaml と AC を参照して API / Unit テストを生成する。
+description: ui-mockup.html の data-* 属性から業務要件を表す Unit / Integration テストを生成する。テストは業務要件の説明文になる。実装を通すためだけのテストは生成しない。
 allowed-tools: Read(specs/*), Grep, Glob, Write, Bash(npm run:*)
 ---
 
 # Unit / API Test Scaffold
 
-openapi.yaml を主入力として、API テスト・ユニットテストを生成するスキル。
+ui-mockup.html を主入力として、業務要件テストを生成するスキル。
 
 ## 前提条件
 
-- `specs/{feature}/spec.md` が存在すること（AC の参照）
+- `specs/{feature}/ui-mockup.html` が存在すること
 - `specs/infra-spec.md` が存在すること（テストフレームワーク・コマンドの参照）
 - `.claude/rules/testing.md` が定義されていること
-- `specs/{feature}/openapi.yaml` が存在すること（API 要件がある場合のみ。ない場合は spec.md の AC のみを入力とする）
-- `/scaffold-contract` が実行済みであり、schema.ts・tables.ts・migrations がコミット済みであること（この HEAD が worktree のベースとなる）
+- `/scaffold-contract` が実行済みで schema.ts・tables.ts がコミット済みであること（worktree のベース）
 
 ## 起動時の挙動
 
@@ -41,7 +40,7 @@ cd ../home-hub-test-{feature}
 ## ワークフロー
 
 ```
-入力読み込み → rules 参照 → AC マッピング → テスト生成 → チェックリスト検証
+入力読み込み → rules 参照 → data-* マッピング → テスト生成 → チェックリスト検証
 ```
 
 ### Step 1: 入力読み込み
@@ -49,11 +48,8 @@ cd ../home-hub-test-{feature}
 以下のファイルを Read ツールで読み込む:
 
 1. `specs/infra-spec.md` — テストフレームワーク、テストコマンド、ディレクトリ構成
-2. `specs/{feature}/openapi.yaml` — API エンドポイント、リクエスト/レスポンス型、ステータスコード
-3. `specs/{feature}/spec.md` — 以下のセクションを必ず参照する:
-   - **Business Rules** — 状態遷移マトリクス（不正遷移のテストケース生成）、権限マトリクス（権限違反のテストケース生成）、外部API連携（失敗パターンのテストケース生成）、境界条件（エッジケースのテストケース生成）
-   - **Acceptance Criteria** — 正常系・異常系・境界値
-   - **UI Requirements** — FE コンポーネントテストのセレクタ・表示条件参照
+2. `specs/{feature}/ui-mockup.html` — @api コメントと data-\* 属性（テスト生成の唯一の根拠）
+3. `src/routes/{feature}/_lib/schema.ts` — 生成済み Zod スキーマ（テストの import 先）
 
 ### Step 2: rules 参照
 
@@ -64,121 +60,83 @@ cd ../home-hub-test-{feature}
 | `.claude/rules/testing.md`      | テスト種別、モック戦略、カバレッジ方針、テスト-仕様連携形式 |
 | `.claude/rules/file-headers.md` | ファイルヘッダーコメントのテンプレートと記述ルール          |
 
-### Step 3: AC マッピングとファイル存在確認
+### Step 3: data-\* からテストケースを導出
 
-#### 3-1: AC マッピング
+ui-mockup.html の各フィールドの data-\* 属性を以下のルールでテストケースに変換する:
 
-spec.md の AC を分類し、テストケースにマッピングする:
+| data-\*                | 生成するテストケース                                           | テスト種別     |
+| ---------------------- | -------------------------------------------------------------- | -------------- |
+| `data-required="true"` | 空文字 → VALIDATION_ERROR（data-error-msg の文言）             | Unit（schema） |
+| `data-min="{n}"`       | n-1文字 → VALIDATION_ERROR / n文字 → OK                        | Unit（schema） |
+| `data-max="{n}"`       | n文字 → OK / n+1文字 → VALIDATION_ERROR（data-max-msg の文言） | Unit（schema） |
+| `data-min-val="{n}"`   | n-1 → VALIDATION_ERROR / n → OK                                | Unit（schema） |
+| `data-max-val="{n}"`   | n → OK / n+1 → VALIDATION_ERROR                                | Unit（schema） |
+| `data-unique="true"`   | 重複登録 → CONFLICT                                            | Integration    |
+| `@api POST`            | 全フィールド正常値 → 正常系登録                                | Integration    |
+| `@api GET`             | 登録済みデータ → 一覧に含まれる                                | Integration    |
+| `@api DELETE`          | 存在する ID → 削除成功                                         | Integration    |
+| `@api PUT`             | 存在する ID + 正常値 → 更新成功                                | Integration    |
 
-| AC 種別            | テスト種別                         | 例                         |
-| ------------------ | ---------------------------------- | -------------------------- |
-| 正常系（AC-001〜） | API テスト: 成功レスポンスの検証   | GET → 200、POST → 201      |
-| 異常系（AC-101〜） | API テスト: エラーレスポンスの検証 | バリデーションエラー → 400 |
-| 境界値（AC-201〜） | Unit テスト / API テスト           | 最大長、空文字、特殊文字   |
+#### テスト命名規則
 
-#### 3-1b: Business Rules 由来のテストケース追加
+テスト名が業務要件の説明になるように記述する。`[SPEC: AC-XXX]` 形式は使わない。
 
-AC だけを機械的変換するのではなく、**Business Rules セクションからもテストケースを導出**する。
-AC に書かれていないルール違反もテストで検出できるようにする。
+| ケース    | フォーマット                       | 例                                                             |
+| --------- | ---------------------------------- | -------------------------------------------------------------- |
+| 正常系    | `{条件}で{操作}できる`             | `正しいデータで料理を登録できる`                               |
+| 異常系    | `{条件}の場合、{エラー内容}が返る` | `料理名が空の場合、VALIDATION_ERROR「料理名は必須です」が返る` |
+| 境界値 OK | `{条件}の場合、{操作}できる`       | `料理名が100文字の場合、登録できる`                            |
+| 境界値 NG | `{条件}の場合、{エラー内容}が返る` | `料理名が101文字の場合、VALIDATION_ERROR が返る`               |
 
-| Business Rules     | 追加すべきテストケース                        | テスト種別             |
-| ------------------ | --------------------------------------------- | ---------------------- |
-| 状態遷移マトリクス | 不正遷移（例: unapproved → approved）のテスト | Unit（server.test.ts） |
-| 権限マトリクス     | 権限違反（例: 第三者の更新）のテスト          | Unit（server.test.ts） |
-| エンティティ間制約 | 所有権違反（例: 他人のカテゴリ使用）のテスト  | Unit（server.test.ts） |
-| 外部API連携        | 各失敗パターンのテスト                        | Unit（server.test.ts） |
-| 境界条件           | null値・未設定のテスト                        | Unit / Integration     |
+#### 生成しないテスト
 
-> AC 番号が振られていない Business Rules 由来のテストケースには `[SPEC: BR-{rule_name}]` を付与する。
+以下は生成しない:
 
-#### 3-2: 期待ファイルリストの作成・差分検知
+- `[SPEC: AC-XXX]` 形式のテスト名
+- 関数の内部実装を確認するだけのテスト
+- 常に通る自明なテスト（フィールドの存在確認等）
 
-spec.md の「テスト戦略」セクション（または testing.md のファイル命名規則）をもとに、**生成すべきテストファイルの完全なリスト**と**各ファイルがカバーすべきマーカー一覧（AC + BR）**を作成する。
+#### ファイル存在確認
 
-```
-期待ファイル例（spec.md のテスト戦略テーブルから抽出）:
-- src/routes/{feature}/schema.test.ts              → AC-101〜109, AC-201〜203
-- src/routes/{feature}/server.test.ts              → AC-101〜109, AC-106, BR-権限, BR-状態遷移
-- src/routes/{feature}/[id]/server.test.ts         → AC-106, AC-113, AC-114
-- src/routes/{feature}/page.svelte.test.ts         → AC-016〜020, AC-111〜112
-- src/routes/{feature}/service.integration.test.ts → AC-001〜007, AC-013〜015, BR-境界
-```
-
-次に **Glob ツールで各ファイルの存在を確認**し、ファイルごとに差分検知を行う：
-
-##### ファイルが存在しない場合
-
-Step 4 で新規生成する。
-
-##### ファイルが存在する場合：3パターン差分検知
-
-**Grep で `\[SPEC: (AC-\d+|BR-[\w-]+)\]` を抽出し、ハッシュを確認する：**
-
-```
-カバレッジ確認: Grep('\[SPEC: (AC-\d+|BR-[\w-]+)\]', 対象ファイル)
-```
-
-抽出した各行から **マーカー名** と **spec ハッシュ**（`// spec:{hash}` 部分）を取り出し、spec.md のテスト戦略テーブルと照合する。
-
-**ハッシュの仕様:**
-
-- spec.md のテスト戦略テーブルの各行（説明列）を `sha256` で8桁に短縮したもの
-- テストケースの test 名末尾に `// spec:{hash}` として埋め込む
-- 例: `test('[SPEC: AC-001] 正しいデータで支出を作成できる // spec:a1b2c3d4', async () => {`
-
-**差分判定:**
-
-| パターン | 条件                                 | アクション                                        |
-| -------- | ------------------------------------ | ------------------------------------------------- |
-| 新規追加 | 期待マーカーにあって既存テストにない | そのマーカーのテストケースを新規生成              |
-| 既存削除 | 既存テストにあって期待マーカーにない | 警告を表示（ユーザーに削除確認）                  |
-| 既存更新 | マーカーは一致するがハッシュが異なる | そのマーカーのテストケースを再生成（Edit で置換） |
-| 変更なし | マーカーもハッシュも一致             | スキップ                                          |
-
-**ハッシュ不一致時の再生成手順:**
-
-1. 該当マーカーのテストケースを Grep で特定（行番号付き）
-2. そのテストケースの範囲（`test(` から閉じ `});` まで）を特定
-3. Edit ツールで現在の spec.md 内容に基づく新しいテストケースに置換
-4. 新しいハッシュを付与
-
-> ファイルが存在しても中身が不完全な場合があるため、必ず差分検知を行うこと。
+Glob で各テストファイルの存在を確認する。存在しない場合は Step 4 で新規生成する。
 
 ### Step 4: テスト生成
 
 #### テストケースの命名
 
-testing rule の命名規約に従う。各テストケースに AC 番号を紐付ける:
+テスト名が業務要件の説明になるように記述する。`[SPEC: AC-XXX]` 形式は使わない。
 
-```
-[SPEC: AC-001] テスト説明
-```
+```typescript
+// 正常系
+test('正しいデータで料理を登録できる', async () => { ... })
 
-分割 SPEC の場合:
+// 異常系
+test('料理名が空の場合、VALIDATION_ERROR「料理名は必須です」が返る', () => { ... })
 
-```
-[SPEC: {domain}/AC-001] テスト説明
+// 境界値 OK
+test('料理名が100文字の場合、登録できる', () => { ... })
+
+// 境界値 NG
+test('料理名が101文字の場合、VALIDATION_ERROR が返る', () => { ... })
 ```
 
 #### 生成対象
 
-1. **API テスト** — openapi.yaml の各エンドポイントに対するリクエスト/レスポンス検証
-2. **スキーマ Unit テスト** — Zod バリデーションロジックの検証
-3. **FE コンポーネントテスト** — spec.md のテスト戦略テーブルに `components/` が記載されている場合に生成
-4. **E2E テスト** — spec.md のテスト戦略テーブルに `e2e/` が記載されている場合に生成
+1. **Integration テスト** — @api コメントの各エンドポイントに対する正常系検証（実 D1 使用）
+2. **Unit テスト（schema）** — data-\* 属性から導出したバリデーション検証
 
 テストの実行方法・フレームワークは infra-spec.md と testing rule に従う。
 
 #### FE コンポーネントテストの生成パターン
 
-spec.md の**テスト戦略テーブルに `components/*.svelte.test.ts` が記載されている場合**、以下のパターンで生成する:
+ui-mockup.html の `data-testid` 属性を持つコンポーネントがある場合、以下のパターンで生成する:
 
 - **フレームワーク**: `vitest-browser-svelte`（`render` + `page` from `vitest/browser`）
-- **入力**: spec.md の `data-testid` テーブル + 対応 AC のみ（実装コードを読まない）
+- **入力**: ui-mockup.html の `data-testid` 属性のみ（実装コードを読まない）
 - **セレクタ**: `data-testid.md` のセレクタ優先順位に従う（`getByRole` → `getByLabelText` → `getByText` → `getByTestId`）
 - **クリック操作**: ナビゲーションを伴わないボタンは `element().click()` + `flushSync()` を使う（`locator.click()` は SvelteKit 環境で 5〜15 秒かかるため）
 - **テキスト検証**: `expect.element(page.getByText('....')).toBeVisible()` を使用（`toHaveText` は使わない）
-- **非通信確認**: AC に「サーバー非通信」が含まれる場合は `vi.stubGlobal('fetch', vi.fn())` で fetch が呼ばれないことを確認
+- **非通信確認**: バリデーションテストは `vi.stubGlobal('fetch', vi.fn())` で fetch が呼ばれないことを確認
 
 ```typescript
 import { describe, test, expect, afterEach, vi } from 'vitest';
@@ -192,11 +150,11 @@ afterEach(() => {
 });
 
 describe('{ComponentName}', () => {
-	test('[SPEC: AC-XXX] {振る舞いの説明}', async () => {
+	test('{フィールド名}が空の場合、エラーメッセージが表示される', async () => {
 		render(
 			{ ComponentName },
 			{
-				/* spec.md から導出した最小限の props */
+				/* ui-mockup.html から導出した最小限の props */
 			}
 		);
 
@@ -205,10 +163,10 @@ describe('{ComponentName}', () => {
 		flushSync();
 
 		await expect.element(page.getByRole('alert')).toBeVisible();
-		await expect.element(page.getByText('{エラーメッセージ}')).toBeVisible();
+		await expect.element(page.getByText('{data-error-msg の文言}')).toBeVisible();
 	});
 
-	test('[SPEC: AC-XXX] サーバー通信は発生しない', async () => {
+	test('バリデーションエラー時、サーバー通信は発生しない', async () => {
 		const fetchMock = vi.fn();
 		vi.stubGlobal('fetch', fetchMock);
 
@@ -230,11 +188,10 @@ describe('{ComponentName}', () => {
 
 以下の項目を順番に確認する。**テスト実行は必ず Bash ツールで行うこと。**
 
-- [ ] **Step 3-2 で作成した期待ファイルリストの全ファイルが存在する**（Glob で確認済み）
-- [ ] **既存ファイルを含む全テストファイルで `[SPEC: AC-XXX]` を Grep し、期待 AC との差分がゼロである**（Step 3-2 の AC カバレッジ確認済み）
-- [ ] 全ての AC にテストケースが存在する（`[SPEC: AC-XXX]` で紐付け済み）— FE コンポーネントテスト・E2E テストを含む
-- [ ] openapi.yaml の全エンドポイントに対するテストが存在する（openapi.yaml がある場合のみ）
+- [ ] ui-mockup.html の全 data-\* 属性に対応するテストケースが存在する
+- [ ] @api コメントの全エンドポイントに対する Integration テストが存在する
 - [ ] 正常系・異常系・境界値の各カテゴリをカバーしている
+- [ ] テスト名が業務要件の説明文になっている（`[SPEC: AC-XXX]` 形式を使っていない）
 - [ ] テスト命名が testing rule に従っている
 - [ ] モック戦略が testing rule に従っている
 - [ ] テストファイルの配置が infra-spec.md のディレクトリ構成に従っている

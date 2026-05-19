@@ -1,6 +1,6 @@
 # data-testid
 
-テスト用セレクタの規約。**ルールはこのファイルが唯一の定義元。testid 値の一覧は各機能の `spec.md` が定義元**。
+テスト用セレクタの規約。**ルールはこのファイルが唯一の定義元。testid 値の一覧は各機能の `ui-mockup.html` が定義元**。
 
 ---
 
@@ -142,7 +142,7 @@ await page.getByTestId('sidebar-category-expense').click();
 <Button data-testid="expense-edit-button">編集</Button>
 ```
 
-- `data-testid` の命名責任は**親（機能側）**が持つ → `spec.md` の testid 定義と一致する
+- `data-testid` の命名責任は**親（機能側）**が持つ → `ui-mockup.html` の testid 定義と一致する
 - 機能固有コンポーネント（`ExpenseFormDialog.svelte` 等）は内部要素に固有の testid を持ってよい
 
 ### 複合コンポーネント（sub-element に testid が必要な場合）
@@ -180,14 +180,15 @@ await page.getByTestId('sidebar-category-expense').click();
 
 - コンポーネント分割・リファクタリング後も `data-testid` の値を変えない
 - セレクタを変更する場合は、対応するテストも同時に更新する
-- 新機能追加時は **`specs/{feature}/spec.md` の `## data-testid` セクション**に追記してから実装する
+- 新機能追加時は **`specs/{feature}/ui-mockup.html`** の `data-testid` 属性として定義してから実装する
 
 ---
 
 ## testid の定義場所
 
-testid の一覧は機能ごとの `specs/{feature}/spec.md` が唯一の定義元。
-scaffold-fe / scaffold-test-e2e スキルは `specs/{feature}/spec.md` の `## data-testid` セクションを参照してコードを生成する。
+testid の一覧は機能ごとの `specs/{feature}/ui-mockup.html` が唯一の定義元。
+`data-testid` 属性として直接 HTML に記述されている。
+scaffold-fe / scaffold-test-e2e スキルは `specs/{feature}/ui-mockup.html` の `data-testid` 属性を参照してコードを生成する。
 
 ---
 
