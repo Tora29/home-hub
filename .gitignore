@@ -34,5 +34,11 @@ playwright-report/
 # plan
 plan.md
 
+# Terraform
+.terraform/
+terraform.tfvars
+*.tfstate
+*.tfstate.backup
+
 # Claude user memory (private)
 .claude/user/

@@ -1,0 +1,19 @@
+# =============================================================================
+#  terraform.tfvars.example
+# =============================================================================
+
+# --- Cloudflare ---------------------------------------------------------------
+cloudflare_account_id = "your-account-id"
+cloudflare_api_token  = "your-api-token"
+
+# --- Better Auth --------------------------------------------------------------
+better_auth_url    = "https://home-hub.pages.dev"
+better_auth_secret = "your-better-auth-secret"
+
+# --- LINE (未使用なら空文字のまま) --------------------------------------------
+line_channel_access_token = ""
+line_user_id_primary      = ""
+line_user_id_spouse       = ""
+
+# --- R2 Public URL (未設定なら空文字のまま) -----------------------------------
+recipe_images_public_url = "https://pub-xxx.r2.dev"

@@ -1,0 +1,72 @@
+name: Terraform
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - terraform/**
+  push:
+    branches:
+      - main
+    paths:
+      - terraform/**
+
+jobs:
+  plan:
+    name: Terraform Plan
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: |
+          terraform -chdir=terraform init \
+            -backend-config="endpoints={s3=\"https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com\"}" \
+            -backend-config="access_key=${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}" \
+            -backend-config="secret_key=${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}"
+
+      - name: Terraform Plan
+        run: terraform -chdir=terraform plan -no-color
+        env:
+          TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TF_VAR_cloudflare_api_token: ${{ secrets.TF_VAR_CLOUDFLARE_API_TOKEN }}
+          TF_VAR_better_auth_url: ${{ secrets.TF_VAR_BETTER_AUTH_URL }}
+          TF_VAR_better_auth_secret: ${{ secrets.TF_VAR_BETTER_AUTH_SECRET }}
+          TF_VAR_line_channel_access_token: ${{ secrets.TF_VAR_LINE_CHANNEL_ACCESS_TOKEN }}
+          TF_VAR_line_user_id_primary: ${{ secrets.TF_VAR_LINE_USER_ID_PRIMARY }}
+          TF_VAR_line_user_id_spouse: ${{ secrets.TF_VAR_LINE_USER_ID_SPOUSE }}
+          TF_VAR_recipe_images_public_url: ${{ secrets.TF_VAR_RECIPE_IMAGES_PUBLIC_URL }}
+
+  apply:
+    name: Terraform Apply
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: |
+          terraform -chdir=terraform init \
+            -backend-config="endpoints={s3=\"https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com\"}" \
+            -backend-config="access_key=${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}" \
+            -backend-config="secret_key=${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}"
+
+      - name: Terraform Apply
+        run: terraform -chdir=terraform apply -auto-approve -no-color
+        env:
+          TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TF_VAR_cloudflare_api_token: ${{ secrets.TF_VAR_CLOUDFLARE_API_TOKEN }}
+          TF_VAR_better_auth_url: ${{ secrets.TF_VAR_BETTER_AUTH_URL }}
+          TF_VAR_better_auth_secret: ${{ secrets.TF_VAR_BETTER_AUTH_SECRET }}
+          TF_VAR_line_channel_access_token: ${{ secrets.TF_VAR_LINE_CHANNEL_ACCESS_TOKEN }}
+          TF_VAR_line_user_id_primary: ${{ secrets.TF_VAR_LINE_USER_ID_PRIMARY }}
+          TF_VAR_line_user_id_spouse: ${{ secrets.TF_VAR_LINE_USER_ID_SPOUSE }}
+          TF_VAR_recipe_images_public_url: ${{ secrets.TF_VAR_RECIPE_IMAGES_PUBLIC_URL }}

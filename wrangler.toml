@@ -9,5 +9,9 @@ database_name = "home-hub"
 database_id = "d8430f83-51ef-47f6-9e9a-40dca3cd12e2"
 migrations_dir = "drizzle/migrations"
 
+[[r2_buckets]]
+binding = "RECIPE_IMAGES"
+bucket_name = "home-hub-recipe-images"
+
 [ai]
 binding = "AI"
