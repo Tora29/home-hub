@@ -25,8 +25,7 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
 | `@module`      | ◯    | `infra-spec.md` で定義されたディレクトリ構成に基づくフルパス                                 |
 | `@feature`     | ◯    | 機能名（`specs/` 配下の feature ディレクトリ名、ネストしない）。共通ライブラリ配下では省略可 |
 | `@description` | ◯    | 1〜3行の概要説明                                                                             |
-| `@spec`        | △    | `specs/{feature}/spec.md` への相対パス。共通ライブラリ配下では省略可                         |
-| `@acceptance`  | △    | 対応する受入条件番号（`AC-001, AC-002`）                                                     |
+| `@spec`        | △    | `specs/{feature}/ui-mockup.html` への相対パス。共通ライブラリ配下では省略可                  |
 
 ---
 
@@ -45,8 +44,7 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
   @description
   {画面の概要説明}
 
-  @spec specs/{feature}/spec.md
-  @acceptance AC-001, AC-002
+  @spec specs/{feature}/ui-mockup.html
 
   @navigation
   - 遷移元: {パス} - {説明}
@@ -71,8 +69,7 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  * @description
  * {機能}画面の初期データをサーバーサイドで取得する。
  *
- * @spec specs/{feature}/spec.md
- * @acceptance AC-001
+ * @spec specs/{feature}/ui-mockup.html
  */
 ```
 
@@ -89,8 +86,7 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  * @description
  * {API の概要説明}
  *
- * @spec specs/{feature}/spec.md
- * @acceptance AC-001, AC-002
+ * @spec specs/{feature}/ui-mockup.html
  *
  * @endpoints
  * - GET /{feature} → 200 {Entity}[] - 一覧取得
@@ -125,8 +121,7 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  * @description
  * {サービスの概要説明}
  *
- * @spec specs/{feature}/spec.md
- * @acceptance AC-001, AC-002
+ * @spec specs/{feature}/ui-mockup.html
  *
  * @entity {Entity}
  *
@@ -154,7 +149,7 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  * @description
  * {スキーマの概要説明}
  *
- * @spec specs/{feature}/spec.md - Schema セクション
+ * @spec specs/{feature}/ui-mockup.html
  *
  * @schemas
  * - {entity}CreateSchema - 作成用入力
@@ -211,8 +206,7 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  * @testType unit
  *
  * @target ./{ファイル名}.ts
- * @spec specs/{feature}/spec.md
- * @covers AC-001, AC-002, AC-101, AC-102
+ * @spec specs/{feature}/ui-mockup.html
  */
 ```
 
@@ -227,8 +221,7 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  * @testType integration
  *
  * @target ./{ファイル名}.ts
- * @spec specs/{feature}/spec.md
- * @covers AC-001, AC-002
+ * @spec specs/{feature}/ui-mockup.html
  */
 ```
 
@@ -242,8 +235,7 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  * @module e2e/{feature}.e2e.ts
  * @testType e2e
  *
- * @spec specs/{feature}/spec.md
- * @covers AC-001, AC-002
+ * @spec specs/{feature}/ui-mockup.html
  *
  * @scenarios
  * - {シナリオ1の説明}
@@ -265,7 +257,6 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
 ```typescript
 /**
  * {処理の概要}。
- * @ac AC-001
  * @throws {ErrorCode} - {条件}
  */
 export async function get{Entities}(db: DrizzleD1Database, userId: string): Promise<{Entity}[]>
@@ -278,14 +269,12 @@ export async function get{Entities}(db: DrizzleD1Database, userId: string): Prom
 ```typescript
 /**
  * {処理の概要}。
- * @ac AC-001
  * @calls {serviceFunction}
  */
 export const GET: RequestHandler = async ({ locals, platform }) => {
 
 /**
  * {処理の概要}。{schema} で入力値を検証後、service に委譲する。
- * @ac AC-001, AC-101
  * @body {schema}
  * @throws {ErrorCode} - {条件}
  */
@@ -296,24 +285,11 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
 ---
 
-## 受入条件の採番ルール
-
-| 分類                | 番号範囲    | 説明                 |
-| ------------------- | ----------- | -------------------- |
-| 正常系              | AC-001〜099 | 正常動作ケース       |
-| 異常系              | AC-101〜199 | エラー・例外ケース   |
-| 境界値/エッジケース | AC-201〜299 | 境界値・エッジケース |
-
-上限を超える場合は 4 桁に拡張（`AC-0001〜`）。頻繁に超える場合は機能分割を検討。
-
----
-
 ## なぜ必要か
 
-- 生成コードから設計書（spec.md / openapi.yaml）へのトレーサビリティを確保する
-- `@acceptance` タグで AC と実装ファイルを直接紐付け、spec-coverage スキルの解析精度を高める
+- 生成コードから仕様（ui-mockup.html）へのトレーサビリティを確保する
 - コードレビュー時に設計意図・仕様参照先を即座に把握できるようにする
 
 ## 参照するスキル
 
-- scaffold-be, scaffold-fe, scaffold-test-unit, scaffold-test-e2e, review-changes, spec-coverage
+- scaffold-be, scaffold-fe, scaffold-test-unit, scaffold-test-e2e, review-changes

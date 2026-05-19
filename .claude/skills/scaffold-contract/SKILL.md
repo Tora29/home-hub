@@ -1,16 +1,16 @@
 ---
 name: scaffold-contract
-description: openapi.yaml から BE/FE 共通の契約ファイル（schema.ts・tables.ts・migrations）を生成する。既存テーブルとのドリフト（カラム変更・テーブル廃止）を検出してユーザー確認後に tables.ts を更新し、対応する migration SQL を生成する機能も含む。
+description: ui-mockup.html の @api コメントと data-* 属性から BE/FE 共通の契約ファイル（schema.ts・tables.ts・migrations・openapi.yaml）を生成する。openapi.yaml は入力ではなく出力物。既存テーブルとのドリフト（カラム変更・テーブル廃止）を検出してユーザー確認後に tables.ts を更新し、対応する migration SQL を生成する機能も含む。
 ---
 
 # Contract Scaffold
 
-openapi.yaml を主入力として、BE/FE 共通の「契約ファイル」を生成するスキル。
+ui-mockup.html を主入力として、BE/FE 共通の「契約ファイル」を生成するスキル。
 新規追加だけでなく、既存テーブルとのドリフト検出・更新・削除にも対応する。
 
 ## 前提条件
 
-- `specs/{feature}/openapi.yaml` が存在すること
+- `specs/{feature}/ui-mockup.html` が存在すること（/scaffold-ui-mockup 実行済み）
 - `specs/infra-spec.md` が存在すること（ディレクトリ構成・DB 設定の参照）
 - `.claude/rules/` に schemas, api-patterns が定義されていること
 
@@ -35,8 +35,19 @@ options:
 以下のファイルを Read ツールで読み込む:
 
 1. `specs/infra-spec.md` — 技術スタック、ディレクトリ構成、パスエイリアス等
-2. `specs/{feature}/openapi.yaml` — エンドポイント、リクエスト/レスポンス型、スキーマ定義
-3. `specs/{feature}/spec.md` — Schema Definition・Database Constraints セクションを重点的に参照
+2. `specs/{feature}/ui-mockup.html` — @api コメント（API 契約）と data-\* 属性（フィールド・制約）
+
+#### ui-mockup.html からの情報抽出
+
+以下を抽出する:
+
+| 抽出対象                     | 参照元                                       | 使用先                     |
+| ---------------------------- | -------------------------------------------- | -------------------------- |
+| エンティティ名・フィールド名 | `@entity` + `<input data-testid>` の命名     | schema.ts のフィールド定義 |
+| バリデーション制約           | `data-required` / `data-min` / `data-max` 等 | schema.ts の Zod ルール    |
+| NOT NULL / nullable          | `data-nullable`                              | tables.ts のカラム定義     |
+| 一意制約                     | `data-unique`                                | tables.ts の UNIQUE 制約   |
+| API エンドポイント           | `@api` コメント                              | openapi.yaml のパス定義    |
 
 ### Step 2: rules 参照
 
@@ -100,13 +111,14 @@ options:
 
 #### 1. schema.ts
 
-openapi.yaml のリクエスト/レスポンス定義から Zod v4 バリデーションスキーマを生成する。
+ui-mockup.html の data-\* 属性から Zod v4 バリデーションスキーマを生成する。
 
 ```
 src/routes/{feature}/schema.ts
 ```
 
 - `{entity}CreateSchema` / `{entity}UpdateSchema` を定義する（schemas rule 参照）
+- `data-required` → `.min(1)` / `.nonempty()`、`data-max` → `.max(n)`、`data-error-msg` → エラーメッセージとして反映
 - 型エクスポート（`{Entity}Create` / `{Entity}Update`）を含める
 - file-headers rule に従ったヘッダーコメントを付与する
 
@@ -167,11 +179,19 @@ DROP TABLE IF EXISTS ExpensePayer;
 > アプリコードが新しいカラム名で `user.id` を参照するよう変更することで対応する。
 > Drizzle の `references()` 定義は tables.ts 側で更新する。
 
+#### 4. openapi.yaml の生成
+
+`specs/{feature}/ui-mockup.html` の `@api` コメントと生成した `schema.ts` から
+`specs/{feature}/openapi.yaml` を生成する。
+
+- openapi.yaml は手書きしない。このステップで生成・上書きする
+- 既存の `specs/{feature}/openapi.yaml` がある場合は上書きする
+
 ### Step 5: チェックリスト検証
 
 - [ ] `src/routes/{feature}/schema.ts` が生成されている
-- [ ] openapi.yaml の全スキーマが schema.ts に反映されている
-- [ ] バリデーションルールが openapi.yaml の制約（minLength 等）と一致している
+- [ ] ui-mockup.html の data-\* 属性のバリデーション制約が schema.ts に反映されている
+- [ ] `specs/{feature}/openapi.yaml` が生成されている
 - [ ] `src/lib/server/tables.ts` の変更が確認済み変更セットと一致している
 - [ ] 更新・削除対象でないテーブル定義が変更されていない
 - [ ] マイグレーション SQL が正しい連番で生成されている
@@ -187,7 +207,8 @@ scaffold-test-unit / scaffold-be / scaffold-fe が参照するベースとなる
 git add src/routes/{feature}/schema.ts
 git add src/lib/server/tables.ts
 git add drizzle/migrations/
-git commit -m "feat({feature}): schema・tables・migrations を追加"
+git add specs/{feature}/openapi.yaml
+git commit -m "feat({feature}): schema・tables・migrations・openapi を追加"
 ```
 
 - コミットメッセージは Conventional Commits 形式
