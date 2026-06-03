@@ -211,62 +211,26 @@
 
 <div class="mx-auto max-w-6xl">
 	<!-- ヘッダーエリア -->
-	<div class="mb-4 flex flex-wrap items-center gap-2">
-		<!-- 月セレクト + カテゴリ管理リンク -->
-		<Select
-			data-testid="expense-month-select"
-			value={data.selectedMonth}
-			onchange={handleMonthChange}
-			class="w-40"
-		>
-			{#each monthOptions as opt (opt.value)}
-				<option value={opt.value}>{opt.label}</option>
-			{/each}
-		</Select>
-		<a
-			href="/expenses/categories"
-			class="inline-flex items-center gap-1.5 rounded-2xl border border-separator px-3 py-2 text-sm text-secondary hover:text-label"
-		>
-			<Tag size={14} />
-			<span>カテゴリ管理</span>
-		</a>
-
-		<!-- 一括操作ボタン（条件付き表示・右寄せ） -->
-		<div class="ml-auto flex items-center gap-2">
-			{#if myCheckedCount > 0}
-				<Button
-					data-testid="expense-bulk-request-button"
-					variant="primary"
-					size="md"
-					onclick={() => (requestDialogOpen = true)}
-					type="button"
-				>
-					承認依頼する（{myCheckedCount}件）
-				</Button>
-			{/if}
-			{#if myPendingCount > 0}
-				<Button
-					data-testid="expense-bulk-cancel-button"
-					variant="secondary"
-					size="md"
-					onclick={() => (cancelDialogOpen = true)}
-					type="button"
-				>
-					申請取り消す（{myPendingCount}件）
-				</Button>
-			{/if}
-			{#if partnerPendingCount > 0}
-				<Button
-					data-testid="expense-bulk-approve-button"
-					variant="primary"
-					size="md"
-					onclick={() => (approveDialogOpen = true)}
-					type="button"
-				>
-					全件承認する（{partnerPendingCount}件）
-				</Button>
-			{/if}
-			<!-- 支出登録ボタン -->
+	<div class="mb-4 space-y-2">
+		<!-- Row 1: 月セレクト + カテゴリ管理 + 登録ボタン -->
+		<div class="flex items-center gap-2">
+			<Select
+				data-testid="expense-month-select"
+				value={data.selectedMonth}
+				onchange={handleMonthChange}
+				class="w-40"
+			>
+				{#each monthOptions as opt (opt.value)}
+					<option value={opt.value}>{opt.label}</option>
+				{/each}
+			</Select>
+			<a
+				href="/expenses/categories"
+				class="inline-flex items-center gap-1.5 rounded-2xl border border-separator px-3 py-2 text-sm text-secondary hover:text-label"
+			>
+				<Tag size={14} />
+				<span>カテゴリ管理</span>
+			</a>
 			<Button
 				data-testid="expense-create-button"
 				variant="primary"
@@ -274,11 +238,51 @@
 				onclick={() => (createDialogOpen = true)}
 				type="button"
 				aria-label="支出を登録"
+				class="ml-auto"
 			>
 				<Plus size={18} />
 				<span class="hidden md:inline">登録</span>
 			</Button>
 		</div>
+
+		<!-- Row 2: 一括操作ボタン（条件付き表示・右寄せ） -->
+		{#if myCheckedCount > 0 || myPendingCount > 0 || partnerPendingCount > 0}
+			<div class="flex items-center justify-end gap-2">
+				{#if myCheckedCount > 0}
+					<Button
+						data-testid="expense-bulk-request-button"
+						variant="primary"
+						size="md"
+						onclick={() => (requestDialogOpen = true)}
+						type="button"
+					>
+						承認依頼する（{myCheckedCount}件）
+					</Button>
+				{/if}
+				{#if myPendingCount > 0}
+					<Button
+						data-testid="expense-bulk-cancel-button"
+						variant="secondary"
+						size="md"
+						onclick={() => (cancelDialogOpen = true)}
+						type="button"
+					>
+						申請取り消す（{myPendingCount}件）
+					</Button>
+				{/if}
+				{#if partnerPendingCount > 0}
+					<Button
+						data-testid="expense-bulk-approve-button"
+						variant="primary"
+						size="md"
+						onclick={() => (approveDialogOpen = true)}
+						type="button"
+					>
+						全件承認する（{partnerPendingCount}件）
+					</Button>
+				{/if}
+			</div>
+		{/if}
 	</div>
 
 	<!-- 月間合計 -->

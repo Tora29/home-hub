@@ -120,7 +120,7 @@
 		data-testid="sidebar"
 		data-sidebar-nav
 		aria-label="メインナビゲーション"
-		aria-hidden={!isOpen}
+		inert={!isOpen || undefined}
 		class="flex h-full flex-col overflow-hidden border-r border-separator bg-bg-secondary max-md:w-0 md:w-56"
 		style:width={mounted ? (isOpen ? '14rem' : '0') : undefined}
 		style:visibility={isOpen ? 'visible' : 'hidden'}
