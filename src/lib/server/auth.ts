@@ -4,46 +4,22 @@
  *
  * @description
  * Better Auth の設定とインスタンス生成。
- * hooks.server.ts および +server.ts から利用する。
+ * Google OAuth プロバイダーを使用した認証。
+ * hooks.server.ts から利用する。
  */
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import type { D1Database } from '@cloudflare/workers-types';
-import { scryptAsync } from '@noble/hashes/scrypt.js';
-import { bytesToHex, randomBytes } from '@noble/hashes/utils.js';
 import { createDb } from './db';
 import { user, session, account, verification } from './tables';
 
-// Cloudflare Workers の CPU 時間制限対策: r=8 に削減（N=16384 は維持）
-// デフォルト r=16 は Workers で CPU タイムアウト(error 1102)するため変更
-const SCRYPT = { N: 16384, r: 8, p: 1, dkLen: 64 } as const;
-
-async function hashPassword(password: string): Promise<string> {
-	const salt = bytesToHex(randomBytes(16));
-	const key = await scryptAsync(password.normalize('NFKC'), salt, {
-		...SCRYPT,
-		maxmem: 128 * SCRYPT.N * SCRYPT.r * 2
-	});
-	return `${salt}:${bytesToHex(key)}`;
-}
-
-async function verifyPassword({
-	hash,
-	password
-}: {
-	hash: string;
-	password: string;
-}): Promise<boolean> {
-	const [salt, key] = hash.split(':');
-	if (!salt || !key) return false;
-	const target = await scryptAsync(password.normalize('NFKC'), salt, {
-		...SCRYPT,
-		maxmem: 128 * SCRYPT.N * SCRYPT.r * 2
-	});
-	return bytesToHex(target) === key;
-}
-
-export function createAuth(d1: D1Database, secret: string, baseURL: string) {
+export function createAuth(
+	d1: D1Database,
+	secret: string,
+	baseURL: string,
+	googleClientId: string,
+	googleClientSecret: string
+) {
 	const db = createDb(d1);
 
 	return betterAuth({
@@ -53,22 +29,19 @@ export function createAuth(d1: D1Database, secret: string, baseURL: string) {
 			provider: 'sqlite',
 			schema: { user, session, account, verification }
 		}),
-		emailAndPassword: {
-			enabled: true,
-			password: { hash: hashPassword, verify: verifyPassword }
+		socialProviders: {
+			google: {
+				clientId: googleClientId,
+				clientSecret: googleClientSecret
+			}
 		},
 		session: {
 			expiresIn: 60 * 60 * 24 * 30 // 30日
 		},
 		logger: {
-			// 「User not found」は誤認証テストで意図的に発生する想定内のエラー
 			log: (level: string, message: string, ...args: unknown[]) => {
 				const timestamp = new Date().toISOString();
-				const displayMessage =
-					level === 'error' && message.includes('User not found')
-						? `${message}（想定内: 誤認証テスト）`
-						: message;
-				const formatted = `${timestamp} ${level.toUpperCase()} [Better Auth]: ${displayMessage}`;
+				const formatted = `${timestamp} ${level.toUpperCase()} [Better Auth]: ${message}`;
 				if (level === 'error') console.error(formatted, ...args);
 				else if (level === 'warn') console.warn(formatted, ...args);
 			}
