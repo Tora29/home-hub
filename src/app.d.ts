@@ -19,6 +19,7 @@ declare global {
 				BETTER_AUTH_SECRET: string;
 				GOOGLE_CLIENT_ID: string;
 				GOOGLE_CLIENT_SECRET: string;
+				ALLOWED_EMAILS?: string;
 				USE_REAL_AI?: string;
 				LINE_CHANNEL_ACCESS_TOKEN?: string;
 				LINE_USER_ID_PRIMARY?: string;

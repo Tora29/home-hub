@@ -18,9 +18,11 @@ export function createAuth(
 	secret: string,
 	baseURL: string,
 	googleClientId: string,
-	googleClientSecret: string
+	googleClientSecret: string,
+	allowedEmails?: string
 ) {
 	const db = createDb(d1);
+	const allowedList = allowedEmails ? allowedEmails.split(',').map((e) => e.trim()) : [];
 
 	return betterAuth({
 		secret,
@@ -33,6 +35,17 @@ export function createAuth(
 			google: {
 				clientId: googleClientId,
 				clientSecret: googleClientSecret
+			}
+		},
+		databaseHooks: {
+			user: {
+				create: {
+					before: async (newUser) => {
+						if (allowedList.length > 0 && !allowedList.includes(newUser.email)) {
+							throw new Error('unauthorized');
+						}
+					}
+				}
 			}
 		},
 		session: {
