@@ -142,12 +142,24 @@
 		{:else}
 			<ul data-testid="dashboard-category-summary-list" class="space-y-2">
 				{#each summary.byCategory as item (item.categoryId)}
-					<li
-						data-testid="dashboard-category-summary-item"
-						class="flex items-center justify-between"
-					>
-						<span class="text-sm text-label">{item.categoryName}</span>
-						<span class="text-sm font-medium text-label">¥{item.total.toLocaleString()}</span>
+					<li data-testid="dashboard-category-summary-item">
+						<div class="flex items-center justify-between">
+							<span class="text-sm text-label">{item.categoryName}</span>
+							<span class="text-sm font-medium text-label">¥{item.total.toLocaleString()}</span>
+						</div>
+						{#if item.byPayer.length > 0}
+							<ul class="mt-1 space-y-0.5 pl-4">
+								{#each item.byPayer as payer (payer.payerId)}
+									<li
+										data-testid="dashboard-category-payer-item"
+										class="flex items-center justify-between"
+									>
+										<span class="text-xs text-secondary">{payer.payerName}</span>
+										<span class="text-xs text-secondary">¥{payer.total.toLocaleString()}</span>
+									</li>
+								{/each}
+							</ul>
+						{/if}
 					</li>
 				{/each}
 			</ul>

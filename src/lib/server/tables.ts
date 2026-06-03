@@ -84,7 +84,9 @@ export const expense = sqliteTable('Expense', {
 	categoryId: text('categoryId')
 		.notNull()
 		.references(() => expenseCategory.id, { onDelete: 'restrict' }),
-	payerUserId: text('payerUserId').references(() => user.id, { onDelete: 'restrict' }),
+	payerUserId: text('payerUserId')
+		.notNull()
+		.references(() => user.id, { onDelete: 'restrict' }),
 	status: text('status').notNull().default('unapproved'),
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
 });

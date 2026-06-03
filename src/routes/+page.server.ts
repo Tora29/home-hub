@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
 	const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 	const [unapprovedCount, summary] = await Promise.all([
 		getUnapprovedCount(db, locals.user!.id),
-		getDashboardSummary(db, locals.user!.id, { period: 'month', month: currentMonth })
+		getDashboardSummary(db, { period: 'month', month: currentMonth })
 	]);
 	return { unapprovedCount, summary, currentMonth };
 };
