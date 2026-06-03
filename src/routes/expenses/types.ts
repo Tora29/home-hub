@@ -1,6 +1,6 @@
 /**
  * @file 型定義: Expense 共有型
- * @module src/routes/expenses/_lib/types.ts
+ * @module src/routes/expenses/types.ts
  * @feature expenses
  *
  * @description

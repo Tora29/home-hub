@@ -14,13 +14,13 @@
  * - POST /expenses/[id]/check → 200 ExpenseWithRelations - 確認済みに更新
  *   @errors 403(FORBIDDEN), 404(NOT_FOUND), 409(CONFLICT)
  *
- * @service $expenses/_lib/service.ts
+ * @service $expenses/service.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
-import { checkExpense } from '$expenses/_lib/service';
+import { checkExpense } from '$expenses/service';
 
 /**
  * 支出を確認済みにする（unapproved → checked）。

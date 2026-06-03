@@ -14,13 +14,13 @@
  * - POST /expenses/[id]/uncheck → 200 ExpenseWithRelations - 確認取消
  *   @errors 403(FORBIDDEN), 404(NOT_FOUND), 409(CONFLICT)
  *
- * @service $expenses/_lib/service.ts
+ * @service $expenses/service.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
-import { uncheckExpense } from '$expenses/_lib/service';
+import { uncheckExpense } from '$expenses/service';
 
 /**
  * 支出の確認を取り消す（checked → unapproved）。

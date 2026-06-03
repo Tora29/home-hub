@@ -1,6 +1,6 @@
 /**
  * @file スキーマ: Dashboard Summary
- * @module src/routes/dashboard/summary/_lib/schema.ts
+ * @module src/routes/dashboard/summary/schema.ts
  * @feature dashboard
  *
  * @description
@@ -9,4 +9,4 @@
  *
  * @spec specs/dashboard/spec.md - Schema セクション
  */
-export { dashboardSummaryQuerySchema, type DashboardSummaryQuery } from '$dashboard/_lib/schema';
+export { dashboardSummaryQuerySchema, type DashboardSummaryQuery } from '$dashboard/schema';
