@@ -1,6 +1,6 @@
 /**
  * @file サービス: Dashboard Summary
- * @module src/routes/dashboard/summary/_lib/service.ts
+ * @module src/routes/dashboard/summary/service.ts
  * @feature dashboard
  *
  * @description

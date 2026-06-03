@@ -1,6 +1,6 @@
 /**
  * @file サービス: Recipe
- * @module src/routes/recipes/_lib/service.ts
+ * @module src/routes/recipes/service.ts
  * @feature recipes
  *
  * @description

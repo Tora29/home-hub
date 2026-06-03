@@ -23,7 +23,7 @@
 	import { MoreVertical, Pencil, Trash2 } from '@lucide/svelte';
 	import { fade } from 'svelte/transition';
 	import Button from '$lib/components/Button.svelte';
-	import type { ExpenseWithRelations } from '../_lib/types';
+	import type { ExpenseWithRelations } from '../types';
 
 	let {
 		expense,

@@ -15,15 +15,15 @@
  * - GET /dashboard/summary → 200 DashboardSummary - 集計サマリー取得
  *   @query period:string=month(month|all) month:string
  *
- * @service ./_lib/service.ts
- * @schema ./_lib/schema.ts
+ * @service ./service.ts
+ * @schema ./schema.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
-import { dashboardSummaryQuerySchema } from '$dashboard/summary/_lib/schema';
-import { getDashboardSummary } from '$dashboard/summary/_lib/service';
+import { dashboardSummaryQuerySchema } from '$dashboard/summary/schema';
+import { getDashboardSummary } from '$dashboard/summary/service';
 
 /**
  * 集計サマリーを取得する。period=month のとき month で月を指定（省略時は当月）。

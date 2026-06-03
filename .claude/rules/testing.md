@@ -53,7 +53,7 @@ Zod スキーマは純粋関数（`.parse()` / `.safeParse()`）なので D1 不
 
 テストファイルは実装ファイルのコロケーション配置を原則とする。
 
-- ビジネスロジック（`schema.ts` / `service.ts`）は `_lib/` にまとめ、テストを隣に置く
+- ビジネスロジック（`schema.ts` / `service.ts`）は feature ディレクトリ直下に置き、テストを隣に置く
 - アクション系エンドポイントは `(actions)/` route group にまとめ、テストを隣に置く
 - ルーティング層（`+page.svelte` / `+page.server.ts` / `+server.ts`）のテストは feature ルートに置く
 - コンポーネントテストはコンポーネントと同階層に置く（1:1 対応）
@@ -71,12 +71,11 @@ src/routes/{feature}/
         server.test.ts                     ← コロケーション
     +server.ts
     server.test.ts                         ← コロケーション
-  _lib/                                    ← ビジネスロジック（SvelteKit ルーター無視）
-    schema.ts
-    schema.test.ts                         ← Zod バリデーション Unit テスト（コロケーション）
-    service.ts
-    service.integration.test.ts            ← サービス層 Integration テスト（コロケーション）
-    types.ts
+  schema.ts
+  schema.test.ts                           ← Zod バリデーション Unit テスト（コロケーション）
+  service.ts
+  service.integration.test.ts              ← サービス層 Integration テスト（コロケーション）
+  types.ts                                 ← 任意
   components/
     {ComponentName}.svelte
     {ComponentName}.svelte.test.ts         ← コンポーネント Unit テスト（コンポーネントと同階層）
