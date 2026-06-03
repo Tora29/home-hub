@@ -1,6 +1,6 @@
 /**
  * @file サービス: Expense
- * @module src/routes/expenses/_lib/service.ts
+ * @module src/routes/expenses/service.ts
  * @feature expenses
  *
  * @description

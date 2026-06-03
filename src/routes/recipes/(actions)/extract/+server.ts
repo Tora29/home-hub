@@ -15,13 +15,13 @@
  *   @body extractSchema
  *   @errors 400(VALIDATION_ERROR)
  *
- * @schema $recipes/_lib/schema.ts
+ * @schema $recipes/schema.ts
  */
 import { json } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 import { AppError } from '$lib/server/errors';
-import { extractSchema } from '$recipes/_lib/schema';
+import { extractSchema } from '$recipes/schema';
 
 /**
  * テキストからレシピ情報を AI で抽出する。

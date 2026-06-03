@@ -1,6 +1,6 @@
 /**
  * @file スキーマ: Recipe
- * @module src/routes/recipes/_lib/schema.ts
+ * @module src/routes/recipes/schema.ts
  * @feature recipes
  *
  * @description

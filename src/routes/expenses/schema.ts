@@ -1,6 +1,6 @@
 /**
  * @file スキーマ: Expense / Category
- * @module src/routes/expenses/_lib/schema.ts
+ * @module src/routes/expenses/schema.ts
  * @feature expenses
  *
  * @description

@@ -16,7 +16,7 @@
  * - POST /expenses/approve → 200 {count} - 承認成功
  *   @errors 409(CONFLICT), 502(BAD_GATEWAY)
  *
- * @service $expenses/_lib/service.ts
+ * @service $expenses/service.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -24,7 +24,7 @@ import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
 import { user as userTable } from '$lib/server/tables';
 import { eq } from 'drizzle-orm';
-import { approveExpenses } from '$expenses/_lib/service';
+import { approveExpenses } from '$expenses/service';
 
 /**
  * 相手の pending 支出を一括で approved にし、LINE 通知を送信する。

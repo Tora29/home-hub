@@ -13,13 +13,13 @@
  * - POST /expenses/cancel → 200 {count} - 申請取り消し成功
  *   @errors 409(CONFLICT)
  *
- * @service $expenses/_lib/service.ts
+ * @service $expenses/service.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
-import { cancelExpenses } from '$expenses/_lib/service';
+import { cancelExpenses } from '$expenses/service';
 
 /**
  * 自分の pending 支出を一括で checked に戻す。

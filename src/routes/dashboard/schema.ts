@@ -1,6 +1,6 @@
 /**
  * @file スキーマ: Dashboard
- * @module src/routes/dashboard/_lib/schema.ts
+ * @module src/routes/dashboard/schema.ts
  * @feature dashboard
  *
  * @description
