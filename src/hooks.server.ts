@@ -13,7 +13,13 @@ import { json, redirect } from '@sveltejs/kit';
 import type { Handle } from '@sveltejs/kit';
 
 // ログインなしでアクセスできるパス
-const PUBLIC_PATHS = ['/api/auth', '/login'];
+const PUBLIC_PATHS = [
+	'/api/auth',
+	'/login',
+	'/manifest.webmanifest',
+	'/apple-touch-icon.png',
+	'/favicon'
+];
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const { DB, BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_EMAILS } =
