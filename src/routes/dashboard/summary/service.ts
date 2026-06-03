@@ -5,7 +5,7 @@
  *
  * @description
  * ダッシュボード集計サマリーのビジネスロジックと DB 操作を担う。
- * 月別・全期間の支出合計・支払者別合計・カテゴリ別合計を算出する。
+ * 全ユーザー（世帯）分を合算した月別・全期間の支出合計・支払者別合計・カテゴリ別合計を算出する。
  *
  * @spec specs/dashboard/spec.md
  * @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-201, AC-202, AC-203
@@ -30,10 +30,17 @@ type PayerSummary = {
 	total: number;
 };
 
+type CategoryPayerSummary = {
+	payerId: string;
+	payerName: string | null;
+	total: number;
+};
+
 type CategorySummary = {
 	categoryId: string;
 	categoryName: string;
 	total: number;
+	byPayer: CategoryPayerSummary[];
 };
 
 type DashboardSummary = {
@@ -49,15 +56,13 @@ type SummaryOptions = {
 
 /**
  * 集計サマリーを取得する。period=month の場合は指定月、period=all の場合は全期間。
+ * 集計対象は全ユーザー（世帯）の支出。
  * @ac AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-201, AC-202, AC-203
  */
 export async function getDashboardSummary(
 	db: Db,
-	userId: string,
 	options: SummaryOptions
 ): Promise<DashboardSummary> {
-	const userFilter = eq(expense.userId, userId);
-
 	let periodFilter;
 	if (options.period === 'month') {
 		const now = new Date();
@@ -69,7 +74,7 @@ export async function getDashboardSummary(
 		periodFilter = and(gte(expense.createdAt, monthStart), lt(expense.createdAt, monthEnd));
 	}
 
-	const whereClause = periodFilter ? and(userFilter, periodFilter) : userFilter;
+	const whereClause = periodFilter;
 
 	// 全体合計
 	const [overallRow] = await db
@@ -78,7 +83,6 @@ export async function getDashboardSummary(
 		.where(whereClause);
 
 	// 支払者別合計（多い順）
-	// payerUserId が NULL の行は LEFT JOIN で user が null になるため除外される。
 	const payerRows = await db
 		.select({
 			payerId: userTable.id,
@@ -86,10 +90,9 @@ export async function getDashboardSummary(
 			total: sql<number>`coalesce(sum(${expense.amount}), 0)`
 		})
 		.from(expense)
-		.leftJoin(userTable, eq(expense.payerUserId, userTable.id))
+		.innerJoin(userTable, eq(expense.payerUserId, userTable.id))
 		.where(whereClause)
 		.groupBy(userTable.id, userTable.name)
-		.having(sql`${userTable.id} is not null`)
 		.orderBy(desc(sql`sum(${expense.amount})`));
 
 	// カテゴリ別合計（多い順）
@@ -105,17 +108,39 @@ export async function getDashboardSummary(
 		.groupBy(expenseCategory.id, expenseCategory.name)
 		.orderBy(desc(sql`sum(${expense.amount})`));
 
+	// カテゴリ×支払者の内訳（多い順）
+	const categoryPayerRows = await db
+		.select({
+			categoryId: expenseCategory.id,
+			payerId: userTable.id,
+			payerName: userTable.name,
+			total: sql<number>`coalesce(sum(${expense.amount}), 0)`
+		})
+		.from(expense)
+		.innerJoin(expenseCategory, eq(expense.categoryId, expenseCategory.id))
+		.innerJoin(userTable, eq(expense.payerUserId, userTable.id))
+		.where(whereClause)
+		.groupBy(expenseCategory.id, userTable.id, userTable.name)
+		.orderBy(desc(sql`sum(${expense.amount})`));
+
 	return {
 		overall: Number(overallRow.total),
 		byPayer: payerRows.map((r) => ({
-			payerId: r.payerId!,
+			payerId: r.payerId,
 			payerName: r.payerName,
 			total: Number(r.total)
 		})),
 		byCategory: categoryRows.map((r) => ({
 			categoryId: r.categoryId,
 			categoryName: r.categoryName,
-			total: Number(r.total)
+			total: Number(r.total),
+			byPayer: categoryPayerRows
+				.filter((p) => p.categoryId === r.categoryId)
+				.map((p) => ({
+					payerId: p.payerId,
+					payerName: p.payerName,
+					total: Number(p.total)
+				}))
 		}))
 	};
 }
