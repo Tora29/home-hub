@@ -62,8 +62,46 @@ export type ItemUpdate = z.infer<typeof itemUpdateSchema>;
 | Response | API レスポンス型（必要に応じて定義）     | `{entity}Schema`       |
 
 - **PUT のみ使用**。PATCH（部分更新）は使わない。
-- `optional()` は「省略可能」、`nullable()` は「null 許容」。DB の NOT NULL に合わせる。
 - レスポンス型は Drizzle の `$inferSelect` で代用できる場合はスキーマ定義不要。
+
+### `optional()` / `nullable()` / `nullish()` の使い分け
+
+| 修飾子        | 意味                                           | DB との対応                                |
+| ------------- | ---------------------------------------------- | ------------------------------------------ |
+| `.optional()` | フィールド自体を省略可能（`undefined` を許容） | PUT 以外のリクエストで省略可能なフィールド |
+| `.nullable()` | `null` を許容                                  | DB の NULL 許容カラム                      |
+| `.nullish()`  | `undefined` と `null` の両方を許容             | 省略もクリアもできるフィールド             |
+
+```typescript
+// DB NOT NULL → .optional() のみ（省略時はデフォルト値を使用）
+memo: z.string().max(500).optional();
+
+// DB NULL 許容 → .nullable()（明示的に null を送れる）
+payerUserId: z.string().nullable();
+
+// 省略もクリアも可 → .nullish()
+lastCookedAt: z.string().nullish();
+```
+
+### URL クエリパラメータの型変換
+
+クエリパラメータはすべて文字列で届くため、`z.coerce` で型変換する。
+
+```typescript
+export const listQuerySchema = z.object({
+	page: z.coerce.number().int().min(1).default(1),
+	limit: z.coerce.number().int().min(1).max(100).default(20),
+	sort: z.enum(['createdAt_desc', 'cookedCount_desc']).default('createdAt_desc'),
+	month: z
+		.string()
+		.regex(/^\d{4}-\d{2}$/, '月の形式は YYYY-MM です')
+		.optional()
+});
+```
+
+- `z.coerce.number()`: `"20"` → `20` に変換
+- `.default(1)`: パラメータ未指定時のデフォルト値
+- `.refine()`: カスタムバリデーション（月の範囲チェック等）が必要な場合に使う
 
 ---
 
