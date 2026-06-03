@@ -20,6 +20,8 @@ const BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET ?? '';
 export const E2E_SESSION_TOKEN = 'e2e-test-session-token-do-not-use-in-prod';
 export const E2E_USER_ID = 'e2e-test-user-id';
 const E2E_SESSION_ID = 'e2e-test-session-id';
+// ダッシュボード pending alert テスト用（別ユーザーの pending 支出を作る）
+const E2E_PARTNER_USER_ID = 'e2e-partner-user-id';
 
 const SESSION_COOKIE_NAME = 'better-auth.session_token';
 
@@ -53,7 +55,10 @@ function wranglerFile(file: string) {
 }
 
 export default async function globalSetup() {
-	// 既存ユーザーを全削除してから E2E ユーザーを挿入
+	// 既存ユーザーを全削除してから E2E ユーザーを挿入（外部キー制約に従い子テーブルから削除）
+	wranglerExecute(`DELETE FROM "Recipe"`);
+	wranglerExecute(`DELETE FROM "Expense"`);
+	wranglerExecute(`DELETE FROM "ExpenseCategory"`);
 	wranglerExecute(`DELETE FROM "Session"`);
 	wranglerExecute(`DELETE FROM "Account"`);
 	wranglerExecute(`DELETE FROM "User"`);
@@ -90,13 +95,25 @@ export default async function globalSetup() {
 	await context.storageState({ path: path.join(authDir, 'session.json') });
 	await browser.close();
 
-	// シードデータ投入
-	wranglerExecute(`DELETE FROM "Recipe" WHERE "userId" = '${E2E_USER_ID}'`);
-	wranglerExecute(`DELETE FROM "Expense" WHERE "userId" = '${E2E_USER_ID}'`);
-	wranglerExecute(`DELETE FROM "ExpenseCategory" WHERE "userId" = '${E2E_USER_ID}'`);
-
+	// シードデータ投入（全削除済みのため再削除不要）
 	const seedDir = path.resolve('drizzle/seeds');
 	wranglerFile(path.join(seedDir, 'recipes.sql'));
 	wranglerFile(path.join(seedDir, 'expenses.sql'));
+
+	// ダッシュボード pending alert テスト用: パートナーユーザーと pending 支出を挿入
+	wranglerExecute(
+		`INSERT INTO User (id, name, email, emailVerified, createdAt, updatedAt)
+     VALUES ('${E2E_PARTNER_USER_ID}', 'Partner User', 'e2e-partner@example.com', 1, unixepoch(), unixepoch())`
+	);
+	wranglerExecute(
+		`INSERT INTO ExpenseCategory (id, userId, name, createdAt)
+     VALUES ('e2e-partner-cat-001', '${E2E_PARTNER_USER_ID}', 'E2E Partner Category', unixepoch())`
+	);
+	// createdAt を過去月（2026-04）にして当月の空状態テストに影響しないようにする
+	wranglerExecute(
+		`INSERT INTO Expense (id, userId, amount, categoryId, payerUserId, status, createdAt)
+     VALUES ('e2e-pending-exp-001', '${E2E_PARTNER_USER_ID}', 5000, 'e2e-partner-cat-001', '${E2E_PARTNER_USER_ID}', 'pending', strftime('%s', '2026-04-15'))`
+	);
+
 	console.log('E2E セッション・シードデータを投入しました');
 }

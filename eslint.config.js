@@ -57,6 +57,13 @@ export default defineConfig(
 		}
 	},
 	{
+		// テストファイルは SvelteKit RequestEvent のモック化に as unknown が必要なため緩和
+		files: ['**/*.test.ts', '**/*.integration.test.ts', '**/*.svelte.test.ts', 'e2e/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-explicit-any': 'off'
+		}
+	},
+	{
 		files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
 		languageOptions: {
 			parserOptions: {
