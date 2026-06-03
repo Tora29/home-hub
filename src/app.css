@@ -53,6 +53,16 @@
 	--color-bg-warning: rgba(217, 119, 6, 0.2);
 }
 
+/* iOS Safari の auto-zoom 防止: フォントサイズ 16px 未満の input/select/textarea にフォーカスすると
+   ページ全体がズームされる挙動を抑制する */
+@layer base {
+	input,
+	select,
+	textarea {
+		font-size: max(16px, 1em);
+	}
+}
+
 @media (min-width: 768px) {
 	main {
 		margin-left: 16.75rem; /* default: sidebar open (14rem nav + 2.75rem toggle) */
