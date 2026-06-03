@@ -16,9 +16,17 @@ import type { Handle } from '@sveltejs/kit';
 const PUBLIC_PATHS = ['/api/auth', '/login'];
 
 export const handle: Handle = async ({ event, resolve }) => {
-	const { DB, BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = event.platform!.env;
+	const { DB, BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_EMAILS } =
+		event.platform!.env;
 	const baseURL = `${event.url.protocol}//${event.url.host}`;
-	const auth = createAuth(DB, BETTER_AUTH_SECRET, baseURL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+	const auth = createAuth(
+		DB,
+		BETTER_AUTH_SECRET,
+		baseURL,
+		GOOGLE_CLIENT_ID,
+		GOOGLE_CLIENT_SECRET,
+		ALLOWED_EMAILS
+	);
 
 	// Better Auth が /api/auth/* を自前で処理するので先に渡す
 	if (event.url.pathname.startsWith('/api/auth')) {
