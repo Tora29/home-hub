@@ -17,15 +17,15 @@
  *   @body recipeCreateSchema
  *   @errors 400(VALIDATION_ERROR)
  *
- * @service ./_lib/service.ts
- * @schema ./_lib/schema.ts
+ * @service ./service.ts
+ * @schema ./schema.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { AppError } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
-import { listRecipesQuerySchema, recipeCreateSchema } from '$recipes/_lib/schema';
-import { createRecipe, getRecipes } from '$recipes/_lib/service';
+import { listRecipesQuerySchema, recipeCreateSchema } from '$recipes/schema';
+import { createRecipe, getRecipes } from '$recipes/service';
 
 /**
  * レシピ一覧を取得する。クエリパラメータでソート・ページネーションを制御する。

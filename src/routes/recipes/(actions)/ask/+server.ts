@@ -15,16 +15,16 @@
  *   @body askSchema
  *   @errors 400(VALIDATION_ERROR)
  *
- * @service $recipes/_lib/service.ts
- * @schema $recipes/_lib/schema.ts
+ * @service $recipes/service.ts
+ * @schema $recipes/schema.ts
  */
 import { json } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 import { AppError } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
-import { askSchema } from '$recipes/_lib/schema';
-import { getAllRecipes } from '$recipes/_lib/service';
+import { askSchema } from '$recipes/schema';
+import { getAllRecipes } from '$recipes/service';
 
 /**
  * AI 献立相談。全レシピをコンテキストに含めて Workers AI に問い合わせる。
