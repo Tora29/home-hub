@@ -9,7 +9,7 @@
 import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
-import { expense, expenseCategory } from '$lib/server/tables';
+import { expense, expenseCategory, user as userTable } from '$lib/server/tables';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import type * as schema from '$lib/server/tables';
 import { eq } from 'drizzle-orm';
@@ -31,19 +31,33 @@ async function insertCategory(db: Db, userId: string, name = 'テスト'): Promi
 	return id;
 }
 
+async function insertUser(db: Db): Promise<string> {
+	const id = crypto.randomUUID();
+	await db.insert(userTable).values({
+		id,
+		name: 'テストユーザー',
+		email: `${id}@test.example`,
+		emailVerified: false,
+		createdAt: new Date(),
+		updatedAt: new Date()
+	});
+	return id;
+}
+
 async function insertExpense(
 	db: Db,
 	userId: string,
 	categoryId: string,
 	status: string = 'unapproved'
 ): Promise<string> {
+	const payerId = await insertUser(db);
 	const id = crypto.randomUUID();
 	await db.insert(expense).values({
 		id,
 		userId,
 		amount: 1000,
 		categoryId,
-		payerUserId: null,
+		payerUserId: payerId,
 		status,
 		createdAt: new Date()
 	});
