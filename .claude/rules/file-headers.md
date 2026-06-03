@@ -19,13 +19,12 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
 
 ## 共通タグ
 
-| タグ           | 必須 | 説明                                                                                         |
-| -------------- | ---- | -------------------------------------------------------------------------------------------- |
-| `@file`        | ◯    | 種別と名称（例: `画面: タスク一覧`、`API: タスク`）                                          |
-| `@module`      | ◯    | `infra-spec.md` で定義されたディレクトリ構成に基づくフルパス                                 |
-| `@feature`     | ◯    | 機能名（`specs/` 配下の feature ディレクトリ名、ネストしない）。共通ライブラリ配下では省略可 |
-| `@description` | ◯    | 1〜3行の概要説明                                                                             |
-| `@spec`        | △    | `specs/{feature}/ui-mockup.html` への相対パス。共通ライブラリ配下では省略可                  |
+| タグ           | 必須 | 説明                                                                         |
+| -------------- | ---- | ---------------------------------------------------------------------------- |
+| `@file`        | ◯    | 種別と名称（例: `画面: タスク一覧`、`API: タスク`）                          |
+| `@module`      | ◯    | `infra-spec.md` で定義されたディレクトリ構成に基づくフルパス                 |
+| `@feature`     | ◯    | 機能名（feature ディレクトリ名、ネストしない）。共通ライブラリ配下では省略可 |
+| `@description` | ◯    | 1〜3行の概要説明                                                             |
 
 ---
 
@@ -43,8 +42,6 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
 
   @description
   {画面の概要説明}
-
-  @spec specs/{feature}/ui-mockup.html
 
   @navigation
   - 遷移元: {パス} - {説明}
@@ -68,8 +65,6 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  *
  * @description
  * {機能}画面の初期データをサーバーサイドで取得する。
- *
- * @spec specs/{feature}/ui-mockup.html
  */
 ```
 
@@ -85,8 +80,6 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  *
  * @description
  * {API の概要説明}
- *
- * @spec specs/{feature}/ui-mockup.html
  *
  * @endpoints
  * - GET /{feature} → 200 {Entity}[] - 一覧取得
@@ -121,8 +114,6 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  * @description
  * {サービスの概要説明}
  *
- * @spec specs/{feature}/ui-mockup.html
- *
  * @entity {Entity}
  *
  * @functions
@@ -148,8 +139,6 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  *
  * @description
  * {スキーマの概要説明}
- *
- * @spec specs/{feature}/ui-mockup.html
  *
  * @schemas
  * - {entity}CreateSchema - 作成用入力
@@ -206,7 +195,6 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  * @testType unit
  *
  * @target ./{ファイル名}.ts
- * @spec specs/{feature}/ui-mockup.html
  */
 ```
 
@@ -221,7 +209,6 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  * @testType integration
  *
  * @target ./{ファイル名}.ts
- * @spec specs/{feature}/ui-mockup.html
  */
 ```
 
@@ -234,8 +221,6 @@ scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
  * @file E2Eテスト: {シナリオ名}
  * @module e2e/{feature}.e2e.ts
  * @testType e2e
- *
- * @spec specs/{feature}/ui-mockup.html
  *
  * @scenarios
  * - {シナリオ1の説明}
@@ -287,8 +272,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
 ## なぜ必要か
 
-- 生成コードから仕様（ui-mockup.html）へのトレーサビリティを確保する
-- コードレビュー時に設計意図・仕様参照先を即座に把握できるようにする
+- コードレビュー時に設計意図を即座に把握できるようにする
 
 ## 参照するスキル
 

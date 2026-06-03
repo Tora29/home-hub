@@ -42,3 +42,4 @@ terraform.tfvars
 
 # Claude user memory (private)
 .claude/user/
+.claude/plan/

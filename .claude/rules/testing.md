@@ -161,29 +161,6 @@ src/app.d.ts
 
 ## コンポーネントテストの注意事項
 
-### セレクタの選択（`data-testid.md` 参照）
-
-セレクタの優先順位は `.claude/rules/data-testid.md` が唯一の定義元。要約:
-
-| テスト種別                        | 優先順位                                                                 |
-| --------------------------------- | ------------------------------------------------------------------------ |
-| Unit / Component テスト（Vitest） | `getByRole` → `getByLabelText` → `getByText` → `getByTestId`（最終手段） |
-| E2E テスト（Playwright）          | `getByTestId` → `getByRole` → `getByText`                                |
-
-Unit / Component テストで `getByRole` が使えるのに `getByTestId` を使わない。
-`getByRole` を優先することでアクセシビリティの問題も同時に検出できる。
-
-```typescript
-// ✅ 正しい（Unit/Component テスト: getByRole 優先）
-page.getByRole('button', { name: '追加' }).element().click();
-await expect.element(page.getByRole('listitem')).toBeInTheDocument();
-
-// ❌ 誤り（role/text で一意に取得できるのに getByTestId を使う）
-page.getByTestId('add-button').element().click();
-```
-
----
-
 ### `toBeVisible()` と `toBeInTheDocument()` の使い分け
 
 | 状況                                                 | 正しいマッチャー          |
@@ -344,10 +321,4 @@ npm run test
 
 ## なぜ必要か
 
-- scaffold-test-unit / scaffold-test-e2e スキルがテストコードを生成する際の規約
 - test-and-fix スキルがテスト実行コマンドを判断する際の参照先
-- spec-coverage スキルがカバレッジ分析する際の基準
-
-## 参照するスキル
-
-- scaffold-test-unit, scaffold-test-e2e, test-and-fix, spec-coverage
