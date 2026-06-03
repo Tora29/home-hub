@@ -1,294 +1,285 @@
 ---
 name: scaffold-test-unit
-description: ui-mockup.html の data-* 属性から業務要件を表す Unit / Integration テストを生成する。テストは業務要件の説明文になる。実装を通すためだけのテストは生成しない。
-allowed-tools: Read(specs/*), Grep, Glob, Write, Bash(npm run:*)
+description: >
+  ユニット・インテグレーション・コンポーネントテストファイルを生成・差分更新するスキル。
+  「テストを書いて」「{feature}のテストを作って」「スキーマのテストを追加して」
+  「コンポーネントテストを書いて」「結合テストを作って」など、
+  E2E 以外のテスト作成・追加・修正に関するリクエストがあれば必ず使用すること。
+  testing.md のルールと Vitest ベストプラクティスに完全準拠したテストを生成する。
 ---
 
-# Unit / API Test Scaffold
+# scaffold-test-unit
 
-ui-mockup.html を主入力として、業務要件テストを生成するスキル。
+Schema Unit・Server Unit・Integration・Component の各テストファイルを生成・差分更新するスキル。
 
-## 前提条件
+---
 
-- `specs/{feature}/ui-mockup.html` が存在すること
-- `specs/infra-spec.md` が存在すること（テストフレームワーク・コマンドの参照）
-- `.claude/rules/testing.md` が定義されていること
-- `/scaffold-contract` が実行済みで schema.ts・tables.ts がコミット済みであること（worktree のベース）
+## テスト種別の判別
 
-## 起動時の挙動
+対象ファイルと目的からテスト種別を判断する。複数種別を同時に生成してよい。
 
-スキル起動後、以下の順序で必ず実行する。
+| 種別        | 対象ファイル                           | 生成するテスト                                          | 実行コマンド                        |
+| ----------- | -------------------------------------- | ------------------------------------------------------- | ----------------------------------- |
+| Schema Unit | `_lib/schema.ts`                       | Zod バリデーションルール                                | `npm run test:unit -- --run`        |
+| Server Unit | `+server.ts`                           | API ハンドラのバリデーション失敗系                      | `npm run test:unit -- --run`        |
+| Integration | `_lib/service.ts`                      | DB を使う業務ロジック（権限・ページネーション・ソート） | `npm run test:integration -- --run` |
+| Component   | `+page.svelte` / `components/*.svelte` | UI インタラクション・条件レンダリング                   | `npm run test:unit -- --run`        |
 
-**1. AskUserQuestion で対象 feature を確認する**
+---
 
-```
-question: "どの feature のテストを生成しますか？"
-options:
-  - specs/ 配下の feature ディレクトリを動的にリスト
-```
+## Step 1: 対象確認
 
-**2. 【他のツール呼び出しより前に】worktree を作成する**
+feature 名と種別を確認する。指定がなければ `src/routes/{feature}/` を列挙して確認する。
 
-feature が確定したら、ファイルを一切読む前に worktree を作成する。
-以降の全ファイル操作はこの worktree ディレクトリで行う。
+---
 
-```bash
-git worktree add -b worktree/scaffold-test-unit-{feature} ../home-hub-test-{feature} HEAD
-cd ../home-hub-test-{feature}
-```
+## Step 2: コンテキスト収集
 
-## ワークフロー
+テスト対象ファイルを Read する。存在しないファイルはスキップしてよい。
 
 ```
-入力読み込み → rules 参照 → data-* マッピング → テスト生成 → チェックリスト検証
+src/routes/{feature}/_lib/schema.ts       → Schema Unit / Server Unit 用
+src/routes/{feature}/_lib/service.ts      → Integration 用
+src/routes/{feature}/+server.ts           → Server Unit 用
+src/routes/{feature}/+page.svelte         → Component 用
+src/routes/{feature}/components/          → Component 用（Glob で一覧取得）
+specs/{feature}/spec.md                   → AC 一覧（あれば）
 ```
 
-### Step 1: 入力読み込み
+---
 
-以下のファイルを Read ツールで読み込む:
+## Step 3: 新規生成 or 差分更新
 
-1. `specs/infra-spec.md` — テストフレームワーク、テストコマンド、ディレクトリ構成
-2. `specs/{feature}/ui-mockup.html` — @api コメントと data-\* 属性（テスト生成の唯一の根拠）
-3. `src/routes/{feature}/_lib/schema.ts` — 生成済み Zod スキーマ（テストの import 先）
+**新規生成**（ファイルなし）: 下記「種別ごとの生成パターン」に従い全体を生成する。
 
-### Step 2: rules 参照
+**差分更新**（ファイルあり）:
 
-以下の rules を Read ツールで読み込み、テスト生成の規約とする:
+1. 既存テストの `describe` / `test()` 名を列挙する
+2. 実装の変更箇所と照合する
+3. 不足テスト → 追加、古くなったテスト → Edit で修正
+4. 削除が必要なケースはユーザーに確認する
 
-| rule                            | 参照するもの                                                |
-| ------------------------------- | ----------------------------------------------------------- |
-| `.claude/rules/testing.md`      | テスト種別、モック戦略、カバレッジ方針、テスト-仕様連携形式 |
-| `.claude/rules/file-headers.md` | ファイルヘッダーコメントのテンプレートと記述ルール          |
+---
 
-### Step 3: data-\* からテストケースを導出
+## 種別ごとの生成パターン
 
-ui-mockup.html の各フィールドの data-\* 属性を以下のルールでテストケースに変換する:
-
-| data-\*                | 生成するテストケース                                           | テスト種別     |
-| ---------------------- | -------------------------------------------------------------- | -------------- |
-| `data-required="true"` | 空文字 → VALIDATION_ERROR（data-error-msg の文言）             | Unit（schema） |
-| `data-min="{n}"`       | n-1文字 → VALIDATION_ERROR / n文字 → OK                        | Unit（schema） |
-| `data-max="{n}"`       | n文字 → OK / n+1文字 → VALIDATION_ERROR（data-max-msg の文言） | Unit（schema） |
-| `data-min-val="{n}"`   | n-1 → VALIDATION_ERROR / n → OK                                | Unit（schema） |
-| `data-max-val="{n}"`   | n → OK / n+1 → VALIDATION_ERROR                                | Unit（schema） |
-| `data-unique="true"`   | 重複登録 → CONFLICT                                            | Integration    |
-| `@api POST`            | 全フィールド正常値 → 正常系登録                                | Integration    |
-| `@api GET`             | 登録済みデータ → 一覧に含まれる                                | Integration    |
-| `@api DELETE`          | 存在する ID → 削除成功                                         | Integration    |
-| `@api PUT`             | 存在する ID + 正常値 → 更新成功                                | Integration    |
-
-#### テスト命名規則
-
-テスト名が業務要件の説明になるように記述する。`[SPEC: AC-XXX]` 形式は使わない。
-
-| ケース    | フォーマット                       | 例                                                             |
-| --------- | ---------------------------------- | -------------------------------------------------------------- |
-| 正常系    | `{条件}で{操作}できる`             | `正しいデータで料理を登録できる`                               |
-| 異常系    | `{条件}の場合、{エラー内容}が返る` | `料理名が空の場合、VALIDATION_ERROR「料理名は必須です」が返る` |
-| 境界値 OK | `{条件}の場合、{操作}できる`       | `料理名が100文字の場合、登録できる`                            |
-| 境界値 NG | `{条件}の場合、{エラー内容}が返る` | `料理名が101文字の場合、VALIDATION_ERROR が返る`               |
-
-#### 生成しないテスト
-
-以下は生成しない:
-
-- `[SPEC: AC-XXX]` 形式のテスト名
-- 関数の内部実装を確認するだけのテスト
-- 常に通る自明なテスト（フィールドの存在確認等）
-
-#### ファイル存在確認
-
-Glob で各テストファイルの存在を確認する。存在しない場合は Step 4 で新規生成する。
-
-### Step 4: テスト生成
-
-#### テストケースの命名
-
-テスト名が業務要件の説明になるように記述する。`[SPEC: AC-XXX]` 形式は使わない。
+### 共通: ファイルヘッダー（file-headers.md 準拠）
 
 ```typescript
-// 正常系
-test('正しいデータで料理を登録できる', async () => { ... })
-
-// 異常系
-test('料理名が空の場合、VALIDATION_ERROR「料理名は必須です」が返る', () => { ... })
-
-// 境界値 OK
-test('料理名が100文字の場合、登録できる', () => { ... })
-
-// 境界値 NG
-test('料理名が101文字の場合、VALIDATION_ERROR が返る', () => { ... })
+/**
+ * @file テスト: {対象名}
+ * @module src/routes/{feature}/{ファイル名}.test.ts
+ * @testType unit   // または integration
+ *
+ * @target ./{対象ファイル名}.ts
+ * @spec specs/{feature}/spec.md
+ * @covers AC-001, AC-002, ...
+ */
 ```
 
-#### 生成対象
-
-1. **Integration テスト** — @api コメントの各エンドポイントに対する正常系検証（実 D1 使用）
-2. **Unit テスト（schema）** — data-\* 属性から導出したバリデーション検証
-
-テストの実行方法・フレームワークは infra-spec.md と testing rule に従う。
-
-#### FE コンポーネントテストの生成パターン
-
-ui-mockup.html の `data-testid` 属性を持つコンポーネントがある場合、以下のパターンで生成する:
-
-- **フレームワーク**: `vitest-browser-svelte`（`render` + `page` from `vitest/browser`）
-- **入力**: ui-mockup.html の `data-testid` 属性のみ（実装コードを読まない）
-- **セレクタ**: `data-testid.md` のセレクタ優先順位に従う（`getByRole` → `getByLabelText` → `getByText` → `getByTestId`）
-- **クリック操作**: ナビゲーションを伴わないボタンは `element().click()` + `flushSync()` を使う（`locator.click()` は SvelteKit 環境で 5〜15 秒かかるため）
-- **テキスト検証**: `expect.element(page.getByText('....')).toBeVisible()` を使用（`toHaveText` は使わない）
-- **非通信確認**: バリデーションテストは `vi.stubGlobal('fetch', vi.fn())` で fetch が呼ばれないことを確認
+### 共通: テスト命名規則（testing.md 準拠）
 
 ```typescript
-import { describe, test, expect, afterEach, vi } from 'vitest';
-import { flushSync } from 'svelte';
-import { render } from 'vitest-browser-svelte';
-import { page } from 'vitest/browser';
-import { ComponentName } from './{ComponentName}.svelte';
-
-afterEach(() => {
-	vi.unstubAllGlobals();
+describe('{対象の関数名・スキーマ名・コンポーネント名}', () => {
+  test('正しいデータで{操作}できる', () => { ... });
+  test('{条件}の場合、{エラー内容}が返る', () => { ... });
+  test('{条件}の場合、{操作}できる', () => { ... });     // 境界値 OK
+  test('{条件}の場合、{エラー内容}が返る', () => { ... }); // 境界値 NG
 });
+```
+
+`[SPEC: AC-XXX]` 形式は使わない。業務要件を日本語で直接表現する。
+
+---
+
+### Schema Unit（`schema.test.ts`）
+
+Zod の `.safeParse()` を使い、バリデーションルールを直接検証する。DB 不要で高速。
+
+```typescript
+import { describe, test, expect } from 'vitest';
+import { {entity}CreateSchema } from './{schema}';
+
+describe('{entity}CreateSchema', () => {
+  test('正しいデータで{エンティティ}を登録できる', () => {
+    const result = {entity}CreateSchema.safeParse({ name: '有効な名前', ... });
+    expect(result.success).toBe(true);
+  });
+
+  test('名前が空の場合、「名前は必須です」エラーが返る', () => {
+    const result = {entity}CreateSchema.safeParse({ name: '' });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe('名前は必須です');
+  });
+
+  test('名前が100文字の場合、登録できる', () => {
+    const result = {entity}CreateSchema.safeParse({ name: 'a'.repeat(100) });
+    expect(result.success).toBe(true);
+  });
+
+  test('名前が101文字の場合、バリデーションエラーが返る', () => {
+    const result = {entity}CreateSchema.safeParse({ name: 'a'.repeat(101) });
+    expect(result.success).toBe(false);
+  });
+});
+```
+
+- `vite.config.ts` に `requireAssertions: true` があるため全テストに `expect()` が必須
+- エラーメッセージは schema.ts に定義された日本語文言をそのまま検証する
+- 境界値（最小・最大・+1）を必ずテストする
+
+---
+
+### Server Unit（`server.test.ts`）
+
+API ハンドラ層の検証。サービスをモックし、バリデーション失敗時の挙動に集中する。
+正常系は Integration でカバーするためハンドラ単体では不要。
+
+```typescript
+import { describe, test, expect, vi } from 'vitest';
+import { POST } from './+server';
+
+vi.mock('./_lib/service', () => ({
+  create{Entity}: vi.fn()
+}));
+
+describe('POST /{feature}', () => {
+  test('リクエストボディが不正な場合、400 VALIDATION_ERROR が返る', async () => {
+    const request = new Request('http://localhost/{feature}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: '' })
+    });
+    const response = await POST({ request, locals: mockLocals, platform: mockPlatform } as any);
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+
+  test('バリデーション失敗時はサービスが呼ばれない', async () => {
+    const { create{Entity} } = await import('./_lib/service');
+    // 不正リクエスト送信
+    expect(create{Entity}).not.toHaveBeenCalled();
+  });
+});
+```
+
+---
+
+### Integration（`service.integration.test.ts`）
+
+実 D1 DB を使い、E2E や Schema Unit では検証できないことだけをテストする。
+
+**対象を絞る基準**:
+
+- ✅ 他ユーザーのデータにアクセスできないこと（権限チェック）
+- ✅ ページネーションの境界値（offset/limit の挙動）
+- ✅ ソート順（NULL 扱い、複数キー）
+- ✅ DB 制約（UNIQUE 違反、CASCADE 削除）
+- ❌ 正常系 CRUD（E2E でカバー済み）
+- ❌ バリデーション（Schema Unit でカバー済み）
+
+```typescript
+/// <reference types="@cloudflare/vitest-pool-workers/types" />
+import { describe, test, expect, beforeAll } from 'vitest';
+import { createDb } from '$lib/server/db';
+
+// テストユーザーは crypto.randomUUID() で生成する（並列実行対応）
+function makeUserId() { return crypto.randomUUID(); }
+
+describe('{entity} service - 権限チェック', () => {
+  test('他ユーザーのデータは取得できない', async () => {
+    const db = createDb(env.DB);
+    const ownerUserId = makeUserId();
+    const otherUserId = makeUserId();
+    // ownerUserId でデータ作成
+    // otherUserId で取得 → 空配列 or NOT_FOUND
+    expect(...).toBe(...);
+  });
+});
+```
+
+- `/// <reference types="@cloudflare/vitest-pool-workers/types" />` を必ず先頭に付与
+- テストユーザーは `crypto.randomUUID()` で毎回生成し、テスト間の干渉を防ぐ
+- `env.DB` は Miniflare が注入する実 D1 バインディング
+
+---
+
+### Component（`*.svelte.test.ts`）
+
+UI インタラクションと条件レンダリングを検証する。
+
+```typescript
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { render } from 'vitest-browser-svelte';
+import { page } from '@vitest/browser/context';
+import { flushSync } from 'svelte';
+
+// $app/* を import するコンポーネントでは必須
+vi.mock('$app/navigation', () => ({
+  goto: vi.fn(),
+  invalidateAll: vi.fn()
+}));
+
+vi.mock('$app/state', () => ({
+  page: { url: new URL('http://localhost/') }
+}));
 
 describe('{ComponentName}', () => {
-	test('{フィールド名}が空の場合、エラーメッセージが表示される', async () => {
-		render(
-			{ ComponentName },
-			{
-				/* ui-mockup.html から導出した最小限の props */
-			}
-		);
+  test('ボタンをクリックすると{状態変化}が起きる', async () => {
+    render({Component}, { props: { ... } });
 
-		// getByRole が使えない場合のみ getByTestId を使う（data-testid.md 参照）
-		page.getByRole('button', { name: '{ボタンラベル}' }).element().click();
-		flushSync();
+    page.getByRole('button', { name: '追加' }).element().click();
+    flushSync(); // Svelte の pending state を即時反映
 
-		await expect.element(page.getByRole('alert')).toBeVisible();
-		await expect.element(page.getByText('{data-error-msg の文言}')).toBeVisible();
-	});
-
-	test('バリデーションエラー時、サーバー通信は発生しない', async () => {
-		const fetchMock = vi.fn();
-		vi.stubGlobal('fetch', fetchMock);
-
-		render(
-			{ ComponentName },
-			{
-				/* props */
-			}
-		);
-		page.getByRole('button', { name: '{ボタンラベル}' }).element().click();
-		flushSync();
-
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
+    await expect.element(page.getByRole('listitem')).toBeVisible();
+  });
 });
 ```
 
-### Step 5: チェックリスト検証
+**セレクタ優先順位**（testing.md 準拠）:
 
-以下の項目を順番に確認する。**テスト実行は必ず Bash ツールで行うこと。**
+1. `getByRole('button', { name: '...' })` — ボタン・入力・リンク
+2. `getByLabel('...')` — ラベル付きフォーム
+3. `getByText('...')` — テキスト要素
+4. `getByTestId('...')` — 上記で特定できない場合のみ
 
-- [ ] ui-mockup.html の全 data-\* 属性に対応するテストケースが存在する
-- [ ] @api コメントの全エンドポイントに対する Integration テストが存在する
-- [ ] 正常系・異常系・境界値の各カテゴリをカバーしている
-- [ ] テスト名が業務要件の説明文になっている（`[SPEC: AC-XXX]` 形式を使っていない）
-- [ ] テスト命名が testing rule に従っている
-- [ ] モック戦略が testing rule に従っている
-- [ ] テストファイルの配置が infra-spec.md のディレクトリ構成に従っている
-- [ ] 全生成ファイルに file-headers rule に従ったヘッダーコメントが付与されている
-- [ ] **Bash ツールで `npm run test:unit -- --run` と `npm run test:integration -- --run` を実行し、生成したテストが RED になることを確認した**（実装前のため RED が正常。`Cannot find module` や型エラーで落ちることが期待される）
+**クリックパターン**:
 
-### Step 6: /verify-app を実行する
+```typescript
+// ✅ ナビゲーションを伴わない操作（バリデーション・リスト操作）
+page.getByRole('button', { name: '追加' }).element().click();
+flushSync();
+expect(...); // 同期アサーション
 
-Skill ツールを使って `/verify-app` を呼び出し、型チェック・Lint・ビルドが全て通ることを確認する。
+// ✅ 非同期アサーション（ポーリングで待機）
+page.getByRole('button', { name: '保存' }).element().click();
+flushSync();
+await expect.element(page.getByRole('alert')).toBeVisible();
+```
 
-### Step 7: main へテストファイルを取り込む
+**マッチャーの使い分け**（Svelte `{#if}` の挙動に合わせる）:
 
-worktree で生成したテストファイルを main ブランチに取り込み、履歴管理のためにコミットする。
+```typescript
+// {#if} で DOM から削除される要素
+await expect.element(page.getByTestId('error-message')).not.toBeInTheDocument();
 
-> **注意**: `git checkout BRANCH -- directory/` はディレクトリ内の実装ファイルも含めて丸ごとチェックアウトしてしまう。
-> テストファイルのみを取り込むため、**必ず `find + cp` を使うこと**。
+// CSS（hidden クラス等）で非表示の要素
+await expect.element(page.getByTestId('tooltip')).not.toBeVisible();
+```
+
+---
+
+## Step 4: テスト実行
+
+生成完了後に実行して全テストが通ることを確認する。
 
 ```bash
-# 絶対パスを git worktree list から取得（CWD・変数の永続性に依存しない）
-MAIN=$(git worktree list | awk 'NR==1{print $1}')
-WORKTREE=$(git worktree list | grep "scaffold-test-unit-{feature}" | awk '{print $1}')
+# Unit / Component
+npm run test:unit -- --run
 
-# worktree のテストファイルのみを main にコピー（実装ファイルは除外）
-find "$WORKTREE/src/routes/{feature}" -type f \( -name "*.test.ts" -o -name "*.integration.test.ts" -o -name "*.svelte.test.ts" \) | while read f; do
-  dest="$MAIN/src${f#$WORKTREE/src}"
-  mkdir -p "$(dirname "$dest")"
-  cp "$f" "$dest"
-done
-
-# E2E テストファイルをコピー
-[ -f "$WORKTREE/e2e/{feature}.e2e.ts" ] && cp "$WORKTREE/e2e/{feature}.e2e.ts" "$MAIN/e2e/{feature}.e2e.ts"
-
-# worktree を削除
-git -C "$MAIN" worktree remove --force "$WORKTREE"
-git -C "$MAIN" branch -d worktree/scaffold-test-unit-{feature}
-
-# テストファイルのみをステージ（実装ファイルが混入していないか確認してからコミット）
-git -C "$MAIN" status --short  # *.test.ts 系のみであることを確認
-git -C "$MAIN" add $(find "$MAIN/src/routes/{feature}" -name "*.test.ts" -o -name "*.integration.test.ts" -o -name "*.svelte.test.ts")
-[ -f "$MAIN/e2e/{feature}.e2e.ts" ] && git -C "$MAIN" add "$MAIN/e2e/{feature}.e2e.ts"
-git -C "$MAIN" commit -m "test({feature}): unit / integration / e2e テスト生成"
+# Integration
+npm run test:integration -- --run
 ```
 
-- コミットメッセージは Conventional Commits 形式
-- `git status` でステージ内容を確認し、実装ファイル（`service.ts`, `+server.ts`, `+page.svelte` 等）が混入していないことを必ず確認してからコミットする
-
-### Step 8: 次のステップ案内
-
-チェックリスト完了後、以下をユーザーに表示する:
-
-```
-テスト生成とコミットが完了しました。
-次のステップ:
-1. /scaffold-be・/scaffold-fe がまだの場合は並列で実行してください。
-2. 3つ全て取り込み完了後、`/test-and-fix` を実行して unit + integration を GREEN にしてください。
-```
-
-## テスト生成の原則
-
-### 仕様からテストを導出する
-
-- テストケースは AC の機械的変換であること
-- **実装コードを読んではいけない**。openapi.yaml と spec.md のみを入力とする
-- 実装の内部構造に依存しない（ブラックボックステスト）
-- テストが仕様を検証する手段であり、実装に合わせて甘くしない
-
-#### 読んではいけないファイル（禁止リスト）
-
-以下は「コーディングパターンの確認」「既存実装の参照」を目的とした読み込みも含め、**一切読んではいけない**:
-
-- `src/routes/**` — 既存機能の実装・スキーマ・テスト（他 feature のものも含む）
-- `src/lib/**` — 共通ライブラリ実装
-- `vite.config.ts`, `wrangler.toml`, `package.json` — インフラ設定
-
-> worktree は scaffold-contract コミット直後の HEAD ベースのため、be / fe / test-unit の成果物は物理的に存在しない。「読まない」ではなく「存在しない」状態で作業する。
-
-コーディングパターンが必要な場合は `.claude/rules/` の rules ファイルを参照すること。
-テスト記法は `testing.md`、スキーマ記法は `schemas.md`、ファイルヘッダーは `file-headers.md` が正とする。
-
-### AC とテストの紐付け
-
-- 全てのテストケースに `[SPEC: AC-XXX]` を付与
-- 1つの AC に対して複数のテストケースを持つことは可
-- AC なしのテスト（インフラレベルのテスト等）は `[SPEC: AC-XXX]` なしで可
-
-### テスト堅牢性ガイドライン
-
-生成するテストが「甘いテスト」にならないための指針:
-
-| ガイドライン         | 悪い例                                    | 良い例                                    |
-| -------------------- | ----------------------------------------- | ----------------------------------------- |
-| 具体的な値をアサート | `expect(res.status).toBeDefined()`        | `expect(res.status).toBe(201)`            |
-| リスト件数は具体値   | `expect(items.length).toBeGreaterThan(0)` | `expect(items.length).toBe(3)`            |
-| 不正値の拒否も検証   | 正常系のみ                                | 正常系 + 不正値で 400 を確認              |
-| フィールド値まで検証 | `expect(body).toHaveProperty('title')`    | `expect(body.title).toBe('テストタスク')` |
-| 境界値を網羅         | 中間値のみ                                | 下限-1, 下限, 上限, 上限+1                |
-
-## 出力先
-
-infra-spec.md で定義されたディレクトリ構成に従う。
+失敗したら原因を特定して修正する。`requireAssertions: true` により `expect()` のないテストはエラーになる。

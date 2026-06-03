@@ -142,6 +142,46 @@ try {
 
 `fields` はバリデーションエラー時のみ付与。
 
+### service.ts でのエラー throw
+
+期待されるエラー（NOT_FOUND、CONFLICT 等）は `AppError` を throw する。予期しないエラー（DB 障害等）はそのまま上位に伝播させる。Result Pattern は使わない。
+
+```typescript
+export async function getItem(db: DrizzleD1, id: string) {
+	const item = await db.select().from(items).where(eq(items.id, id)).get();
+	if (!item) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
+	return item;
+}
+```
+
+エラーコードは英語、メッセージは日本語。`ErrorCode` 型の一覧は `src/lib/server/errors.ts` が唯一の定義元。
+
+---
+
+## ロギングルール
+
+- `console.error()` は予期しないエラー（500 系）のみ
+- `AppError` はログ不要（想定内のエラーのため）
+- ログに含めてはいけない情報: パスワード、トークン、セッション ID
+
+---
+
+## FE エラーハンドリング
+
+```typescript
+const res = await fetch('/{feature}', { method: 'POST', body: JSON.stringify(data) });
+if (!res.ok) {
+	const err = await res.json();
+	if (err.code === 'VALIDATION_ERROR') {
+		// フィールドエラーをフォームに表示
+		// err.fields: [{ field: 'name', message: '名前は必須です' }]
+	} else {
+		// トースト等で汎用エラーを表示
+		// err.message をそのまま表示してよい（日本語）
+	}
+}
+```
+
 ---
 
 ## ハンドラの責務範囲
@@ -221,10 +261,5 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
 
 ## なぜ必要か
 
-- scaffold-be スキルが API コードを生成する際の規約として参照
-- scaffold-fe スキルが API 呼び出しコードを生成する際の規約として参照
 - Cloudflare Workers 固有の制約（`platform.env` アクセス等）を統一するため
-
-## 参照するスキル
-
-- scaffold-be, scaffold-fe
+- エラーレスポンスの一貫性を保つため

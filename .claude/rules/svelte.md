@@ -47,6 +47,27 @@ selectedIds = new SvelteSet(selectedIds);
 
 ---
 
+## $bindable（双方向バインド）
+
+コンポーネントが受け取る prop を親から `bind:` で双方向バインドさせたい場合に使う。
+`Input` / `Textarea` / `Select` の `value` prop が典型例。
+
+```typescript
+// コンポーネント側
+let { value = $bindable(''), ...rest }: Props = $props();
+```
+
+```svelte
+<!-- 呼び出し側 -->
+<Input bind:value={name} />
+```
+
+- `$bindable()` の引数はデフォルト値（親が `bind:` を使わない場合に適用）
+- `$bindable` なしの prop に対して親から `bind:` を使うとコンパイルエラーになる
+- フォームの `value` 以外では基本使わない。状態の所有権は親に置き、イベントで通知する設計を優先する
+
+---
+
 ## $derived / $effect
 
 - `$derived`: 他の state から計算できる値（getter の代替）

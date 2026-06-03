@@ -1,157 +1,257 @@
 ---
 name: scaffold-test-e2e
-description: ui-mockup.html の @api コメントと data-testid を参照して E2E テストを生成する。
+description: >
+  Playwright E2E テストファイルを生成・差分更新するスキル。
+  「E2Eテストを書いて」「{feature}のE2Eを作って」「E2Eを更新して」「E2Eテストを追加して」
+  など、E2E テストの新規作成・追加・修正に関するリクエストがあれば必ず使用すること。
+  testing.md・Playwright ベストプラクティスに完全準拠した e2e/{feature}.e2e.ts を生成する。
 ---
 
-# E2E Test Scaffold
+# scaffold-test-e2e
 
-ui-mockup.html を主入力として、E2E テストを生成するスキル。
+Playwright E2E テストを生成・差分更新するスキル。
 
-## 前提条件
+---
 
-- `specs/{feature}/ui-mockup.html` が存在すること
-- `specs/infra-spec.md` が存在すること（E2E フレームワーク・テストコマンドの参照）
-- `.claude/rules/` に testing, data-testid が定義されていること
-- FE 実装が完了していること（推奨）
+## Step 0: storageState の確認（初回のみ）
 
-## 起動時の挙動
+`playwright.config.ts` を Read して `use: { storageState }` が設定済みか確認する。
 
-スキル起動後、AskUserQuestion ツールを使って対象 feature を確認する。
+**未設定の場合**、以下の修正を行ってから先に進む。
 
-```
-question: "どの feature の E2E テストを生成しますか？"
-options:
-  - specs/ 配下の feature ディレクトリを動的にリスト
-```
+### global-setup.ts への追記
 
-## ワークフロー
+既存のユーザー作成・シード処理の末尾に認証状態の保存処理を追加する。
+global-setup.ts 全体を Read してから追記箇所を特定し Edit する。
 
-```
-入力読み込み → rules 参照 → mockup からシナリオ導出 → テスト生成 → チェックリスト検証
-```
+```typescript
+// 既存のユーザー作成・シード処理の後に追加
+import { chromium } from '@playwright/test';
+import * as fs from 'fs';
 
-### Step 1: 入力読み込み
-
-以下のファイルを Read ツールで読み込む:
-
-1. `specs/infra-spec.md` — E2E フレームワーク、テストコマンド、ベース URL
-2. `specs/{feature}/ui-mockup.html` — @api コメント（シナリオ）と data-testid（セレクタ）
-
-### Step 2: rules 参照
-
-以下の rules を Read ツールで読み込み、テスト生成の規約とする:
-
-| rule                            | 参照するもの                                       |
-| ------------------------------- | -------------------------------------------------- |
-| `.claude/rules/testing.md`      | テスト種別、E2E テストの範囲                       |
-| `.claude/rules/data-testid.md`  | セレクタ命名規則、命名テーブル、動的要素の選択方法 |
-| `.claude/rules/file-headers.md` | ファイルヘッダーコメントのテンプレートと記述ルール |
-
-### Step 3: ui-mockup からシナリオを導出
-
-ui-mockup.html の構造から E2E シナリオを導出する:
-
-| ui-mockup の要素                | E2E シナリオ                                                          |
-| ------------------------------- | --------------------------------------------------------------------- |
-| `@api POST`                     | フォーム入力 → 保存 → 一覧に追加されることを確認                      |
-| `@api DELETE`                   | 削除ボタン → 確認ダイアログ → 削除 → 一覧から消えることを確認         |
-| `@api PUT`                      | 編集ボタン → フォーム変更 → 保存 → 一覧で更新されることを確認         |
-| `data-required="true"`          | 空のまま保存 → エラーメッセージ（data-testid="\*-error"）が表示される |
-| `data-testid="*-empty"`         | データ 0 件時に空状態メッセージが表示される                           |
-| `data-testid="*-delete-dialog"` | 削除確認ダイアログの開閉フロー                                        |
-
-### Step 3b: 差分検知
-
-Glob で対象 feature の E2E テストファイル存在を確認し、差分検知を行う:
-
-```
-Glob('e2e/{feature}.e2e.ts')
+const browser = await chromium.launch();
+const context = await browser.newContext();
+const page = await context.newPage();
+await page.goto(`${BASE_URL}/login`);
+await page.getByTestId('login-email-input').fill(TEST_EMAIL);
+await page.getByTestId('login-password-input').fill(TEST_PASSWORD);
+await page.getByTestId('login-submit-button').click();
+await page.waitForURL(`${BASE_URL}/`);
+fs.mkdirSync('e2e/.auth', { recursive: true });
+await context.storageState({ path: 'e2e/.auth/user.json' });
+await browser.close();
 ```
 
-##### ファイルが存在しない場合
+### playwright.config.ts への追記
 
-Step 4 で新規生成する。
+`use:` ブロックに `storageState` を追加する。
 
-##### ファイルが存在する場合
-
-ui-mockup.html の @api コメントと data-testid から導出した期待シナリオ一覧と、
-既存テストファイルの `test.describe` / `test` 名を照合する。
-
-- 期待シナリオにあって既存テストにない → 新規生成
-- 既存テストにあって期待シナリオにない → 警告を表示（ユーザーに削除確認）
-- ui-mockup.html が更新されてシナリオが変わった → 該当テストを Edit で置換
-
-**他 feature の E2E ファイルは新規・更新を問わず一切 Read しない。**
-
-### Step 4: テスト生成
-
-#### セレクタ戦略
-
-- data-testid rule の命名テーブルに従い、`[data-testid="..."]` セレクタを使用
-- 動的要素（リストアイテム等）は data-testid rule の動的セレクタパターンに従う
-
-#### テストケースの命名
-
-テスト名が業務要件の説明になるように記述する。`[SPEC: AC-XXX]` 形式は使わない。
-
-```
-フォーム入力 → 保存 → 一覧に追加されることを確認
-空欄のまま保存するとエラーメッセージが表示される
-削除ボタンを押すと確認ダイアログが表示される
+```typescript
+use: {
+  storageState: 'e2e/.auth/user.json',
+},
 ```
 
-#### 生成対象
+### .gitignore への追記
 
-1. **ページ表示テスト** — 初期表示、データ一覧表示
-2. **CRUD フローテスト** — 作成・読取・更新・削除の一連操作
-3. **バリデーションテスト** — エラー表示、フィールドエラーの確認
-4. **インタラクションテスト** — UI 操作（トグル、ダイアログ、ナビゲーション等）
+```
+e2e/.auth/
+```
 
-テストの実行方法・フレームワークは infra-spec.md と testing rule に従う。
+---
 
-### Step 5: チェックリスト検証
+## Step 1: feature 確認
 
-- [ ] spec.md の UI-related AC にテストケースが存在する（`[SPEC: AC-XXX]` で紐付け済み）
-- [ ] UI Requirements のインタラクションが全てテストされている
-- [ ] セレクタが data-testid rule の命名テーブルに従っている
-- [ ] 正常系フロー（ハッピーパス）が E2E テストでカバーされている
-- [ ] バリデーションエラーの表示がテストされている
-- [ ] テストファイルの配置が infra-spec.md のディレクトリ構成に従っている
-- [ ] 全生成ファイルに file-headers rule に従ったヘッダーコメントが付与されている
+引数から feature 名を取得する。指定がなければ `src/routes/` を列挙してユーザーに確認する。
 
-### Step 6: /verify-app を実行する
+---
 
-Skill ツールを使って `/verify-app` を呼び出し、型チェック・Lint・ビルドが全て通ることを確認する。
+## Step 2: コンテキスト収集
 
-## E2E テスト生成の原則
+以下を Read する。存在しないファイルはスキップしてよい。
 
-### ユーザー視点でテストを書く
+```
+src/routes/{feature}/+page.svelte
+src/routes/{feature}/+page.server.ts
+src/routes/{feature}/+server.ts
+src/routes/{feature}/_lib/schema.ts
+src/routes/{feature}/components/        （Glob で一覧取得）
+specs/{feature}/spec.md                 （AC 一覧の参照用）
+```
 
-- 内部実装ではなく、ユーザーが見る画面とインタラクションをテスト
-- セレクタは data-testid を優先（CSS クラスやテキストに依存しない）
+**差分更新の場合**は `e2e/{feature}.e2e.ts` も Read する。
 
-### テストの独立性
+---
 
-- 各テストケースは他のテストに依存しない
-- テストデータのセットアップ / クリーンアップを各テスト内で完結させる
+## Step 3: シナリオ設計
 
-### AC とテストの紐付け
+収集した実装から以下のカテゴリでシナリオを導出する。
 
-- 全てのテストケースに `[SPEC: AC-XXX]` を付与
-- 1つの AC が複数のテストステップにまたがることは可
+| カテゴリ       | 導出元                     | 検証内容                               |
+| -------------- | -------------------------- | -------------------------------------- |
+| 初期表示       | +page.svelte               | 主要要素の表示・見出し・ラベル         |
+| 一覧           | +page.server.ts の load    | データ一覧の表示・件数                 |
+| 作成           | POST エンドポイント        | フォーム入力 → 送信 → 一覧への反映     |
+| 編集           | PUT エンドポイント         | 編集フォーム → 保存 → 一覧への反映     |
+| 削除           | DELETE エンドポイント      | 確認ダイアログ → 削除 → 一覧から消える |
+| バリデーション | schema.ts のルール         | 必須・文字数・形式のエラーメッセージ   |
+| 空状態         | +page.svelte の empty 要素 | 0 件時のメッセージ表示                 |
+| レスポンシブ   | モバイル固有 UI            | viewport 変更での表示切り替え          |
 
-### テスト堅牢性ガイドライン
+---
 
-E2E テストが「甘いテスト」にならないための指針:
+## Step 4: 新規生成 or 差分更新
 
-| ガイドライン                   | 悪い例                             | 良い例                                     |
-| ------------------------------ | ---------------------------------- | ------------------------------------------ |
-| 画面テキストを具体的に検証     | `expect(element).toBeVisible()`    | `expect(element).toHaveText('タスク一覧')` |
-| リスト件数は具体値             | `expect(items).not.toHaveCount(0)` | `expect(items).toHaveCount(3)`             |
-| バリデーションメッセージを検証 | エラー要素の存在のみ               | エラーメッセージのテキストを検証           |
-| 操作後の状態変化を検証         | 操作の成功トーストのみ             | 一覧に反映されていることまで確認           |
-| フォームの初期値を検証         | フォーム表示のみ                   | 各フィールドの初期値・placeholder を検証   |
+### 新規生成（ファイルなし）
 
-## 出力先
+下記「生成パターン」に従いファイル全体を Write する。
 
-infra-spec.md で定義されたディレクトリ構成に従う。
+### 差分更新（ファイルあり）
+
+1. 既存テストの `test.describe` / `test()` 名を列挙する
+2. Step 3 のシナリオと照合する
+3. **不足シナリオ** → `test()` または `test.describe` ブロックを追加
+4. **実装変更で古くなったテスト** → Edit で修正
+5. ファイルヘッダーの `@covers` を最新 AC に更新
+
+> 既存テストの削除は行わない。削除が必要なケースはユーザーに提示して確認を取る。
+
+---
+
+## 生成パターン
+
+### ファイルヘッダー
+
+```typescript
+/**
+ * @file E2Eテスト: {機能名}
+ * @module e2e/{feature}.e2e.ts
+ * @testType e2e
+ *
+ * @spec specs/{feature}/spec.md
+ * @covers AC-001, AC-002, ...
+ *
+ * @scenarios
+ * - {シナリオ1}
+ * - {シナリオ2}
+ *
+ * @pages
+ * - /{feature} - {画面名}
+ */
+import { test, expect } from '@playwright/test';
+```
+
+storageState 採用のため `login()` ヘルパーは不要。
+
+### API ヘルパー
+
+テストデータの操作は API 経由で行い、UI 操作とは分離する。
+
+```typescript
+async function create{Entity}(
+  page: import('@playwright/test').Page,
+  data: { name: string; [key: string]: unknown }
+): Promise<{ id: string }> {
+  const res = await page.request.post('/{feature}', {
+    data,
+    headers: { 'Content-Type': 'application/json' }
+  });
+  expect(res.ok()).toBeTruthy();
+  return res.json();
+}
+
+async function delete{Entity}(
+  page: import('@playwright/test').Page,
+  id: string
+): Promise<void> {
+  await page.request.delete(`/{feature}/${id}`);
+}
+```
+
+### テスト構造
+
+```typescript
+test.describe('{機能名} - {カテゴリ}', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/{feature}');
+  });
+
+  test('[SPEC: AC-XXX] {業務要件を表す日本語説明}', async ({ page }) => {
+    const item = await create{Entity}(page, { name: 'テストデータ' });
+    try {
+      // アサーション
+    } finally {
+      await delete{Entity}(page, item.id);
+    }
+  });
+});
+```
+
+### セレクタ優先順位（Playwright ベストプラクティス）
+
+```typescript
+// 1. getByRole — ボタン・入力・リンク・見出し等（最優先）
+page.getByRole('button', { name: '追加' });
+page.getByRole('textbox', { name: '料理名' });
+page.getByRole('heading', { name: 'レシピ一覧' });
+page.getByRole('link', { name: '詳細を見る' });
+
+// 2. getByLabel — ラベル付きフォームフィールド
+page.getByLabel('メールアドレス');
+
+// 3. getByText — テキストコンテンツ
+page.getByText('まだデータがありません');
+
+// 4. getByPlaceholder — placeholder のある入力
+page.getByPlaceholder('例: カレーライス');
+
+// 5. getByTestId — 上記で特定できない要素のみ
+page.getByTestId('expense-month-select');
+```
+
+### レスポンシブテスト
+
+```typescript
+test.describe('{機能名} - モバイル', () => {
+	test.use({ viewport: { width: 375, height: 812 } });
+
+	test('[SPEC: AC-XXX] モバイルで{操作}できる', async ({ page }) => {
+		// CSS メディアクエリが正しく反映される
+	});
+});
+```
+
+### アサーションの品質基準
+
+```typescript
+// ✅ 具体的な値で検証する
+await expect(page.getByRole('listitem')).toHaveCount(3);
+await expect(page.getByRole('alert')).toHaveText('料理名は必須です');
+await expect(page.getByRole('heading', { name: 'レシピ一覧' })).toBeVisible();
+
+// ❌ 存在確認だけで終わらせない
+await expect(page.getByRole('listitem')).not.toHaveCount(0); // 避ける
+await expect(page.getByRole('alert')).toBeVisible(); // 避ける
+
+// ✅ Svelte {#if} で DOM 削除される要素
+await expect(page.getByTestId('recipes-empty')).not.toBeVisible(); // OK
+await expect(page.getByTestId('recipes-empty')).toBeHidden(); // OK
+// ※ toBeInTheDocument() は Playwright に存在しない
+
+// ✅ ナビゲーション後は waitForURL
+await page.getByRole('button', { name: '詳細' }).click();
+await page.waitForURL('**/{feature}/**');
+
+// ❌ waitForTimeout は使わない（Playwright の auto-wait を信頼する）
+await page.waitForTimeout(1000); // 禁止
+```
+
+---
+
+## Step 5: 型チェック
+
+```bash
+npx tsc --noEmit
+```
+
+エラーがあれば修正してから完了とする。
