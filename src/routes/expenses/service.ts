@@ -89,7 +89,7 @@ async function fetchExpenseWithRelations(db: Db, id: string): Promise<ExpenseWit
 
 async function sendLineMessage(
 	lineUserId: string,
-	message: string,
+	messages: object[],
 	lineChannelAccessToken: string
 ): Promise<void> {
 	const res = await fetch('https://api.line.me/v2/bot/message/push', {
@@ -98,10 +98,7 @@ async function sendLineMessage(
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${lineChannelAccessToken}`
 		},
-		body: JSON.stringify({
-			to: lineUserId,
-			messages: [{ type: 'text', text: message }]
-		})
+		body: JSON.stringify({ to: lineUserId, messages })
 	});
 	if (!res.ok) {
 		// D1 がトランザクション非対応のため、通知失敗はベストエフォート扱い（呼び出し元で catch してログ）
@@ -351,7 +348,23 @@ export async function requestExpenses(
 		try {
 			await sendLineMessage(
 				partnerLineUserId!,
-				'承認依頼が届いています。確認してください。',
+				[
+					{
+						type: 'template',
+						altText: '承認依頼が届いています。確認してください。',
+						template: {
+							type: 'buttons',
+							text: '承認依頼が届いています。確認してください。',
+							actions: [
+								{
+									type: 'uri',
+									label: 'アプリへ移動する場合はこちら',
+									uri: 'https://home-hub.pages.dev/expenses'
+								}
+							]
+						}
+					}
+				],
 				lineEnv.lineChannelAccessToken!
 			);
 		} catch (e) {
@@ -419,7 +432,23 @@ export async function approveExpenses(
 		try {
 			await sendLineMessage(
 				partnerLineUserId!,
-				'支出が承認されました。',
+				[
+					{
+						type: 'template',
+						altText: '支出が承認されました。',
+						template: {
+							type: 'buttons',
+							text: '支出が承認されました。',
+							actions: [
+								{
+									type: 'uri',
+									label: 'アプリへ移動する場合はこちら',
+									uri: 'https://home-hub.pages.dev/expenses'
+								}
+							]
+						}
+					}
+				],
 				lineEnv.lineChannelAccessToken!
 			);
 		} catch (e) {
