@@ -17,6 +17,9 @@ export default defineConfig({
 	globalTeardown: './e2e/global-teardown.ts',
 	workers: 1,
 	retries: process.env.CI ? 2 : 0,
+	use: {
+		storageState: 'e2e/.auth/session.json'
+	},
 	webServer: {
 		command: 'npm run build && wrangler pages dev .svelte-kit/cloudflare --port 4173',
 		port: 4173
