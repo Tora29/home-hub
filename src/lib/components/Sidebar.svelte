@@ -29,6 +29,7 @@
 	import {
 		UtensilsCrossed,
 		Wallet,
+		Dumbbell,
 		ChevronDown,
 		ChevronRight,
 		PanelLeftClose,
@@ -39,7 +40,13 @@
 	import { mobileOpen } from '$lib/stores/sidebar';
 
 	type NavItem = { testid: string; href: string; label: string };
-	type NavCategory = { id: string; label: string; icon: Component; items: NavItem[] };
+	type NavCategory = {
+		id: string;
+		label: string;
+		icon: Component;
+		items: NavItem[];
+		requiredRole?: string;
+	};
 
 	const NAV_CATEGORIES: NavCategory[] = [
 		{
@@ -53,6 +60,13 @@
 			label: '収支系',
 			icon: Wallet,
 			items: [{ testid: 'sidebar-item-expenses', href: '/expenses', label: '家計簿' }]
+		},
+		{
+			id: 'workout',
+			label: '筋トレ系',
+			icon: Dumbbell,
+			requiredRole: 'main',
+			items: [{ testid: 'sidebar-item-workout', href: '/workout', label: '記録' }]
 		}
 	];
 
@@ -60,7 +74,7 @@
 
 	let sidebarOpen = $state(true);
 	let isMobile = $state(false);
-	let openMap = $state<Record<string, boolean>>({ meal: true, expense: true });
+	let openMap = $state<Record<string, boolean>>({ meal: true, expense: true, workout: true });
 	let mounted = $state(false);
 	onMount(async () => {
 		sidebarOpen = localStorage.getItem(STORAGE_KEY) !== 'false';
@@ -97,6 +111,13 @@
 	});
 
 	const isOpen = $derived(isMobile ? $mobileOpen : sidebarOpen);
+
+	const visibleCategories = $derived(
+		NAV_CATEGORIES.filter(
+			(c) =>
+				!c.requiredRole || (page.data as { userRole?: string | null }).userRole === c.requiredRole
+		)
+	);
 
 	function isActive(href: string): boolean {
 		return page.url.pathname === href;
@@ -135,7 +156,7 @@
 			style:transform={isOpen ? 'translateX(0)' : 'translateX(-100%)'}
 			style:transition={mounted ? 'transform 300ms ease-in-out' : 'none'}
 		>
-			{#each NAV_CATEGORIES as category (category.id)}
+			{#each visibleCategories as category (category.id)}
 				{@const Icon = category.icon}
 				<div>
 					<button

@@ -11,8 +11,11 @@
  * - recipe                              — アプリ固有テーブル
  * - expenseCategory                     — 支出カテゴリテーブル
  * - expense                             — 支出テーブル（payerUserId + status 含む）
+ * - workoutExercise                     — 筋トレ種目テーブル（role=main ユーザー限定）
+ * - workoutRecord                       — 筋トレ記録テーブル（1レコード = 1セット）
+ * - bodyWeightRecord                    — 体重記録テーブル（同日upsert）
  */
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 
 // ---- Better Auth テーブル ----
 
@@ -89,6 +92,38 @@ export const expense = sqliteTable('Expense', {
 		.references(() => user.id, { onDelete: 'restrict' }),
 	status: text('status').notNull().default('unapproved'),
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
+});
+
+export const workoutExercise = sqliteTable('WorkoutExercise', {
+	id: text('id').primaryKey(),
+	userId: text('userId')
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	name: text('name').notNull(),
+	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
+});
+
+export const workoutRecord = sqliteTable('WorkoutRecord', {
+	id: text('id').primaryKey(),
+	userId: text('userId').notNull(),
+	exerciseId: text('exerciseId')
+		.notNull()
+		.references(() => workoutExercise.id, { onDelete: 'restrict' }),
+	date: text('date').notNull(), // YYYY-MM-DD
+	weight: real('weight').notNull(), // kg（例: 70.5）
+	reps: integer('reps').notNull(), // 1〜10（このレコード1セット分の回数）
+	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
+});
+
+export const bodyWeightRecord = sqliteTable('BodyWeightRecord', {
+	id: text('id').primaryKey(),
+	userId: text('userId')
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	date: text('date').notNull(), // YYYY-MM-DD
+	weight: real('weight').notNull(), // kg（例: 72.3）
+	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
+	// UNIQUE(userId, date): 同日はupsert で1レコードに保つ
 });
 
 export const recipe = sqliteTable('Recipe', {

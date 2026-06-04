@@ -54,14 +54,14 @@ test.describe('ダッシュボード - 初期表示', () => {
 		await expect(page.getByTestId('dashboard-month-select')).toBeVisible();
 	});
 
-	test('当月支出がない場合は支払者別・カテゴリ別の空状態メッセージが表示される', async ({
-		page
-	}) => {
+	test('支出がない月は支払者別・カテゴリ別の空状態メッセージが表示される', async ({ page }) => {
+		await page.getByTestId('dashboard-month-select').selectOption('2026-01');
 		await expect(page.getByTestId('dashboard-payer-summary-empty')).toBeVisible();
 		await expect(page.getByTestId('dashboard-category-summary-empty')).toBeVisible();
 	});
 
-	test('当月支出がない場合は合計が ¥0 で表示される', async ({ page }) => {
+	test('支出がない月は合計が ¥0 で表示される', async ({ page }) => {
+		await page.getByTestId('dashboard-month-select').selectOption('2026-01');
 		await expect(page.getByTestId('dashboard-total')).toHaveText('¥0');
 	});
 });
@@ -103,15 +103,12 @@ test.describe('ダッシュボード - 全期間切り替え', () => {
 });
 
 test.describe('ダッシュボード - 月切り替え', () => {
-	test('月セレクトで 2026-02 に切り替えると合計が更新される', async ({ page }) => {
+	test('月セレクトでデータのない月に切り替えると合計が ¥0 になる', async ({ page }) => {
 		await page.goto('/');
-		const initialTotal = await page.getByTestId('dashboard-total').textContent();
-
-		await page.getByTestId('dashboard-month-select').selectOption('2026-02');
-		// シードデータがある 2026-02 は合計が ¥0 より大きい（fetch 完了まで自動リトライ）
 		await expect(page.getByTestId('dashboard-total')).not.toHaveText('¥0');
-		const updatedTotal = await page.getByTestId('dashboard-total').textContent();
-		expect(updatedTotal).not.toBe(initialTotal);
+
+		await page.getByTestId('dashboard-month-select').selectOption('2026-01');
+		await expect(page.getByTestId('dashboard-total')).toHaveText('¥0');
 	});
 
 	test('2026-02 に切り替えると支払者別一覧が表示される', async ({ page }) => {

@@ -44,10 +44,19 @@ wrangler d1 execute home-hub --local --file=drizzle/seeds/expenses.sql
 | 2026-03 | 6    | approved 3 / pending 2 / checked 1                 |
 | 2026-04 | 5    | unapproved 3 / checked 2（当月・ワークフローデモ） |
 
+### 4. 筋トレのサンプルデータを投入する
+
+```bash
+wrangler d1 execute home-hub --local --file=drizzle/seeds/workout.sql
+```
+
+種目 5 件・記録 21 件・体重 5 件が登録される。`role = 'main'` のユーザーに紐付く。
+
 ## ファイル一覧
 
-| ファイル       | 内容                                              |
-| -------------- | ------------------------------------------------- |
-| `seed-user.sh` | テストユーザー作成スクリプト（Better Auth 経由）  |
-| `recipes.sql`  | レシピサンプルデータ（8 件）                      |
-| `expenses.sql` | 支出カテゴリ（5 件）・支出（12 件）サンプルデータ |
+| ファイル       | 内容                                                    |
+| -------------- | ------------------------------------------------------- |
+| `seed-user.sh` | テストユーザー作成スクリプト（Better Auth 経由）        |
+| `recipes.sql`  | レシピサンプルデータ（8 件）                            |
+| `expenses.sql` | 支出カテゴリ（5 件）・支出（12 件）サンプルデータ       |
+| `workout.sql`  | 種目（5 件）・記録（21 件）・体重（5 件）サンプルデータ |
