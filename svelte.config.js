@@ -7,7 +7,8 @@ const config = {
 		alias: {
 			$expenses: 'src/routes/expenses',
 			$recipes: 'src/routes/recipes',
-			$dashboard: 'src/routes/dashboard'
+			$dashboard: 'src/routes/dashboard',
+			$workout: 'src/routes/workout'
 		}
 	},
 	compilerOptions: {

@@ -54,7 +54,8 @@ test.describe('支出一覧 - 初期表示', () => {
 		await expect(page.getByTestId('expense-total')).toBeVisible();
 	});
 
-	test('当月に支出がない場合は空状態メッセージが表示される', async ({ page }) => {
+	test('支出がない月は空状態メッセージが表示される', async ({ page }) => {
+		await page.goto('/expenses?month=2026-01');
 		await expect(page.getByTestId('expense-empty')).toBeVisible();
 		await expect(page.getByTestId('expense-empty')).toHaveText('支出はまだありません');
 	});

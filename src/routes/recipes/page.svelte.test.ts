@@ -46,6 +46,7 @@ function makeRecipe(overrides = {}) {
 
 function makeData(overrides = {}) {
 	return {
+		userRole: null as string | null,
 		items: [],
 		total: 0,
 		page: 1,
