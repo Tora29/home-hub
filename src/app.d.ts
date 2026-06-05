@@ -8,7 +8,9 @@ declare global {
 			user: import('better-auth').User | null;
 			session: import('better-auth').Session | null;
 		}
-		// interface PageData {}
+		interface PageData {
+			userRole?: string | null;
+		}
 		// interface PageState {}
 		interface Platform {
 			env: {

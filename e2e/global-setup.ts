@@ -57,14 +57,17 @@ function wranglerFile(file: string) {
 export default async function globalSetup() {
 	// 既存ユーザーを全削除してから E2E ユーザーを挿入（外部キー制約に従い子テーブルから削除）
 	wranglerExecute(`DELETE FROM "Recipe"`);
+	wranglerExecute(`DELETE FROM "WorkoutRecord"`);
+	wranglerExecute(`DELETE FROM "WorkoutExercise"`);
+	wranglerExecute(`DELETE FROM "BodyWeightRecord"`);
 	wranglerExecute(`DELETE FROM "Expense"`);
 	wranglerExecute(`DELETE FROM "ExpenseCategory"`);
 	wranglerExecute(`DELETE FROM "Session"`);
 	wranglerExecute(`DELETE FROM "Account"`);
 	wranglerExecute(`DELETE FROM "User"`);
 	wranglerExecute(
-		`INSERT INTO User (id, name, email, emailVerified, createdAt, updatedAt)
-     VALUES ('${E2E_USER_ID}', 'Test User', '${TEST_EMAIL}', 1, unixepoch(), unixepoch())`
+		`INSERT INTO User (id, name, email, emailVerified, role, createdAt, updatedAt)
+     VALUES ('${E2E_USER_ID}', 'Test User', '${TEST_EMAIL}', 1, 'main', unixepoch(), unixepoch())`
 	);
 
 	// DB には平文トークンを格納する（Better Auth は DB に平文、Cookie に署名付きを使う）
@@ -99,6 +102,7 @@ export default async function globalSetup() {
 	const seedDir = path.resolve('drizzle/seeds');
 	wranglerFile(path.join(seedDir, 'recipes.sql'));
 	wranglerFile(path.join(seedDir, 'expenses.sql'));
+	wranglerFile(path.join(seedDir, 'workout.sql'));
 
 	// ダッシュボード pending alert テスト用: パートナーユーザーと pending 支出を挿入
 	wranglerExecute(

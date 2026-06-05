@@ -22,9 +22,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
-import { user as userTable } from '$lib/server/tables';
-import { eq } from 'drizzle-orm';
-import { approveExpenses } from '$expenses/service';
+import { approveExpenses, getUserRole } from '$expenses/service';
 
 /**
  * 相手の pending 支出を一括で approved にし、LINE 通知を送信する。
@@ -36,14 +34,8 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 	try {
 		const db = createDb(platform!.env.DB);
 		const userId = locals.user!.id;
-
-		const userRow = await db
-			.select({ role: userTable.role })
-			.from(userTable)
-			.where(eq(userTable.id, userId))
-			.get();
-
-		const result = await approveExpenses(db, userId, userRow?.role ?? null, {
+		const role = await getUserRole(db, userId);
+		const result = await approveExpenses(db, userId, role, {
 			lineChannelAccessToken: platform!.env.LINE_CHANNEL_ACCESS_TOKEN,
 			lineUserIdPrimary: platform!.env.LINE_USER_ID_PRIMARY,
 			lineUserIdSpouse: platform!.env.LINE_USER_ID_SPOUSE,

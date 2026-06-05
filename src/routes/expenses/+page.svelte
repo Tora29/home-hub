@@ -52,6 +52,7 @@
 	let requestError = $state('');
 	let cancelDialogOpen = $state(false);
 	let cancelLoading = $state(false);
+	let cancelError = $state('');
 	let approveDialogOpen = $state(false);
 	let approveLoading = $state(false);
 	let approveError = $state('');
@@ -169,12 +170,18 @@
 	// ---- 一括申請取り消し ----
 	async function handleCancel() {
 		cancelLoading = true;
+		cancelError = '';
 		try {
 			const res = await fetch('/expenses/cancel', { method: 'POST' });
+			if (!res.ok) {
+				const err = (await res.json()) as { message?: string };
+				cancelError = err.message ?? '申請取り消しに失敗しました';
+				return;
+			}
 			cancelDialogOpen = false;
-			if (res.ok) await invalidateAll();
+			await invalidateAll();
 		} catch {
-			cancelDialogOpen = false;
+			cancelError = '通信エラーが発生しました';
 		} finally {
 			cancelLoading = false;
 		}
@@ -380,6 +387,9 @@
 />
 
 <!-- 申請取り消し確認ダイアログ -->
+{#if cancelError}
+	<p role="alert" class="text-sm text-destructive">{cancelError}</p>
+{/if}
 <ConfirmDialog
 	open={cancelDialogOpen}
 	title="申請を取り消しますか？"

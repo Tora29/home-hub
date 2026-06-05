@@ -16,6 +16,7 @@
  * @functions
  * - getExpenses          - 一覧取得（月フィルタ・ページネーション付き・全ユーザー）
  * - getUsers             - 全ユーザー取得（支払者選択用）
+ * - getUserRole          - ユーザーの role 取得
  * - createExpense        - 新規作成（status=unapproved）
  * - updateExpense        - 更新（FORBIDDEN: 他ユーザー, CONFLICT: pending/approved）
  * - deleteExpense        - 削除（FORBIDDEN: 他ユーザー, CONFLICT: pending/approved）
@@ -176,6 +177,18 @@ export async function getUsers(db: Db): Promise<User[]> {
 	return db
 		.select({ id: userTable.id, name: userTable.name, email: userTable.email })
 		.from(userTable);
+}
+
+/**
+ * ユーザーの role を取得する。
+ */
+export async function getUserRole(db: Db, userId: string): Promise<string | null> {
+	const row = await db
+		.select({ role: userTable.role })
+		.from(userTable)
+		.where(eq(userTable.id, userId))
+		.get();
+	return row?.role ?? null;
 }
 
 /**

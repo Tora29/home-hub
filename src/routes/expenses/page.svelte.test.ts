@@ -34,6 +34,7 @@ function makeExpense(overrides: Partial<ExpenseWithRelations> = {}): ExpenseWith
 
 function makeData(overrides: Partial<Parameters<typeof render>[1]> = {}) {
 	return {
+		userRole: null as string | null,
 		expenses: [] as ExpenseWithRelations[],
 		total: 0,
 		monthTotal: 0,
