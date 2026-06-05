@@ -2,7 +2,7 @@
 
 テスト戦略と実装規約。ui-mockup.html の data-\* 属性と @api コメントを一次仕様として、**業務要件を表すテストケースを作成する**。
 
-ディレクトリ構成は `specs/infra-spec.md` を正とする。
+ファイル配置は `directory-structure.md` の 2 層アーキテクチャに従う。
 
 ## テスト哲学
 
@@ -13,21 +13,21 @@
 
 ## テスト種別と対象
 
-| 種別          | ツール                                     | 対象ファイル                           | 実行環境                   |
-| ------------- | ------------------------------------------ | -------------------------------------- | -------------------------- |
-| Unit (server) | Vitest                                     | `+server.ts`, `schema.ts`, `errors.ts` | Node                       |
-| Integration   | Vitest + `@cloudflare/vitest-pool-workers` | `service.ts`, `+page.server.ts`        | Workers (Miniflare)        |
-| Unit (client) | Vitest + Playwright                        | `*.svelte`, `components/`              | Chromium (headless)        |
-| E2E           | Playwright                                 | ユーザーフロー全体                     | Preview ビルド (port 4173) |
+| 種別          | ツール                                     | 対象ファイル                                                         | 実行環境                   |
+| ------------- | ------------------------------------------ | -------------------------------------------------------------------- | -------------------------- |
+| Unit (server) | Vitest                                     | `routes/+server.ts`, `lib/features/{feature}/schema.ts`, `errors.ts` | Node                       |
+| Integration   | Vitest + `@cloudflare/vitest-pool-workers` | `lib/features/{feature}/server/*.ts`, `routes/+page.server.ts`       | Workers (Miniflare)        |
+| Unit (client) | Vitest + Playwright                        | `lib/features/{feature}/components/*.svelte`                         | Chromium (headless)        |
+| E2E           | Playwright                                 | ユーザーフロー全体                                                   | Preview ビルド (port 4173) |
 
 ### 「スキーマ」の使い分け
 
 このプロジェクトには2種類のスキーマがある。混同しないこと。
 
-| ファイル                              | 種類                           | テスト対象          |
-| ------------------------------------- | ------------------------------ | ------------------- |
-| `src/lib/server/tables.ts`            | Drizzle テーブル定義（型宣言） | 対象外              |
-| `src/routes/{feature}/_lib/schema.ts` | Zod バリデーションスキーマ     | **Unit テスト対象** |
+| ファイル                               | 種類                           | テスト対象          |
+| -------------------------------------- | ------------------------------ | ------------------- |
+| `src/lib/server/tables.ts`             | Drizzle テーブル定義（型宣言） | 対象外              |
+| `src/lib/features/{feature}/schema.ts` | Zod バリデーションスキーマ     | **Unit テスト対象** |
 
 Zod スキーマは純粋関数（`.parse()` / `.safeParse()`）なので D1 不要でユニットテストが書ける。
 
@@ -49,49 +49,54 @@ Zod スキーマは純粋関数（`.parse()` / `.safeParse()`）なので D1 不
 
 ## ファイル命名・配置
 
-`specs/infra-spec.md` のディレクトリ構成に従う。
-
 テストファイルは実装ファイルのコロケーション配置を原則とする。
 
-- ビジネスロジック（`schema.ts` / `service.ts`）は feature ディレクトリ直下に置き、テストを隣に置く
-- アクション系エンドポイントは `(actions)/` route group にまとめ、テストを隣に置く
-- ルーティング層（`+page.svelte` / `+page.server.ts` / `+server.ts`）のテストは feature ルートに置く
+- **実装層のテスト** は `src/lib/features/{feature}/` に実装と隣接して置く
+- **ルーティング層のテスト** は `src/routes/{feature}/` に置く
 - コンポーネントテストはコンポーネントと同階層に置く（1:1 対応）
 
 ```
-src/routes/{feature}/
-  (actions)/                               ← アクション系エンドポイント（URL に影響しない・任意）
-    {action}/
-      +server.ts
-      server.test.ts                       ← コロケーション
-  [id]/                                    ← 任意
-    (actions)/
-      {action}/
-        +server.ts
-        server.test.ts                     ← コロケーション
-    +server.ts
-    server.test.ts                         ← コロケーション
+# 実装層（コロケーションの主体）
+src/lib/features/{feature}/
   schema.ts
-  schema.test.ts                           ← Zod バリデーション Unit テスト（コロケーション）
-  service.ts
-  service.integration.test.ts              ← サービス層 Integration テスト（コロケーション）
+  schema.test.ts                           ← Zod バリデーション Unit テスト
   types.ts                                 ← 任意
   components/
     {ComponentName}.svelte
-    {ComponentName}.svelte.test.ts         ← コンポーネント Unit テスト（コンポーネントと同階層）
+    {ComponentName}.svelte.test.ts         ← コンポーネント Unit テスト
+  server/
+    service.ts
+    service.integration.test.ts            ← サービス層 Integration テスト
+    {responsibility}.ts                    ← 責務が複数ある場合はファイル分割
+    {responsibility}.integration.test.ts
+
+# ルーティング層
+src/routes/{feature}/
+  (actions)/                               ← アクション系（URL に影響しない）
+    {action}/
+      +server.ts
+      server.test.ts                       ← ハンドラ Unit テスト
+  [id]/
+    (actions)/
+      {action}/
+        +server.ts
+        server.test.ts
+    +server.ts
+    server.test.ts
   +page.svelte
   +page.server.ts
   +server.ts
-  page.svelte.test.ts                      ← 画面コンポーネント Unit テスト
-  page.server.integration.test.ts          ← load 関数 Integration テスト
-  server.test.ts                           ← API ハンドラ Unit テスト
+  page.svelte.test.ts                      ← +page.svelte Unit テスト
+  server.test.ts                           ← +server.ts Unit テスト
 
+# 共通サーバーコード
 src/lib/server/
   errors.ts
   errors.test.ts                           ← AppError Unit テスト
 
+# E2E
 e2e/
-  {feature}.e2e.ts                         ← E2E テスト
+  {feature}.e2e.ts
 ```
 
 ## テスト-仕様連携
@@ -133,8 +138,9 @@ describe('createDish', () => {
 ### 対象ファイル
 
 ```
-src/routes/**/*.ts    ← schema.ts, +server.ts, service.ts 等
-src/lib/**/*.ts       ← errors.ts 等
+src/lib/features/**/*.ts      ← schema.ts, server/service.ts 等（実装層）
+src/routes/**/*.ts            ← +server.ts 等（ルーティング層）
+src/lib/server/errors.ts      ← AppError
 ```
 
 ### 対象外ファイル
@@ -143,6 +149,7 @@ src/lib/**/*.ts       ← errors.ts 等
 src/lib/server/db.ts          ← DB 接続設定（インフラ）
 src/lib/server/tables.ts      ← Drizzle テーブル定義（型宣言）
 src/lib/server/auth.ts        ← Better Auth 設定（サードパーティ）
+src/lib/server/api-helpers.ts ← フレームワークヘルパー
 src/lib/index.ts              ← barrel export
 src/hooks.server.ts           ← 認証ガード・セッション注入（フレームワーク設定）
 src/app.d.ts

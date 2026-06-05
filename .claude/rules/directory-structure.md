@@ -1,0 +1,175 @@
+# Directory Structure
+
+SvelteKit における 2 層アーキテクチャの規約。
+
+- `src/routes/` = 薄いルーティング層（SvelteKit 固有ファイルのみ）
+- `src/lib/features/` = 実装層（コロケーションはここで完結）
+
+---
+
+## アーキテクチャ概要
+
+```
+src/
+├── routes/
+│   └── {feature}/
+│       ├── +page.svelte        # $lib/features/{feature}/components から import して呼ぶだけ
+│       ├── +page.server.ts     # $lib/features/{feature}/server/* を呼ぶだけ
+│       └── +server.ts          # 外部 API として公開する場合のみ。基本は +page.server.ts で済ます
+│
+└── lib/
+    └── features/
+        └── {feature}/          # ここでコロケーションを完結させる
+            ├── schema.ts       # Zod スキーマ（FE/BE 共通なので server/ の外）
+            ├── types.ts        # FE/BE 共通の型
+            ├── components/     # この feature の UI コンポーネント
+            └── server/         # サーバー専用コード
+                └── service.ts  # DB 操作・ビジネスロジック
+```
+
+---
+
+## routes/ の責務
+
+`src/routes/` には SvelteKit 固有ファイルのみを置く。ロジックを書かない。
+
+| ファイル          | 責務                                                |
+| ----------------- | --------------------------------------------------- |
+| `+page.svelte`    | `$lib/features/` のコンポーネントを呼ぶだけ         |
+| `+page.server.ts` | `$lib/features/{feature}/server/` を呼ぶだけ        |
+| `+server.ts`      | CSR fetch 用 API が必要な場合のみ。薄いハンドラのみ |
+
+```typescript
+// +page.server.ts の例（これ以上のロジックを書かない）
+import { getRecords } from '$lib/features/workout/server/records';
+
+export const load: PageServerLoad = async ({ platform, locals }) => {
+	const db = createDb(platform!.env.DB);
+	return { records: await getRecords(db, locals.user!.id) };
+};
+```
+
+```svelte
+<!-- +page.svelte の例 -->
+<script>
+	import WorkoutPage from '$lib/features/workout/components/WorkoutPage.svelte';
+	let { data } = $props();
+</script>
+
+<WorkoutPage {data} />
+```
+
+---
+
+## lib/features/ の構成
+
+### 基本構成
+
+```
+lib/features/{feature}/
+  schema.ts                        # Zod スキーマ（FE/BE 共通）
+  schema.test.ts
+  types.ts                         # 共通型（必要な場合のみ）
+  components/
+    {ComponentName}.svelte
+    {ComponentName}.svelte.test.ts
+  server/
+    service.ts                     # DB 操作・ビジネスロジック
+    service.integration.test.ts
+```
+
+### 責務が複数ある場合はファイル名で分割
+
+```
+lib/features/workout/
+  schema.ts                        # 記録のスキーマ（メイン責務）
+  types.ts
+  components/
+    WorkoutPage.svelte
+    WeeklyVolumeChart.svelte
+    WorkoutChart.svelte
+  server/
+    records.ts                     # getRecords / createRecord / deleteRecord
+    records.integration.test.ts
+    chart.ts                       # getChartData / getWeeklyVolume
+    chart.integration.test.ts
+    body-weight.ts                 # upsertBodyWeight
+```
+
+---
+
+## サブ機能はフラットに置く
+
+`lib/features/` 配下はネストしない。プレフィックスで親子関係を示す。
+
+```
+# ✅ 正しい（フラット + プレフィックス）
+lib/features/
+  workout/
+  workout-exercises/      # workout のサブ機能
+
+# ❌ 誤り（ネスト）
+lib/features/
+  workout/
+    exercises/            # lib/features/ 配下をネストしない
+```
+
+URL の階層（`/workout/exercises`）は `src/routes/` で表現する。
+`lib/features/` での親子関係はプレフィックスで表現する。両者を混ぜない。
+
+このプロジェクトの例:
+
+```
+lib/features/
+  expenses/
+  expense-categories/
+  recipes/
+  workout/
+  workout-exercises/
+```
+
+---
+
+## components/ の配置ルール
+
+| 条件                          | 配置先                                   |
+| ----------------------------- | ---------------------------------------- |
+| 1 つの feature でしか使わない | `src/lib/features/{feature}/components/` |
+| 複数 feature で再利用する     | `src/lib/components/`                    |
+
+---
+
+## server/ サブディレクトリの使い方
+
+`server/` はサーバー専用コードの境界を明示する。クライアントから import できない。
+
+```
+lib/features/{feature}/
+  schema.ts     # ← クライアントから import 可（Zod バリデーション）
+  types.ts      # ← クライアントから import 可
+  server/
+    service.ts  # ← サーバーのみ（DB アクセス・シークレット参照）
+```
+
+---
+
+## 変更の影響範囲
+
+| やりたいこと           | 触る場所                                        |
+| ---------------------- | ----------------------------------------------- |
+| URL を変えたい         | `src/routes/` のみ                              |
+| ロジックを変えたい     | `src/lib/features/{feature}/server/` のみ       |
+| UI を変えたい          | `src/lib/features/{feature}/components/` のみ   |
+| 機能を丸ごと削除したい | `lib/features/{feature}/` + `routes/{feature}/` |
+
+---
+
+## なぜ必要か
+
+- `src/routes/` にルーティングと実装が混在すると、URL 変更・機能削除・AI によるコード生成いずれも影響範囲が読めなくなる
+- `lib/features/` に実装を集約することで feature 単位の独立性が保たれ、AI がコンテキストを最小化して正確なコードを生成できる
+- `server/` サブディレクトリにより、クライアントに漏れてはいけないコードの境界が明確になる
+
+## 参照するスキル
+
+- scaffold-be, scaffold-fe, scaffold-test-unit, scaffold-test-e2e, review-changes
