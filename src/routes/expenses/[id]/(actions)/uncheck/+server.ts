@@ -20,7 +20,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
-import { uncheckExpense } from '$expenses/service';
+import { uncheckExpense } from '$expenses/server/service';
 
 /**
  * 支出の確認を取り消す（checked → unapproved）。

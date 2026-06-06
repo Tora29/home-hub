@@ -24,7 +24,7 @@ import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { categoryUpdateSchema } from '$expenses/categories/schema';
-import { deleteCategory, updateCategory } from '$expenses/categories/service';
+import { deleteCategory, updateCategory } from '$expenses/categories/server/service';
 
 /**
  * カテゴリを更新する。categoryUpdateSchema で入力値を検証後、service に委譲する。

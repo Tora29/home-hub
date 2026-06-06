@@ -29,7 +29,7 @@
 		UtensilsCrossed,
 		Users
 	} from '@lucide/svelte';
-	import RecipeForm from '../components/RecipeForm.svelte';
+	import RecipeForm from '$recipes/components/RecipeForm.svelte';
 	import Button from '$lib/components/Button.svelte';
 
 	let { data } = $props();

@@ -23,7 +23,7 @@ import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { categoryCreateSchema } from '$expenses/categories/schema';
-import { createCategory, getCategories } from '$expenses/categories/service';
+import { createCategory, getCategories } from '$expenses/categories/server/service';
 
 /**
  * カテゴリ一覧を取得する（全件）。

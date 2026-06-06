@@ -98,35 +98,41 @@ lib/features/workout/
 
 ---
 
-## サブ機能はフラットに置く
+## サブ機能はネストして置く
 
-`lib/features/` 配下はネストしない。プレフィックスで親子関係を示す。
+サブ機能は親 feature ディレクトリ配下にネストする（**2階層まで**）。
+URL 階層と対応させることで直感的な構造になる。
 
 ```
-# ✅ 正しい（フラット + プレフィックス）
+# ✅ 正しい（ネスト）
 lib/features/
   workout/
-  workout-exercises/      # workout のサブ機能
+    exercises/      # workout のサブ機能
+  expenses/
+    categories/     # expenses のサブ機能
 
-# ❌ 誤り（ネスト）
+# ❌ 誤り（プレフィックスでフラットに置く）
 lib/features/
   workout/
-    exercises/            # lib/features/ 配下をネストしない
+  workout-exercises/    # プレフィックス命名は使わない
+  expenses/
+  expense-categories/
 ```
-
-URL の階層（`/workout/exercises`）は `src/routes/` で表現する。
-`lib/features/` での親子関係はプレフィックスで表現する。両者を混ぜない。
 
 このプロジェクトの例:
 
 ```
 lib/features/
   expenses/
-  expense-categories/
+    categories/
   recipes/
   workout/
-  workout-exercises/
+    exercises/
+  dashboard/
 ```
+
+サブ機能のファイル構成はトップレベル feature と同じ（`schema.ts` / `server/` / `components/`）。
+インポートは親 feature のエイリアスで解決できる（`$expenses/categories/server/service`）。
 
 ---
 
