@@ -43,6 +43,7 @@ function makeData(overrides: Partial<Parameters<typeof render>[1]> = {}) {
 		currentUserId: 'user-1',
 		currentMonth: '2024-06',
 		selectedMonth: '2024-06',
+		partnerPendingCount: 0,
 		...overrides
 	};
 }
@@ -102,17 +103,13 @@ describe('+page.svelte (expenses)', () => {
 	});
 
 	test('パートナーの pending 支出がある場合、全件承認ボタンが表示される', async () => {
-		const data = makeData({
-			expenses: [makeExpense({ userId: 'partner-id', status: 'pending' })]
-		});
+		const data = makeData({ partnerPendingCount: 1 });
 		render(ExpensesPage, { data });
 		await expect.element(page.getByTestId('expense-bulk-approve-button')).toBeVisible();
 	});
 
 	test('パートナーの pending 支出がない場合、全件承認ボタンが表示されない', async () => {
-		const data = makeData({
-			expenses: [makeExpense({ userId: 'user-1', status: 'pending' })]
-		});
+		const data = makeData({ partnerPendingCount: 0 });
 		render(ExpensesPage, { data });
 		await expect.element(page.getByTestId('expense-bulk-approve-button')).not.toBeInTheDocument();
 	});
