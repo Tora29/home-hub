@@ -15,7 +15,7 @@
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
-import { deleteRecord } from '$workout/service';
+import { deleteRecord } from '$workout/server/service';
 
 /**
  * 記録を削除する。

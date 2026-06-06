@@ -19,7 +19,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
-import { cancelExpenses } from '$expenses/service';
+import { cancelExpenses } from '$expenses/server/service';
 
 /**
  * 自分の pending 支出を一括で checked に戻す。

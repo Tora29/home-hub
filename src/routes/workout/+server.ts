@@ -19,7 +19,7 @@ import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { recordCreateSchema } from '$workout/schema';
-import { createRecord } from '$workout/service';
+import { createRecord } from '$workout/server/service';
 
 /**
  * 記録を新規作成する。recordCreateSchema で入力値を検証後、service に委譲する。

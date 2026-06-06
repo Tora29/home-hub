@@ -9,7 +9,7 @@ import { describe, test, expect, vi } from 'vitest';
 import { GET } from './+server';
 
 vi.mock('$lib/server/db', () => ({ createDb: vi.fn() }));
-vi.mock('$dashboard/summary/service', () => ({
+vi.mock('$lib/features/dashboard/server/service', () => ({
 	getDashboardSummary: vi.fn()
 }));
 
@@ -51,7 +51,7 @@ describe('GET /dashboard/summary', () => {
 	});
 
 	test('period=all のとき month が不正でも 400 にならない', async () => {
-		const { getDashboardSummary } = await import('$dashboard/summary/service');
+		const { getDashboardSummary } = await import('$lib/features/dashboard/server/service');
 		vi.mocked(getDashboardSummary).mockResolvedValue({
 			overall: 0,
 			byPayer: [],
@@ -67,7 +67,7 @@ describe('GET /dashboard/summary', () => {
 	});
 
 	test('バリデーション失敗時は getDashboardSummary が呼ばれない', async () => {
-		const { getDashboardSummary } = await import('$dashboard/summary/service');
+		const { getDashboardSummary } = await import('$lib/features/dashboard/server/service');
 		vi.mocked(getDashboardSummary).mockClear();
 		await GET({
 			url: new URL('http://localhost/dashboard/summary?period=invalid'),

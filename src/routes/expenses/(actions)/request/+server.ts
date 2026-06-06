@@ -21,7 +21,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
-import { requestExpenses, getUserRole } from '$expenses/service';
+import { requestExpenses, getUserRole } from '$expenses/server/service';
 
 /**
  * 自分の checked 支出を一括で pending にし、LINE 通知を送信する。

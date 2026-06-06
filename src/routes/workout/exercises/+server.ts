@@ -20,7 +20,7 @@ import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { exerciseCreateSchema } from '$workout/exercises/schema';
-import { createExercise, getExercises } from '$workout/exercises/service';
+import { createExercise, getExercises } from '$workout/exercises/server/service';
 
 /**
  * 種目一覧を取得する（全件）。

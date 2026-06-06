@@ -5,10 +5,10 @@ const config = {
 	kit: {
 		adapter: adapter({ platformProxy: { remoteBindings: false } }),
 		alias: {
-			$expenses: 'src/routes/expenses',
-			$recipes: 'src/routes/recipes',
-			$dashboard: 'src/routes/dashboard',
-			$workout: 'src/routes/workout'
+			$expenses: 'src/lib/features/expenses',
+			$recipes: 'src/lib/features/recipes',
+			$dashboard: 'src/lib/features/dashboard',
+			$workout: 'src/lib/features/workout'
 		}
 	},
 	compilerOptions: {

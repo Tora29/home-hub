@@ -12,8 +12,8 @@
  */
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
-import { getUnapprovedCount } from '$expenses/service';
-import { getDashboardSummary } from '$dashboard/summary/service';
+import { getUnapprovedCount } from '$expenses/server/service';
+import { getDashboardSummary } from '$lib/features/dashboard/server/service';
 
 export const load: PageServerLoad = async ({ platform, locals }) => {
 	const db = createDb(platform!.env.DB);

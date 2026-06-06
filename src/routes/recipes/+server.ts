@@ -25,7 +25,7 @@ import type { RequestHandler } from './$types';
 import { AppError } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
 import { listRecipesQuerySchema, recipeCreateSchema } from '$recipes/schema';
-import { createRecipe, getRecipes } from '$recipes/service';
+import { createRecipe, getRecipes } from '$recipes/server/service';
 
 /**
  * レシピ一覧を取得する。クエリパラメータでソート・ページネーションを制御する。
