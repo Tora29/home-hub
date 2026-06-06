@@ -19,7 +19,7 @@
  *
  * @test ./service.integration.test.ts
  */
-import { and, eq, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { AppError } from '$lib/server/errors';
 import { expense, expenseCategory } from '$lib/server/tables';
@@ -30,24 +30,18 @@ type Db = DrizzleD1Database<typeof schema>;
 
 type Category = {
 	id: string;
-	userId: string;
 	name: string;
 	createdAt: Date;
 };
 
 /**
- * カテゴリ一覧を取得する（全件）。
+ * カテゴリ一覧を取得する（全件・全ユーザー共通）。
  * @ac AC-010
  */
 export async function getCategories(
-	db: Db,
-	userId: string
+	db: Db
 ): Promise<{ items: Category[]; total: number; page: number; limit: number }> {
-	const rows = await db
-		.select()
-		.from(expenseCategory)
-		.where(eq(expenseCategory.userId, userId))
-		.orderBy(expenseCategory.createdAt);
+	const rows = await db.select().from(expenseCategory).orderBy(expenseCategory.createdAt);
 
 	return {
 		items: rows as Category[],
@@ -58,76 +52,57 @@ export async function getCategories(
 }
 
 /**
- * カテゴリを新規作成する。
+ * カテゴリを新規作成する（全ユーザー共通）。
  * @ac AC-010
  */
-export async function createCategory(
-	db: Db,
-	userId: string,
-	data: CategoryCreate
-): Promise<Category> {
+export async function createCategory(db: Db, data: CategoryCreate): Promise<Category> {
 	const id = crypto.randomUUID();
 	const now = new Date();
 
 	const [row] = await db
 		.insert(expenseCategory)
-		.values({ id, userId, name: data.name, createdAt: now })
+		.values({ id, name: data.name, createdAt: now })
 		.returning();
 
 	return row as Category;
 }
 
 /**
- * カテゴリを更新する。
+ * カテゴリを更新する（全ユーザー共通）。
  * @ac AC-011
- * @throws {NOT_FOUND} - 該当カテゴリが存在しない場合、または他ユーザーのカテゴリの場合
+ * @throws {NOT_FOUND} - 該当カテゴリが存在しない場合
  */
-export async function updateCategory(
-	db: Db,
-	userId: string,
-	id: string,
-	data: CategoryUpdate
-): Promise<Category> {
-	const existing = await db
-		.select()
-		.from(expenseCategory)
-		.where(and(eq(expenseCategory.id, id), eq(expenseCategory.userId, userId)))
-		.get();
+export async function updateCategory(db: Db, id: string, data: CategoryUpdate): Promise<Category> {
+	const existing = await db.select().from(expenseCategory).where(eq(expenseCategory.id, id)).get();
 	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 
 	const [row] = await db
 		.update(expenseCategory)
 		.set({ name: data.name })
-		.where(and(eq(expenseCategory.id, id), eq(expenseCategory.userId, userId)))
+		.where(eq(expenseCategory.id, id))
 		.returning();
 
 	return row as Category;
 }
 
 /**
- * カテゴリを削除する。紐付く支出が存在する場合は CONFLICT を投げる。
+ * カテゴリを削除する。いずれかのユーザーの支出が紐付く場合は CONFLICT を投げる。
  * @ac AC-012
- * @throws {NOT_FOUND} - 該当カテゴリが存在しない場合、または他ユーザーのカテゴリの場合
+ * @throws {NOT_FOUND} - 該当カテゴリが存在しない場合
  * @throws {CONFLICT} - カテゴリに紐付く支出が 1 件以上ある場合
  */
-export async function deleteCategory(db: Db, userId: string, id: string): Promise<void> {
-	const existing = await db
-		.select()
-		.from(expenseCategory)
-		.where(and(eq(expenseCategory.id, id), eq(expenseCategory.userId, userId)))
-		.get();
+export async function deleteCategory(db: Db, id: string): Promise<void> {
+	const existing = await db.select().from(expenseCategory).where(eq(expenseCategory.id, id)).get();
 	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 
 	const [{ linkedCount }] = await db
 		.select({ linkedCount: sql<number>`count(*)` })
 		.from(expense)
-		.where(and(eq(expense.categoryId, id), eq(expense.userId, userId)));
+		.where(eq(expense.categoryId, id));
 
 	if (Number(linkedCount) > 0) {
 		throw new AppError('CONFLICT', 409, 'このカテゴリは使用中のため削除できません');
 	}
 
-	await db
-		.delete(expenseCategory)
-		.where(and(eq(expenseCategory.id, id), eq(expenseCategory.userId, userId)));
+	await db.delete(expenseCategory).where(eq(expenseCategory.id, id));
 }

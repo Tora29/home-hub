@@ -16,9 +16,9 @@ import { getCategories, createCategory, updateCategory, deleteCategory } from '.
 
 type Db = DrizzleD1Database<typeof schema>;
 
-async function insertCategory(db: Db, userId: string, name = 'テスト'): Promise<string> {
+async function insertCategory(db: Db, name = 'テスト'): Promise<string> {
 	const id = crypto.randomUUID();
-	await db.insert(expenseCategory).values({ id, userId, name, createdAt: new Date() });
+	await db.insert(expenseCategory).values({ id, name, createdAt: new Date() });
 	return id;
 }
 
@@ -35,7 +35,8 @@ async function insertUser(db: Db): Promise<string> {
 	return id;
 }
 
-async function insertExpense(db: Db, userId: string, categoryId: string): Promise<string> {
+async function insertExpense(db: Db, categoryId: string): Promise<string> {
+	const userId = await insertUser(db);
 	const payerId = await insertUser(db);
 	const id = crypto.randomUUID();
 	await db.insert(expense).values({
@@ -50,98 +51,62 @@ async function insertExpense(db: Db, userId: string, categoryId: string): Promis
 	return id;
 }
 
-describe('getCategories - 権限チェック', () => {
-	test('他ユーザーのカテゴリは取得されない', async () => {
+describe('getCategories', () => {
+	test('全ユーザー共通のカテゴリが取得される', async () => {
 		const db = createDb(env.DB);
-		const ownerUserId = crypto.randomUUID();
-		const otherUserId = crypto.randomUUID();
 
-		await insertCategory(db, ownerUserId, '食費');
-		await insertCategory(db, ownerUserId, '日用品');
+		await insertCategory(db, '食費');
+		await insertCategory(db, '日用品');
 
-		const result = await getCategories(db, otherUserId);
-		expect(result.items).toHaveLength(0);
-	});
-
-	test('自分のカテゴリのみ取得される', async () => {
-		const db = createDb(env.DB);
-		const userId = crypto.randomUUID();
-		const otherUserId = crypto.randomUUID();
-
-		await insertCategory(db, userId, '食費');
-		await insertCategory(db, otherUserId, '他人の経費');
-
-		const result = await getCategories(db, userId);
-		expect(result.items).toHaveLength(1);
-		expect(result.items[0].name).toBe('食費');
+		const result = await getCategories(db);
+		expect(result.items.length).toBeGreaterThanOrEqual(2);
 	});
 });
 
 describe('createCategory', () => {
 	test('カテゴリを作成できる', async () => {
 		const db = createDb(env.DB);
-		const userId = crypto.randomUUID();
 
-		const created = await createCategory(db, userId, { name: '交通費' });
+		const created = await createCategory(db, { name: '交通費' });
 		expect(created.name).toBe('交通費');
-		expect(created.userId).toBe(userId);
 	});
 });
 
-describe('updateCategory - 権限チェック', () => {
-	test('他ユーザーのカテゴリは更新できない（NOT_FOUND）', async () => {
+describe('updateCategory', () => {
+	test('カテゴリを更新できる', async () => {
 		const db = createDb(env.DB);
-		const ownerUserId = crypto.randomUUID();
-		const otherUserId = crypto.randomUUID();
 
-		const categoryId = await insertCategory(db, ownerUserId);
-
-		await expect(
-			updateCategory(db, otherUserId, categoryId, { name: '新名称' })
-		).rejects.toMatchObject({ code: 'NOT_FOUND' });
-	});
-
-	test('自分のカテゴリを更新できる', async () => {
-		const db = createDb(env.DB);
-		const userId = crypto.randomUUID();
-
-		const categoryId = await insertCategory(db, userId, '旧名称');
-		const updated = await updateCategory(db, userId, categoryId, { name: '新名称' });
+		const categoryId = await insertCategory(db, '旧名称');
+		const updated = await updateCategory(db, categoryId, { name: '新名称' });
 		expect(updated.name).toBe('新名称');
 	});
+
+	test('存在しないカテゴリは更新できない（NOT_FOUND）', async () => {
+		const db = createDb(env.DB);
+
+		await expect(updateCategory(db, crypto.randomUUID(), { name: '新名称' })).rejects.toMatchObject(
+			{ code: 'NOT_FOUND' }
+		);
+	});
 });
 
-describe('deleteCategory - 権限・制約チェック', () => {
-	test('他ユーザーのカテゴリは削除できない（NOT_FOUND）', async () => {
-		const db = createDb(env.DB);
-		const ownerUserId = crypto.randomUUID();
-		const otherUserId = crypto.randomUUID();
-
-		const categoryId = await insertCategory(db, ownerUserId);
-
-		await expect(deleteCategory(db, otherUserId, categoryId)).rejects.toMatchObject({
-			code: 'NOT_FOUND'
-		});
-	});
-
+describe('deleteCategory', () => {
 	test('支出が紐付くカテゴリは削除できない（CONFLICT）', async () => {
 		const db = createDb(env.DB);
-		const userId = crypto.randomUUID();
 
-		const categoryId = await insertCategory(db, userId);
-		await insertExpense(db, userId, categoryId);
+		const categoryId = await insertCategory(db);
+		await insertExpense(db, categoryId);
 
-		await expect(deleteCategory(db, userId, categoryId)).rejects.toMatchObject({
+		await expect(deleteCategory(db, categoryId)).rejects.toMatchObject({
 			code: 'CONFLICT'
 		});
 	});
 
 	test('支出が紐付かないカテゴリは削除できる', async () => {
 		const db = createDb(env.DB);
-		const userId = crypto.randomUUID();
 
-		const categoryId = await insertCategory(db, userId);
+		const categoryId = await insertCategory(db);
 
-		await expect(deleteCategory(db, userId, categoryId)).resolves.toBeUndefined();
+		await expect(deleteCategory(db, categoryId)).resolves.toBeUndefined();
 	});
 });

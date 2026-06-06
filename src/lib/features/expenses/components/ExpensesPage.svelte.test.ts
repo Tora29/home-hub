@@ -26,7 +26,7 @@ function makeExpense(overrides: Partial<ExpenseWithRelations> = {}): ExpenseWith
 		payerUserId: 'user-1',
 		status: 'unapproved',
 		createdAt: new Date().toISOString(),
-		category: { id: 'cat-1', userId: 'user-1', name: '食費', createdAt: new Date().toISOString() },
+		category: { id: 'cat-1', name: '食費', createdAt: new Date().toISOString() },
 		payer: { id: 'user-1', name: 'テストユーザー', email: 'test@example.com' },
 		...overrides
 	};

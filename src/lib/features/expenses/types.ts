@@ -12,7 +12,6 @@ export type ExpenseStatus = 'unapproved' | 'checked' | 'pending' | 'approved';
 
 export type Category = {
 	id: string;
-	userId: string;
 	name: string;
 	createdAt: Date | string;
 };
