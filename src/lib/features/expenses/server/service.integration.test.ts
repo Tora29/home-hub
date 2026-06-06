@@ -25,9 +25,9 @@ import {
 
 type Db = DrizzleD1Database<typeof schema>;
 
-async function insertCategory(db: Db, userId: string, name = 'テスト'): Promise<string> {
+async function insertCategory(db: Db, name = 'テスト'): Promise<string> {
 	const id = crypto.randomUUID();
-	await db.insert(expenseCategory).values({ id, userId, name, createdAt: new Date() });
+	await db.insert(expenseCategory).values({ id, name, createdAt: new Date() });
 	return id;
 }
 
@@ -69,7 +69,7 @@ describe('updateExpense - 権限チェック', () => {
 		const db = createDb(env.DB);
 		const ownerUserId = crypto.randomUUID();
 		const otherUserId = crypto.randomUUID();
-		const categoryId = await insertCategory(db, ownerUserId);
+		const categoryId = await insertCategory(db);
 		const expenseId = await insertExpense(db, ownerUserId, categoryId);
 
 		await expect(
@@ -84,7 +84,7 @@ describe('updateExpense - 権限チェック', () => {
 	test('pending の支出は更新できない（CONFLICT）', async () => {
 		const db = createDb(env.DB);
 		const userId = crypto.randomUUID();
-		const categoryId = await insertCategory(db, userId);
+		const categoryId = await insertCategory(db);
 		const expenseId = await insertExpense(db, userId, categoryId, 'pending');
 
 		await expect(
@@ -99,7 +99,7 @@ describe('updateExpense - 権限チェック', () => {
 	test('approved の支出は更新できない（CONFLICT）', async () => {
 		const db = createDb(env.DB);
 		const userId = crypto.randomUUID();
-		const categoryId = await insertCategory(db, userId);
+		const categoryId = await insertCategory(db);
 		const expenseId = await insertExpense(db, userId, categoryId, 'approved');
 
 		await expect(
@@ -130,7 +130,7 @@ describe('deleteExpense - 権限チェック', () => {
 		const db = createDb(env.DB);
 		const ownerUserId = crypto.randomUUID();
 		const otherUserId = crypto.randomUUID();
-		const categoryId = await insertCategory(db, ownerUserId);
+		const categoryId = await insertCategory(db);
 		const expenseId = await insertExpense(db, ownerUserId, categoryId);
 
 		await expect(deleteExpense(db, otherUserId, expenseId)).rejects.toMatchObject({
@@ -141,7 +141,7 @@ describe('deleteExpense - 権限チェック', () => {
 	test('pending の支出は削除できない（CONFLICT）', async () => {
 		const db = createDb(env.DB);
 		const userId = crypto.randomUUID();
-		const categoryId = await insertCategory(db, userId);
+		const categoryId = await insertCategory(db);
 		const expenseId = await insertExpense(db, userId, categoryId, 'pending');
 
 		await expect(deleteExpense(db, userId, expenseId)).rejects.toMatchObject({
@@ -152,7 +152,7 @@ describe('deleteExpense - 権限チェック', () => {
 	test('approved の支出は削除できない（CONFLICT）', async () => {
 		const db = createDb(env.DB);
 		const userId = crypto.randomUUID();
-		const categoryId = await insertCategory(db, userId);
+		const categoryId = await insertCategory(db);
 		const expenseId = await insertExpense(db, userId, categoryId, 'approved');
 
 		await expect(deleteExpense(db, userId, expenseId)).rejects.toMatchObject({
@@ -166,7 +166,7 @@ describe('checkExpense - 権限・状態チェック', () => {
 		const db = createDb(env.DB);
 		const ownerUserId = crypto.randomUUID();
 		const otherUserId = crypto.randomUUID();
-		const categoryId = await insertCategory(db, ownerUserId);
+		const categoryId = await insertCategory(db);
 		const expenseId = await insertExpense(db, ownerUserId, categoryId);
 
 		await expect(checkExpense(db, otherUserId, expenseId)).rejects.toMatchObject({
@@ -177,7 +177,7 @@ describe('checkExpense - 権限・状態チェック', () => {
 	test('checked の支出はさらに確認できない（CONFLICT）', async () => {
 		const db = createDb(env.DB);
 		const userId = crypto.randomUUID();
-		const categoryId = await insertCategory(db, userId);
+		const categoryId = await insertCategory(db);
 		const expenseId = await insertExpense(db, userId, categoryId, 'checked');
 
 		await expect(checkExpense(db, userId, expenseId)).rejects.toMatchObject({
@@ -191,7 +191,7 @@ describe('uncheckExpense - 権限・状態チェック', () => {
 		const db = createDb(env.DB);
 		const ownerUserId = crypto.randomUUID();
 		const otherUserId = crypto.randomUUID();
-		const categoryId = await insertCategory(db, ownerUserId);
+		const categoryId = await insertCategory(db);
 		const expenseId = await insertExpense(db, ownerUserId, categoryId, 'checked');
 
 		await expect(uncheckExpense(db, otherUserId, expenseId)).rejects.toMatchObject({
@@ -202,7 +202,7 @@ describe('uncheckExpense - 権限・状態チェック', () => {
 	test('unapproved の支出は確認取消できない（CONFLICT）', async () => {
 		const db = createDb(env.DB);
 		const userId = crypto.randomUUID();
-		const categoryId = await insertCategory(db, userId);
+		const categoryId = await insertCategory(db);
 		const expenseId = await insertExpense(db, userId, categoryId, 'unapproved');
 
 		await expect(uncheckExpense(db, userId, expenseId)).rejects.toMatchObject({
@@ -236,7 +236,7 @@ describe('approveExpenses', () => {
 		const db = createDb(env.DB);
 		const approverUserId = crypto.randomUUID();
 		const ownerUserId = crypto.randomUUID();
-		const categoryId = await insertCategory(db, ownerUserId);
+		const categoryId = await insertCategory(db);
 		const expenseId = await insertExpense(db, ownerUserId, categoryId, 'pending');
 
 		await approveExpenses(db, approverUserId, 'main', { lineMock: 'true' });
@@ -248,12 +248,12 @@ describe('approveExpenses', () => {
 	test('自分の pending 支出は承認されず pending のままになる', async () => {
 		const db = createDb(env.DB);
 		const userId = crypto.randomUUID();
-		const categoryId = await insertCategory(db, userId);
+		const categoryId = await insertCategory(db);
 		const ownExpenseId = await insertExpense(db, userId, categoryId, 'pending');
 
 		// 承認対象（他ユーザー）の pending も用意して CONFLICT を回避
 		const otherUserId = crypto.randomUUID();
-		const otherCatId = await insertCategory(db, otherUserId);
+		const otherCatId = await insertCategory(db);
 		await insertExpense(db, otherUserId, otherCatId, 'pending');
 
 		await approveExpenses(db, userId, 'main', { lineMock: 'true' });

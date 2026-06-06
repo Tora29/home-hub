@@ -75,7 +75,6 @@ export const verification = sqliteTable('Verification', {
 
 export const expenseCategory = sqliteTable('ExpenseCategory', {
 	id: text('id').primaryKey(),
-	userId: text('userId').notNull(),
 	name: text('name').notNull(),
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
 });
