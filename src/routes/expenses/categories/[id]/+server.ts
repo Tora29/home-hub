@@ -33,7 +33,7 @@ import { deleteCategory, updateCategory } from '$expenses/categories/server/serv
  * @throws VALIDATION_ERROR - 入力値が不正な場合
  * @throws NOT_FOUND - 該当カテゴリが存在しない場合
  */
-export const PUT: RequestHandler = async ({ request, params, locals, platform }) => {
+export const PUT: RequestHandler = async ({ request, params, platform }) => {
 	const bodyResult = await parseJsonBody(request);
 	if (!bodyResult.ok) return bodyResult.response;
 
@@ -42,7 +42,7 @@ export const PUT: RequestHandler = async ({ request, params, locals, platform })
 
 	try {
 		const db = createDb(platform!.env.DB);
-		const updated = await updateCategory(db, locals.user!.id, params.id, result.data);
+		const updated = await updateCategory(db, params.id, result.data);
 		return json(updated);
 	} catch (e) {
 		return handleApiError(e);
@@ -55,10 +55,10 @@ export const PUT: RequestHandler = async ({ request, params, locals, platform })
  * @throws NOT_FOUND - 該当カテゴリが存在しない場合
  * @throws CONFLICT - カテゴリに紐付く支出が 1 件以上ある場合
  */
-export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
+export const DELETE: RequestHandler = async ({ params, platform }) => {
 	try {
 		const db = createDb(platform!.env.DB);
-		await deleteCategory(db, locals.user!.id, params.id);
+		await deleteCategory(db, params.id);
 		return new Response(null, { status: 204 });
 	} catch (e) {
 		return handleApiError(e);

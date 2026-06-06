@@ -14,7 +14,6 @@ vi.mock('$expenses/categories/server/service', () => ({
 	deleteCategory: vi.fn()
 }));
 
-const mockLocals = { user: { id: 'test-user-id' } };
 const mockPlatform = { env: { DB: {} } };
 const mockParams = { id: 'category-1' };
 
@@ -28,7 +27,6 @@ describe('PUT /expenses/categories/[id]', () => {
 		const response = await PUT({
 			request,
 			params: mockParams,
-			locals: mockLocals,
 			platform: mockPlatform
 		} as any);
 		expect(response.status).toBe(400);
@@ -45,7 +43,6 @@ describe('PUT /expenses/categories/[id]', () => {
 		const response = await PUT({
 			request,
 			params: mockParams,
-			locals: mockLocals,
 			platform: mockPlatform
 		} as any);
 		expect(response.status).toBe(400);
@@ -64,7 +61,6 @@ describe('PUT /expenses/categories/[id]', () => {
 		await PUT({
 			request,
 			params: mockParams,
-			locals: mockLocals,
 			platform: mockPlatform
 		} as any);
 		expect(updateCategory).not.toHaveBeenCalled();

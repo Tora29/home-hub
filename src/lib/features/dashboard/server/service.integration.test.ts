@@ -29,9 +29,9 @@ async function insertUser(db: Db, name = 'テストユーザー'): Promise<strin
 	return id;
 }
 
-async function insertCategory(db: Db, userId: string, name = 'テスト'): Promise<string> {
+async function insertCategory(db: Db, name = 'テスト'): Promise<string> {
 	const id = crypto.randomUUID();
-	await db.insert(expenseCategory).values({ id, userId, name, createdAt: new Date() });
+	await db.insert(expenseCategory).values({ id, name, createdAt: new Date() });
 	return id;
 }
 
@@ -59,8 +59,8 @@ describe('getDashboardSummary - 世帯合算', () => {
 		const db = createDb(env.DB);
 		const user1Id = await insertUser(db, 'user1');
 		const user2Id = await insertUser(db, 'user2');
-		const cat1Id = await insertCategory(db, user1Id);
-		const cat2Id = await insertCategory(db, user2Id);
+		const cat1Id = await insertCategory(db);
+		const cat2Id = await insertCategory(db);
 
 		await insertExpense(db, user1Id, cat1Id, 1000, user1Id);
 		await insertExpense(db, user2Id, cat2Id, 9000, user2Id);
@@ -73,8 +73,8 @@ describe('getDashboardSummary - 世帯合算', () => {
 		const db = createDb(env.DB);
 		const user1Id = await insertUser(db, 'user1');
 		const user2Id = await insertUser(db, 'user2');
-		const cat1Id = await insertCategory(db, user1Id, `食費-${crypto.randomUUID()}`);
-		const cat2Id = await insertCategory(db, user2Id, `交通費-${crypto.randomUUID()}`);
+		const cat1Id = await insertCategory(db, `食費-${crypto.randomUUID()}`);
+		const cat2Id = await insertCategory(db, `交通費-${crypto.randomUUID()}`);
 
 		await insertExpense(db, user1Id, cat1Id, 5000, user1Id);
 		await insertExpense(db, user2Id, cat2Id, 3000, user2Id);
@@ -89,7 +89,7 @@ describe('getDashboardSummary - 世帯合算', () => {
 		const db = createDb(env.DB);
 		const user1Id = await insertUser(db, 'payer1');
 		const user2Id = await insertUser(db, 'payer2');
-		const catId = await insertCategory(db, user1Id, `共通費-${crypto.randomUUID()}`);
+		const catId = await insertCategory(db, `共通費-${crypto.randomUUID()}`);
 
 		await insertExpense(db, user1Id, catId, 3000, user1Id);
 		await insertExpense(db, user2Id, catId, 2000, user2Id);
@@ -106,7 +106,7 @@ describe('getDashboardSummary - period=all', () => {
 	test('全期間の支出合計を取得できる', async () => {
 		const db = createDb(env.DB);
 		const userId = await insertUser(db);
-		const categoryId = await insertCategory(db, userId);
+		const categoryId = await insertCategory(db);
 
 		const pastDate = new Date('2023-01-15');
 		const recentDate = new Date('2024-06-15');
@@ -123,7 +123,7 @@ describe('getDashboardSummary - period=month', () => {
 	test('指定月のみの支出が集計される', async () => {
 		const db = createDb(env.DB);
 		const userId = await insertUser(db);
-		const categoryId = await insertCategory(db, userId);
+		const categoryId = await insertCategory(db);
 
 		const targetMonth = new Date('2099-01-15');
 		const otherMonth = new Date('2099-02-15');
@@ -138,7 +138,7 @@ describe('getDashboardSummary - period=month', () => {
 	test('month 未指定の場合は当月が使用される', async () => {
 		const db = createDb(env.DB);
 		const userId = await insertUser(db);
-		const categoryId = await insertCategory(db, userId);
+		const categoryId = await insertCategory(db);
 
 		const now = new Date();
 		await insertExpense(db, userId, categoryId, 1500, userId, now);
@@ -154,8 +154,8 @@ describe('getDashboardSummary - カテゴリ別集計', () => {
 		const userId = await insertUser(db);
 
 		const suffix = crypto.randomUUID();
-		const cat1Id = await insertCategory(db, userId, `食費-${suffix}`);
-		const cat2Id = await insertCategory(db, userId, `交通費-${suffix}`);
+		const cat1Id = await insertCategory(db, `食費-${suffix}`);
+		const cat2Id = await insertCategory(db, `交通費-${suffix}`);
 
 		await insertExpense(db, userId, cat1Id, 5000, userId);
 		await insertExpense(db, userId, cat1Id, 3000, userId);

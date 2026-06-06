@@ -110,8 +110,8 @@ export default async function globalSetup() {
      VALUES ('${E2E_PARTNER_USER_ID}', 'Partner User', 'e2e-partner@example.com', 1, unixepoch(), unixepoch())`
 	);
 	wranglerExecute(
-		`INSERT INTO ExpenseCategory (id, userId, name, createdAt)
-     VALUES ('e2e-partner-cat-001', '${E2E_PARTNER_USER_ID}', 'E2E Partner Category', unixepoch())`
+		`INSERT INTO ExpenseCategory (id, name, createdAt)
+     VALUES ('e2e-partner-cat-001', 'E2E Partner Category', unixepoch())`
 	);
 	// createdAt を過去月（2026-04）にして当月の空状態テストに影響しないようにする
 	wranglerExecute(
