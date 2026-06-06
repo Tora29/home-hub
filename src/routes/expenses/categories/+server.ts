@@ -30,10 +30,10 @@ import { createCategory, getCategories } from '$expenses/categories/server/servi
  * @ac AC-010
  * @calls getCategories
  */
-export const GET: RequestHandler = async ({ locals, platform }) => {
+export const GET: RequestHandler = async ({ platform }) => {
 	try {
 		const db = createDb(platform!.env.DB);
-		const result = await getCategories(db, locals.user!.id);
+		const result = await getCategories(db);
 		return json(result);
 	} catch (e) {
 		return handleApiError(e);
@@ -46,7 +46,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
  * @body categoryCreateSchema
  * @throws VALIDATION_ERROR - 入力値が不正な場合
  */
-export const POST: RequestHandler = async ({ request, locals, platform }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
 	const bodyResult = await parseJsonBody(request);
 	if (!bodyResult.ok) return bodyResult.response;
 
@@ -55,7 +55,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
 	try {
 		const db = createDb(platform!.env.DB);
-		const created = await createCategory(db, locals.user!.id, result.data);
+		const created = await createCategory(db, result.data);
 		return json(created, { status: 201 });
 	} catch (e) {
 		return handleApiError(e);

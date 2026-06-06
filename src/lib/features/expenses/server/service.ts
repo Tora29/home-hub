@@ -62,7 +62,6 @@ const expenseSelectFields = {
 	createdAt: expense.createdAt,
 	category: {
 		id: expenseCategory.id,
-		userId: expenseCategory.userId,
 		name: expenseCategory.name,
 		createdAt: expenseCategory.createdAt
 	},
@@ -204,7 +203,7 @@ export async function createExpense(
 	const category = await db
 		.select()
 		.from(expenseCategory)
-		.where(and(eq(expenseCategory.id, data.categoryId), eq(expenseCategory.userId, userId)))
+		.where(eq(expenseCategory.id, data.categoryId))
 		.get();
 	if (!category) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 
@@ -247,7 +246,7 @@ export async function updateExpense(
 	const category = await db
 		.select()
 		.from(expenseCategory)
-		.where(and(eq(expenseCategory.id, data.categoryId), eq(expenseCategory.userId, userId)))
+		.where(eq(expenseCategory.id, data.categoryId))
 		.get();
 	if (!category) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 

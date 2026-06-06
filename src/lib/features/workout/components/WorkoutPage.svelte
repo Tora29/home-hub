@@ -78,6 +78,7 @@
 				return;
 			}
 			bodyWeightInput = '';
+			await fetchChartData();
 		} catch {
 			bodyWeightError = '通信エラーが発生しました';
 		} finally {
@@ -134,6 +135,7 @@
 			}
 			formWeight = '';
 			await invalidateAll();
+			await Promise.all([fetchChartData(), fetchVolumeData()]);
 		} catch {
 			formError = '通信エラーが発生しました';
 		} finally {
@@ -167,6 +169,7 @@
 			}
 			deletingRecord = null;
 			await invalidateAll();
+			await Promise.all([fetchChartData(), fetchVolumeData()]);
 		} catch {
 			deleteError = '通信エラーが発生しました';
 		} finally {

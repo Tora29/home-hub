@@ -45,7 +45,7 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
 
 	const [expenseData, categories, users, partnerPendingCount] = await Promise.all([
 		getExpenses(db, { month: selectedMonth, page, limit }),
-		getCategories(db, userId),
+		getCategories(db),
 		getUsers(db),
 		getUnapprovedCount(db, userId)
 	]);

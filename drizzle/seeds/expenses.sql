@@ -9,21 +9,13 @@
 --   メイン:    (SELECT id FROM "User" ORDER BY createdAt LIMIT 1)
 --   パートナー: (SELECT id FROM "User" ORDER BY createdAt LIMIT 1 OFFSET 1)
 
--- ---- メインユーザーのカテゴリ ----
-INSERT OR REPLACE INTO "ExpenseCategory" ("id", "userId", "name", "createdAt") VALUES
-  ('seed-cat-001', (SELECT id FROM "User" ORDER BY createdAt LIMIT 1), '食費',   strftime('%s', '2026-01-01')),
-  ('seed-cat-002', (SELECT id FROM "User" ORDER BY createdAt LIMIT 1), '家賃',   strftime('%s', '2026-01-01')),
-  ('seed-cat-003', (SELECT id FROM "User" ORDER BY createdAt LIMIT 1), '光熱費', strftime('%s', '2026-01-01')),
-  ('seed-cat-004', (SELECT id FROM "User" ORDER BY createdAt LIMIT 1), '日用品', strftime('%s', '2026-01-01')),
-  ('seed-cat-005', (SELECT id FROM "User" ORDER BY createdAt LIMIT 1), '交通費', strftime('%s', '2026-01-01'));
-
--- ---- パートナーのカテゴリ（2人目が存在する場合のみ） ----
-INSERT OR IGNORE INTO "ExpenseCategory" ("id", "userId", "name", "createdAt")
-SELECT 'seed-cat-p01', id, '食費',   strftime('%s', '2026-01-01') FROM "User" ORDER BY createdAt LIMIT 1 OFFSET 1;
-INSERT OR IGNORE INTO "ExpenseCategory" ("id", "userId", "name", "createdAt")
-SELECT 'seed-cat-p02', id, '交通費', strftime('%s', '2026-01-01') FROM "User" ORDER BY createdAt LIMIT 1 OFFSET 1;
-INSERT OR IGNORE INTO "ExpenseCategory" ("id", "userId", "name", "createdAt")
-SELECT 'seed-cat-p03', id, '日用品', strftime('%s', '2026-01-01') FROM "User" ORDER BY createdAt LIMIT 1 OFFSET 1;
+-- ---- カテゴリ（全ユーザー共通） ----
+INSERT OR REPLACE INTO "ExpenseCategory" ("id", "name", "createdAt") VALUES
+  ('seed-cat-001', '食費',   strftime('%s', '2026-01-01')),
+  ('seed-cat-002', '家賃',   strftime('%s', '2026-01-01')),
+  ('seed-cat-003', '光熱費', strftime('%s', '2026-01-01')),
+  ('seed-cat-004', '日用品', strftime('%s', '2026-01-01')),
+  ('seed-cat-005', '交通費', strftime('%s', '2026-01-01'));
 
 -- ---- 支出（2026-02: 全件 approved・過去の確定済みデータ） ----
 INSERT OR REPLACE INTO "Expense" ("id", "userId", "amount", "categoryId", "payerUserId", "status", "createdAt") VALUES
@@ -68,10 +60,10 @@ INSERT OR REPLACE INTO "Expense" ("id", "userId", "amount", "categoryId", "payer
 
 -- ---- 支出（2026-06: 当月・パートナー、2人目が存在する場合のみ） ----
 INSERT OR IGNORE INTO "Expense" ("id", "userId", "amount", "categoryId", "payerUserId", "status", "createdAt")
-SELECT 'seed-exp-201', id, 12000, 'seed-cat-p01', id, 'unapproved', strftime('%s', '2026-06-01') FROM "User" ORDER BY createdAt LIMIT 1 OFFSET 1;
+SELECT 'seed-exp-201', id, 12000, 'seed-cat-001', id, 'unapproved', strftime('%s', '2026-06-01') FROM "User" ORDER BY createdAt LIMIT 1 OFFSET 1;
 INSERT OR IGNORE INTO "Expense" ("id", "userId", "amount", "categoryId", "payerUserId", "status", "createdAt")
-SELECT 'seed-exp-202', id,  4500, 'seed-cat-p02', id, 'checked',    strftime('%s', '2026-06-02') FROM "User" ORDER BY createdAt LIMIT 1 OFFSET 1;
+SELECT 'seed-exp-202', id,  4500, 'seed-cat-005', id, 'checked',    strftime('%s', '2026-06-02') FROM "User" ORDER BY createdAt LIMIT 1 OFFSET 1;
 INSERT OR IGNORE INTO "Expense" ("id", "userId", "amount", "categoryId", "payerUserId", "status", "createdAt")
-SELECT 'seed-exp-203', id,  6800, 'seed-cat-p01', id, 'unapproved', strftime('%s', '2026-06-03') FROM "User" ORDER BY createdAt LIMIT 1 OFFSET 1;
+SELECT 'seed-exp-203', id,  6800, 'seed-cat-001', id, 'unapproved', strftime('%s', '2026-06-03') FROM "User" ORDER BY createdAt LIMIT 1 OFFSET 1;
 INSERT OR IGNORE INTO "Expense" ("id", "userId", "amount", "categoryId", "payerUserId", "status", "createdAt")
-SELECT 'seed-exp-204', id,  2200, 'seed-cat-p03', id, 'unapproved', strftime('%s', '2026-06-03') FROM "User" ORDER BY createdAt LIMIT 1 OFFSET 1;
+SELECT 'seed-exp-204', id,  2200, 'seed-cat-004', id, 'unapproved', strftime('%s', '2026-06-03') FROM "User" ORDER BY createdAt LIMIT 1 OFFSET 1;

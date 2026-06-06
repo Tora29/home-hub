@@ -13,8 +13,8 @@ import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
 import { getCategories } from '$expenses/categories/server/service';
 
-export const load: PageServerLoad = async ({ platform, locals }) => {
+export const load: PageServerLoad = async ({ platform }) => {
 	const db = createDb(platform!.env.DB);
-	const categories = await getCategories(db, locals.user!.id);
+	const categories = await getCategories(db);
 	return { categories };
 };

@@ -14,7 +14,6 @@ vi.mock('$expenses/categories/server/service', () => ({
 	getCategories: vi.fn()
 }));
 
-const mockLocals = { user: { id: 'test-user-id' } };
 const mockPlatform = { env: { DB: {} } };
 
 describe('POST /expenses/categories', () => {
@@ -24,7 +23,7 @@ describe('POST /expenses/categories', () => {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ name: '' })
 		});
-		const response = await POST({ request, locals: mockLocals, platform: mockPlatform } as any);
+		const response = await POST({ request, platform: mockPlatform } as any);
 		expect(response.status).toBe(400);
 		const body = await response.json();
 		expect(body.code).toBe('VALIDATION_ERROR');
@@ -36,7 +35,7 @@ describe('POST /expenses/categories', () => {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ name: 'a'.repeat(51) })
 		});
-		const response = await POST({ request, locals: mockLocals, platform: mockPlatform } as any);
+		const response = await POST({ request, platform: mockPlatform } as any);
 		expect(response.status).toBe(400);
 		const body = await response.json();
 		expect(body.code).toBe('VALIDATION_ERROR');
@@ -47,7 +46,7 @@ describe('POST /expenses/categories', () => {
 			method: 'POST',
 			body: 'not-json'
 		});
-		const response = await POST({ request, locals: mockLocals, platform: mockPlatform } as any);
+		const response = await POST({ request, platform: mockPlatform } as any);
 		expect(response.status).toBe(400);
 		const body = await response.json();
 		expect(body.code).toBe('VALIDATION_ERROR');
@@ -61,7 +60,7 @@ describe('POST /expenses/categories', () => {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ name: '' })
 		});
-		await POST({ request, locals: mockLocals, platform: mockPlatform } as any);
+		await POST({ request, platform: mockPlatform } as any);
 		expect(createCategory).not.toHaveBeenCalled();
 	});
 });

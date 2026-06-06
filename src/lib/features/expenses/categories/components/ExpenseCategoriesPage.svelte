@@ -16,7 +16,7 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Input from '$lib/components/Input.svelte';
 
-	type Category = { id: string; name: string; userId: string; createdAt: Date };
+	type Category = { id: string; name: string; createdAt: Date };
 
 	let {
 		categories
@@ -146,7 +146,7 @@
 			<ArrowLeft size={18} />
 		</a>
 		<Tag size={24} class="text-accent" />
-		<h1 class="flex-1 text-2xl font-medium text-label">カテゴリ管理</h1>
+		<h1 class="flex-1 text-2xl font-medium text-label">カテゴリ</h1>
 	</div>
 
 	<div class="mb-6 rounded-3xl bg-bg-card p-6 shadow-md">
