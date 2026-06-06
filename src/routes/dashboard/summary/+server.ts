@@ -22,8 +22,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
-import { dashboardSummaryQuerySchema } from '$dashboard/summary/schema';
-import { getDashboardSummary } from '$dashboard/summary/service';
+import { dashboardSummaryQuerySchema } from '$lib/features/dashboard/schema';
+import { getDashboardSummary } from '$lib/features/dashboard/server/service';
 
 /**
  * 集計サマリーを取得する。period=month のとき month で月を指定（省略時は当月）。

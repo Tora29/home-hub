@@ -10,7 +10,7 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
-import { getExercises } from '$workout/exercises/service';
+import { getExercises } from '$workout/exercises/server/service';
 
 export const load: PageServerLoad = async ({ locals, platform, parent }) => {
 	const parentData = await parent();

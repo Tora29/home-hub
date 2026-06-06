@@ -13,7 +13,7 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
 import { AppError } from '$lib/server/errors';
-import { getRecipeById } from '$recipes/service';
+import { getRecipeById } from '$recipes/server/service';
 
 export const load: PageServerLoad = async ({ params, platform, locals }) => {
 	try {

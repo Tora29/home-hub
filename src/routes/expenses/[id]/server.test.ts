@@ -9,7 +9,7 @@ import { describe, test, expect, vi } from 'vitest';
 import { PUT } from './+server';
 
 vi.mock('$lib/server/db', () => ({ createDb: vi.fn() }));
-vi.mock('$expenses/service', () => ({
+vi.mock('$expenses/server/service', () => ({
 	updateExpense: vi.fn(),
 	deleteExpense: vi.fn()
 }));
@@ -54,7 +54,7 @@ describe('PUT /expenses/[id]', () => {
 	});
 
 	test('バリデーション失敗時は updateExpense が呼ばれない', async () => {
-		const { updateExpense } = await import('$expenses/service');
+		const { updateExpense } = await import('$expenses/server/service');
 		vi.mocked(updateExpense).mockClear();
 		const request = new Request('http://localhost/expenses/expense-1', {
 			method: 'PUT',

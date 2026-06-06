@@ -21,7 +21,7 @@ import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { exerciseUpdateSchema } from '$workout/exercises/schema';
-import { deleteExercise, updateExercise } from '$workout/exercises/service';
+import { deleteExercise, updateExercise } from '$workout/exercises/server/service';
 
 /**
  * 種目を更新する。exerciseUpdateSchema で入力値を検証後、service に委譲する。

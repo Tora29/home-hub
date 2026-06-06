@@ -9,7 +9,7 @@ import { describe, test, expect, vi } from 'vitest';
 import { POST } from './+server';
 
 vi.mock('$lib/server/db', () => ({ createDb: vi.fn() }));
-vi.mock('$workout/service', () => ({
+vi.mock('$workout/server/service', () => ({
 	createRecord: vi.fn(),
 	getRecords: vi.fn()
 }));
@@ -67,7 +67,7 @@ describe('POST /workout', () => {
 	});
 
 	test('バリデーション失敗時は createRecord が呼ばれない', async () => {
-		const { createRecord } = await import('$workout/service');
+		const { createRecord } = await import('$workout/server/service');
 		vi.mocked(createRecord).mockClear();
 		const request = new Request('http://localhost/workout', {
 			method: 'POST',
