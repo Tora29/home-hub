@@ -363,19 +363,8 @@ export async function requestExpenses(
 				partnerLineUserId!,
 				[
 					{
-						type: 'template',
-						altText: '承認依頼が届いています。確認してください。',
-						template: {
-							type: 'buttons',
-							text: '承認依頼が届いています。確認してください。',
-							actions: [
-								{
-									type: 'uri',
-									label: 'アプリへ移動する場合はこちら',
-									uri: 'https://home-hub.pages.dev/expenses'
-								}
-							]
-						}
+						type: 'text',
+						text: '承認依頼が届いています。確認してください。\nhttps://home-hub.pages.dev/expenses'
 					}
 				],
 				lineEnv.lineChannelAccessToken!
@@ -445,23 +434,7 @@ export async function approveExpenses(
 		try {
 			await sendLineMessage(
 				partnerLineUserId!,
-				[
-					{
-						type: 'template',
-						altText: '支出が承認されました。',
-						template: {
-							type: 'buttons',
-							text: '支出が承認されました。',
-							actions: [
-								{
-									type: 'uri',
-									label: 'アプリへ移動する場合はこちら',
-									uri: 'https://home-hub.pages.dev/expenses'
-								}
-							]
-						}
-					}
-				],
+				[{ type: 'text', text: '支出が承認されました。\nhttps://home-hub.pages.dev/expenses' }],
 				lineEnv.lineChannelAccessToken!
 			);
 		} catch (e) {
