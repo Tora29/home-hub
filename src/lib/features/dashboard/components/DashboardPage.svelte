@@ -14,7 +14,6 @@
   - currentMonth: string - 当月 YYYY-MM
 -->
 <script lang="ts">
-	// eslint-disable-next-line svelte/no-unused-props -- summary フィールドは $state 初期値として使用
 	import { untrack } from 'svelte';
 	import { AlertTriangle } from '@lucide/svelte';
 	import Button from '$lib/components/Button.svelte';
@@ -32,6 +31,7 @@
 		}[];
 	};
 
+	/* eslint-disable svelte/no-unused-props -- summary フィールドは $state 初期値として使用（直接参照せずローカル state に渡す） */
 	let {
 		unapprovedCount,
 		summary: initialSummary,
@@ -41,6 +41,7 @@
 		summary: Summary;
 		currentMonth: string;
 	} = $props();
+	/* eslint-enable svelte/no-unused-props */
 
 	const monthOptions = $derived(generateMonthOptions(currentMonth));
 
