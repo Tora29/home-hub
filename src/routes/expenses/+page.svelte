@@ -70,9 +70,8 @@
 	const myPendingCount = $derived(
 		data.expenses.filter((e) => e.userId === data.currentUserId && e.status === 'pending').length
 	);
-	const partnerPendingCount = $derived(
-		data.expenses.filter((e) => e.userId !== data.currentUserId && e.status === 'pending').length
-	);
+	// 全期間の相手 pending 数（月フィルタ対象外）。承認ボタン表示に使う
+	const partnerPendingCount = $derived(data.partnerPendingCount);
 
 	// ---- 月選択肢生成（AC-002b: 常に当月を起点とした過去13か月分固定） ----
 	function generateMonthOptions(): Array<{ value: string; label: string }> {

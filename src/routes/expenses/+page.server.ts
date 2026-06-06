@@ -13,7 +13,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
-import { getExpenses, getUsers } from '$expenses/service';
+import { getExpenses, getUsers, getUnapprovedCount } from '$expenses/service';
 import { getCategories } from '$expenses/categories/service';
 import { expenseQuerySchema } from '$expenses/schema';
 
@@ -43,10 +43,11 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
 	const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 	const selectedMonth = month ?? currentMonth;
 
-	const [expenseData, categories, users] = await Promise.all([
+	const [expenseData, categories, users, partnerPendingCount] = await Promise.all([
 		getExpenses(db, { month: selectedMonth, page, limit }),
 		getCategories(db, userId),
-		getUsers(db)
+		getUsers(db),
+		getUnapprovedCount(db, userId)
 	]);
 
 	return {
@@ -57,6 +58,7 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
 		users,
 		currentUserId: userId,
 		currentMonth,
-		selectedMonth
+		selectedMonth,
+		partnerPendingCount
 	};
 };
