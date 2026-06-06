@@ -9,7 +9,7 @@ import { describe, test, expect, vi } from 'vitest';
 import { GET, POST } from './+server';
 
 vi.mock('$lib/server/db', () => ({ createDb: vi.fn() }));
-vi.mock('$expenses/service', () => ({
+vi.mock('$expenses/server/service', () => ({
 	createExpense: vi.fn(),
 	getExpenses: vi.fn()
 }));
@@ -52,7 +52,7 @@ describe('GET /expenses', () => {
 	});
 
 	test('バリデーション失敗時は getExpenses が呼ばれない', async () => {
-		const { getExpenses } = await import('$expenses/service');
+		const { getExpenses } = await import('$expenses/server/service');
 		await GET({
 			url: new URL('http://localhost/expenses?month=bad'),
 			locals: mockLocals,
@@ -112,7 +112,7 @@ describe('POST /expenses', () => {
 	});
 
 	test('バリデーション失敗時は createExpense が呼ばれない', async () => {
-		const { createExpense } = await import('$expenses/service');
+		const { createExpense } = await import('$expenses/server/service');
 		vi.mocked(createExpense).mockClear();
 		const request = new Request('http://localhost/expenses', {
 			method: 'POST',

@@ -24,7 +24,7 @@ import type { RequestHandler } from './$types';
 import { AppError } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
 import { askSchema } from '$recipes/schema';
-import { getAllRecipes } from '$recipes/service';
+import { getAllRecipes } from '$recipes/server/service';
 
 /**
  * AI 献立相談。全レシピをコンテキストに含めて Workers AI に問い合わせる。

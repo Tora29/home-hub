@@ -22,7 +22,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
-import { approveExpenses, getUserRole } from '$expenses/service';
+import { approveExpenses, getUserRole } from '$expenses/server/service';
 
 /**
  * 相手の pending 支出を一括で approved にし、LINE 通知を送信する。

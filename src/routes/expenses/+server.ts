@@ -24,7 +24,7 @@ import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { expenseCreateSchema, expenseQuerySchema } from '$expenses/schema';
-import { createExpense, getExpenses } from '$expenses/service';
+import { createExpense, getExpenses } from '$expenses/server/service';
 
 /**
  * 指定月の支出一覧を取得する。month 未指定時は当月。

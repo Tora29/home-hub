@@ -24,7 +24,7 @@ import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { expenseUpdateSchema } from '$expenses/schema';
-import { deleteExpense, updateExpense } from '$expenses/service';
+import { deleteExpense, updateExpense } from '$expenses/server/service';
 
 /**
  * 支出を更新する。expenseUpdateSchema で入力値を検証後、service に委譲する。

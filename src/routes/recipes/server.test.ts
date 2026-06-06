@@ -9,7 +9,7 @@ import { describe, test, expect, vi } from 'vitest';
 import { GET, POST } from './+server';
 
 vi.mock('$lib/server/db', () => ({ createDb: vi.fn() }));
-vi.mock('$recipes/service', () => ({
+vi.mock('$recipes/server/service', () => ({
 	createRecipe: vi.fn(),
 	getRecipes: vi.fn()
 }));
@@ -41,7 +41,7 @@ describe('GET /recipes', () => {
 	});
 
 	test('バリデーション失敗時は getRecipes が呼ばれない', async () => {
-		const { getRecipes } = await import('$recipes/service');
+		const { getRecipes } = await import('$recipes/server/service');
 		vi.mocked(getRecipes).mockClear();
 		await GET({
 			url: new URL('http://localhost/recipes?sort=invalid'),
@@ -101,7 +101,7 @@ describe('POST /recipes', () => {
 	});
 
 	test('バリデーション失敗時は createRecipe が呼ばれない', async () => {
-		const { createRecipe } = await import('$recipes/service');
+		const { createRecipe } = await import('$recipes/server/service');
 		vi.mocked(createRecipe).mockClear();
 		const request = new Request('http://localhost/recipes', {
 			method: 'POST',

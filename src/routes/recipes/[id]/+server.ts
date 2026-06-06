@@ -24,7 +24,7 @@ import type { RequestHandler } from './$types';
 import { AppError } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
 import { recipeUpdateSchema } from '$recipes/schema';
-import { deleteRecipe, getRecipeById, updateRecipe } from '$recipes/service';
+import { deleteRecipe, getRecipeById, updateRecipe } from '$recipes/server/service';
 
 /**
  * レシピを更新する。recipeUpdateSchema で入力値を検証後、service に委譲する。
