@@ -54,13 +54,11 @@
 }
 
 /* iOS Safari の auto-zoom 防止: フォントサイズ 16px 未満の input/select/textarea にフォーカスすると
-   ページ全体がズームされる挙動を抑制する */
-@layer base {
-	input,
-	select,
-	textarea {
-		font-size: max(16px, 1em);
-	}
+   ページ全体がズームされる挙動を抑制する。@layer base だと Tailwind utilities に負けるため外に出す */
+input,
+select,
+textarea {
+	font-size: max(16px, 1em);
 }
 
 @media (min-width: 768px) {
