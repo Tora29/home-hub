@@ -20,7 +20,7 @@ function wranglerExecute(sql: string) {
 export default async function globalTeardown() {
 	wranglerExecute(`DELETE FROM "Recipe" WHERE "userId" = '${E2E_USER_ID}'`);
 	wranglerExecute(`DELETE FROM "Expense" WHERE "userId" = '${E2E_USER_ID}'`);
-	wranglerExecute(`DELETE FROM "ExpenseCategory" WHERE "userId" = '${E2E_USER_ID}'`);
+	wranglerExecute(`DELETE FROM "ExpenseCategory"`);
 	wranglerExecute(`DELETE FROM "WorkoutRecord" WHERE "userId" = '${E2E_USER_ID}'`);
 	wranglerExecute(`DELETE FROM "WorkoutExercise" WHERE "userId" = '${E2E_USER_ID}'`);
 	wranglerExecute(`DELETE FROM "BodyWeightRecord" WHERE "userId" = '${E2E_USER_ID}'`);

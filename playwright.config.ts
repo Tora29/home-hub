@@ -15,6 +15,7 @@ try {
 export default defineConfig({
 	globalSetup: './e2e/global-setup.ts',
 	globalTeardown: './e2e/global-teardown.ts',
+	globalTimeout: process.env.CI ? 10 * 60 * 1000 : undefined, // CI: 10分で強制終了
 	workers: 1,
 	retries: process.env.CI ? 2 : 0,
 	use: {
