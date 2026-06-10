@@ -8,11 +8,15 @@
 
   @props
   - points: WeeklyVolumePoint[] - 週ごとのボリュームデータ
+  - onBarClick: (weekStart: string) => void - バークリック時のコールバック（省略可）
 -->
 <script lang="ts">
 	type WeeklyVolumePoint = { weekStart: string; volume: number };
 
-	let { points = [] }: { points: WeeklyVolumePoint[] } = $props();
+	let {
+		points = [],
+		onBarClick
+	}: { points: WeeklyVolumePoint[]; onBarClick?: (weekStart: string) => void } = $props();
 
 	const WIDTH = 600;
 	const HEIGHT = 300;
@@ -109,6 +113,8 @@
 
 			<!-- 棒グラフ -->
 			{#each points as p, i (p.weekStart)}
+				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+				<!-- role="button" のとき tabindex={0} はフォーカス管理に必要な正しいパターン -->
 				<rect
 					x={toX(i)}
 					y={toY(p.volume)}
@@ -117,6 +123,11 @@
 					fill="var(--color-accent)"
 					opacity="0.8"
 					rx="2"
+					role={onBarClick ? 'button' : undefined}
+					tabindex={onBarClick ? 0 : undefined}
+					style={onBarClick ? 'cursor: pointer' : undefined}
+					onclick={() => onBarClick?.(p.weekStart)}
+					onkeydown={(e) => e.key === 'Enter' && onBarClick?.(p.weekStart)}
 				/>
 			{/each}
 		</g>

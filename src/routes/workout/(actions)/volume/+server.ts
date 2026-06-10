@@ -10,6 +10,7 @@
  * - GET /workout/volume → 200 WeeklyVolumePoint[] - 週間ボリューム取得
  *   @query period:string='1m'(1m|1y|all) month:string?
  *   @errors 400(VALIDATION_ERROR)
+ * - GET /workout/volume?weekStart=YYYY-WW → 200 WeeklyVolumeBreakdownItem[] - 指定週の種目別内訳取得
  *
  * @service ../service.ts
  * @schema ../schema.ts
@@ -19,13 +20,24 @@ import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { volumeQuerySchema } from '$workout/schema';
-import { getWeeklyVolume } from '$workout/server/service';
+import { getWeeklyVolume, getWeeklyVolumeBreakdown } from '$workout/server/service';
 
 /**
- * 週間ボリュームを取得する。volumeQuerySchema でクエリを検証後、service に委譲する。
+ * 週間ボリュームを取得する。weekStart クエリがある場合は種目別内訳を返す。
  * @throws VALIDATION_ERROR - クエリパラメータが不正な場合
  */
 export const GET: RequestHandler = async ({ url, locals, platform }) => {
+	const weekStart = url.searchParams.get('weekStart');
+	if (weekStart) {
+		try {
+			const db = createDb(platform!.env.DB);
+			const data = await getWeeklyVolumeBreakdown(db, locals.user!.id, weekStart);
+			return json(data);
+		} catch (e) {
+			return handleApiError(e);
+		}
+	}
+
 	const params = {
 		period: url.searchParams.get('period') ?? '1m',
 		...(url.searchParams.get('month') ? { month: url.searchParams.get('month') } : {})
