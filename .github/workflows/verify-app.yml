@@ -9,6 +9,7 @@ on:
       - 'e2e/**'
       - 'package-lock.json'
       - 'package.json'
+      - 'eslint.config.js'
       - 'svelte.config.*'
       - 'vite.config.*'
       - 'tsconfig.json'
@@ -37,6 +38,13 @@ jobs:
           key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             node-modules-${{ runner.os }}-
+
+      - uses: actions/cache@v4
+        with:
+          path: .eslintcache
+          key: eslint-${{ runner.os }}-${{ hashFiles('eslint.config.js', 'package-lock.json') }}
+          restore-keys: |
+            eslint-${{ runner.os }}-
 
       - name: Install dependencies
         if: steps.node-modules-cache.outputs.cache-hit != 'true'
