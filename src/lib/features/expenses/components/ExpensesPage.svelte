@@ -239,7 +239,7 @@
 				class="inline-flex items-center gap-1.5 rounded-2xl border border-separator px-3 py-2 text-sm text-secondary hover:text-label"
 			>
 				<Tag size={14} />
-				<span>カテゴリ管理</span>
+				<span>カテゴリ</span>
 			</a>
 			<Button
 				data-testid="expense-create-button"
