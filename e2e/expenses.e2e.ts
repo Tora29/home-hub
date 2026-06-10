@@ -61,7 +61,7 @@ test.describe('支出一覧 - 初期表示', () => {
 	});
 
 	test('カテゴリ管理リンクが表示される', async ({ page }) => {
-		await expect(page.getByRole('link', { name: 'カテゴリ管理' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'カテゴリ' })).toBeVisible();
 	});
 });
 
@@ -232,7 +232,7 @@ test.describe('カテゴリ管理', () => {
 	});
 
 	test('カテゴリ管理ページが表示される', async ({ page }) => {
-		await expect(page.getByRole('heading', { name: 'カテゴリ', exact: true })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'カテゴリ管理', exact: true })).toBeVisible();
 		await expect(page.getByTestId('expense-category-name-input')).toBeVisible();
 		await expect(page.getByTestId('expense-category-add-button')).toBeVisible();
 	});

@@ -27,6 +27,9 @@ Thumbs.db
 # Better Auth local dev
 .dev.vars
 
+# Lint cache
+.eslintcache
+
 # Playwright test results
 test-results/
 playwright-report/

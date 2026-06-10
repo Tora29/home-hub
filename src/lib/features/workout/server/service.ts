@@ -13,8 +13,9 @@
  * - createRecord       - 記録新規作成（1レコード = 1セット）
  * - deleteRecord       - 記録削除
  * - getChartData       - 種目別チャートデータ取得（日別最大重量 + 体重）
- * - getWeeklyVolume    - 週間ボリューム集計
- * - upsertBodyWeight   - 体重登録（同日upsert）
+ * - getWeeklyVolume             - 週間ボリューム集計
+ * - getWeeklyVolumeBreakdown   - 指定週の種目別ボリューム内訳
+ * - upsertBodyWeight           - 体重登録（同日upsert）
  *
  * @test ./service.integration.test.ts
  */
@@ -46,6 +47,7 @@ export type ChartData = {
 	bodyWeightPoints: BodyWeightPoint[];
 };
 export type WeeklyVolumePoint = { weekStart: string; volume: number };
+export type WeeklyVolumeBreakdownItem = { exerciseName: string; volume: number };
 
 function periodToRange(
 	period: string,
@@ -229,17 +231,48 @@ export async function getWeeklyVolume(
 	if (start) conditions.push(gte(workoutRecord.date, start));
 	if (end) conditions.push(lt(workoutRecord.date, end));
 
+	// 月曜日の日付を週キーとする（%w: 0=日〜6=土 → (x+6)%7 日戻すと月曜になる）
+	const mondayExpr = sql`date(${workoutRecord.date}, '-' || ((cast(strftime('%w', ${workoutRecord.date}) as integer) + 6) % 7) || ' days')`;
+
 	const rows = await db
 		.select({
-			weekStart: sql<string>`strftime('%Y-%W', ${workoutRecord.date})`,
+			weekStart: sql<string>`${mondayExpr}`,
 			volume: sql<number>`sum(${workoutRecord.weight} * ${workoutRecord.reps})`
 		})
 		.from(workoutRecord)
 		.where(and(...conditions))
-		.groupBy(sql`strftime('%Y-%W', ${workoutRecord.date})`)
-		.orderBy(asc(sql`strftime('%Y-%W', ${workoutRecord.date})`));
+		.groupBy(mondayExpr)
+		.orderBy(asc(mondayExpr));
 
 	return rows.map((r) => ({ weekStart: r.weekStart, volume: Number(r.volume) }));
+}
+
+/**
+ * 指定週の種目別ボリューム内訳を取得する。ボリューム降順で返す。
+ * @param weekStart - 月曜日の日付文字列（例: '2025-06-09'）
+ */
+export async function getWeeklyVolumeBreakdown(
+	db: Db,
+	userId: string,
+	weekStart: string
+): Promise<WeeklyVolumeBreakdownItem[]> {
+	const rows = await db
+		.select({
+			exerciseName: workoutExercise.name,
+			volume: sql<number>`sum(${workoutRecord.weight} * ${workoutRecord.reps})`
+		})
+		.from(workoutRecord)
+		.innerJoin(workoutExercise, eq(workoutRecord.exerciseId, workoutExercise.id))
+		.where(
+			and(
+				eq(workoutRecord.userId, userId),
+				sql`date(${workoutRecord.date}, '-' || ((cast(strftime('%w', ${workoutRecord.date}) as integer) + 6) % 7) || ' days') = ${weekStart}`
+			)
+		)
+		.groupBy(workoutExercise.name)
+		.orderBy(desc(sql`sum(${workoutRecord.weight} * ${workoutRecord.reps})`));
+
+	return rows.map((r) => ({ exerciseName: r.exerciseName, volume: Number(r.volume) }));
 }
 
 /**

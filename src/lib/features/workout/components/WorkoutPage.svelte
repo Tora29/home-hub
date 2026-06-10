@@ -22,6 +22,7 @@
 	import Select from '$lib/components/Select.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Checkbox from '$lib/components/Checkbox.svelte';
+	import Dialog from '$lib/components/Dialog.svelte';
 	import WorkoutChart from './WorkoutChart.svelte';
 	import WeeklyVolumeChart from './WeeklyVolumeChart.svelte';
 
@@ -102,6 +103,12 @@
 		}
 		return Array.from(map.entries()).map(([date, recs]) => ({ date, records: recs }));
 	});
+
+	const RECORDS_PREVIEW_COUNT = 3;
+	let showAllRecords = $state(false);
+	const visibleRecordsByDate = $derived(() =>
+		showAllRecords ? recordsByDate() : recordsByDate().slice(0, RECORDS_PREVIEW_COUNT)
+	);
 
 	const prevRecord = $derived(() => {
 		if (!formExerciseId) return null;
@@ -260,6 +267,36 @@
 
 	onMount(() => void fetchVolumeData());
 
+	type BreakdownItem = { exerciseName: string; volume: number };
+	let breakdownWeekStart = $state<string | null>(null);
+	let breakdownItems = $state<BreakdownItem[]>([]);
+	let breakdownLoading = $state(false);
+	let breakdownError = $state('');
+
+	function weekStartLabel(weekStart: string): string {
+		const [y, m, d] = weekStart.split('-');
+		return `${y}/${m}/${d} 〜`;
+	}
+
+	async function handleVolumeBarClick(weekStart: string) {
+		breakdownWeekStart = weekStart;
+		breakdownItems = [];
+		breakdownLoading = true;
+		breakdownError = '';
+		try {
+			const res = await fetch(`/workout/volume?weekStart=${weekStart}`);
+			if (!res.ok) {
+				breakdownError = '取得に失敗しました';
+				return;
+			}
+			breakdownItems = (await res.json()) as BreakdownItem[];
+		} catch {
+			breakdownError = '通信エラーが発生しました';
+		} finally {
+			breakdownLoading = false;
+		}
+	}
+
 	function estimatedOneRM(weight: number, reps: number): number {
 		if (reps === 1) return weight;
 		return Math.floor(weight / (1.0278 - 0.0278 * reps));
@@ -413,7 +450,7 @@
 			<p class="py-8 text-center text-sm text-secondary">記録がありません</p>
 		{:else}
 			<div data-testid="workout-record-list" class="flex flex-col gap-3">
-				{#each recordsByDate() as group (group.date)}
+				{#each visibleRecordsByDate() as group (group.date)}
 					<div>
 						<div class="mb-1 flex items-center gap-2">
 							<span class="text-xs font-medium text-secondary">{group.date}</span>
@@ -455,6 +492,16 @@
 					</div>
 				{/each}
 			</div>
+			{#if recordsByDate().length > RECORDS_PREVIEW_COUNT}
+				<button
+					onclick={() => (showAllRecords = !showAllRecords)}
+					class="mt-1 w-full py-1.5 text-xs text-secondary hover:text-label"
+				>
+					{showAllRecords
+						? '折りたたむ ▲'
+						: `もっと見る（残り ${recordsByDate().length - RECORDS_PREVIEW_COUNT} 日分）▼`}
+				</button>
+			{/if}
 		{/if}
 	</div>
 
@@ -616,16 +663,62 @@
 				<p role="alert" class="py-4 text-center text-sm text-destructive">{volumeError}</p>
 			{:else if volumeData.length > 0}
 				<div class={volumeLoading ? 'opacity-40 transition-opacity duration-150' : ''}>
-					<WeeklyVolumeChart points={volumeData} />
+					<WeeklyVolumeChart points={volumeData} onBarClick={handleVolumeBarClick} />
 				</div>
 			{:else if volumeLoading}
 				<p class="py-8 text-center text-sm text-secondary">読み込み中...</p>
 			{:else}
-				<WeeklyVolumeChart points={volumeData} />
+				<WeeklyVolumeChart points={volumeData} onBarClick={handleVolumeBarClick} />
 			{/if}
 		</div>
 	{/if}
 </div>
+
+<Dialog
+	open={breakdownWeekStart !== null}
+	onClose={() => (breakdownWeekStart = null)}
+	aria-label="週間ボリューム内訳"
+>
+	<div class="w-full max-w-sm rounded-3xl bg-bg-card p-6 shadow-lg">
+		<h2 class="mb-4 text-base font-medium text-label">
+			{breakdownWeekStart ? weekStartLabel(breakdownWeekStart) : ''} 内訳
+		</h2>
+		{#if breakdownLoading}
+			<p class="py-4 text-center text-sm text-secondary">読み込み中...</p>
+		{:else if breakdownError}
+			<p role="alert" class="text-sm text-destructive">{breakdownError}</p>
+		{:else if breakdownItems.length === 0}
+			<p class="text-sm text-secondary">データがありません</p>
+		{:else}
+			<ul class="flex flex-col gap-2">
+				{#each breakdownItems as item (item.exerciseName)}
+					<li class="flex items-center justify-between gap-4">
+						<span class="min-w-0 truncate text-sm text-label">{item.exerciseName}</span>
+						<span class="shrink-0 text-sm font-medium text-label"
+							>{item.volume.toLocaleString()}</span
+						>
+					</li>
+				{/each}
+			</ul>
+			<div class="mt-3 border-t border-separator pt-3">
+				<div class="flex items-center justify-between">
+					<span class="text-xs text-secondary">合計</span>
+					<span class="text-sm font-medium text-accent">
+						{breakdownItems.reduce((s, i) => s + i.volume, 0).toLocaleString()}
+					</span>
+				</div>
+			</div>
+		{/if}
+		<div class="mt-4 flex justify-end">
+			<button
+				onclick={() => (breakdownWeekStart = null)}
+				class="text-sm text-secondary hover:text-label"
+			>
+				閉じる
+			</button>
+		</div>
+	</div>
+</Dialog>
 
 <ConfirmDialog
 	open={deletingRecord !== null}
