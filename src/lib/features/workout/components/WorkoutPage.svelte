@@ -26,7 +26,7 @@
 	import WorkoutChart from './WorkoutChart.svelte';
 	import WeeklyVolumeChart from './WeeklyVolumeChart.svelte';
 
-	type Exercise = { id: string; name: string };
+	type Exercise = { id: string; name: string; category: { id: string; name: string } | null };
 	type WorkoutRecord = {
 		id: string;
 		exerciseId: string;
@@ -109,6 +109,12 @@
 	const visibleRecordsByDate = $derived.by(() =>
 		showAllRecords ? recordsByDate : recordsByDate.slice(0, RECORDS_PREVIEW_COUNT)
 	);
+
+	const uniqueCategories = $derived([
+		...new Map(
+			exercises.items.filter((ex) => ex.category).map((ex) => [ex.category!.id, ex.category!])
+		).values()
+	]);
 
 	const prevRecord = $derived.by(() => {
 		if (!formExerciseId) return null;
@@ -387,9 +393,26 @@
 					class="col-span-2 sm:col-span-1"
 				>
 					<option value="">種目を選択</option>
-					{#each exercises.items as ex (ex.id)}
-						<option value={ex.id}>{ex.name}</option>
-					{/each}
+					{#if uniqueCategories.length > 0}
+						{#each uniqueCategories as cat (cat.id)}
+							<optgroup label={cat.name}>
+								{#each exercises.items.filter((ex) => ex.category?.id === cat.id) as ex (ex.id)}
+									<option value={ex.id}>{ex.name}</option>
+								{/each}
+							</optgroup>
+						{/each}
+						{#if exercises.items.some((ex) => !ex.category)}
+							<optgroup label="その他">
+								{#each exercises.items.filter((ex) => !ex.category) as ex (ex.id)}
+									<option value={ex.id}>{ex.name}</option>
+								{/each}
+							</optgroup>
+						{/if}
+					{:else}
+						{#each exercises.items as ex (ex.id)}
+							<option value={ex.id}>{ex.name}</option>
+						{/each}
+					{/if}
 				</Select>
 				<Input
 					data-testid="workout-form-weight-input"

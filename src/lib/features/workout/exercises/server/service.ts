@@ -1,55 +1,166 @@
 /**
- * @file サービス: WorkoutExercise
+ * @file サービス: WorkoutExercise / WorkoutExerciseCategory
  * @module src/lib/features/workout/exercises/server/service.ts
  * @feature workout
  *
  * @description
- * 筋トレ種目機能のビジネスロジックと DB 操作を担う。
+ * 筋トレ種目・種目カテゴリ機能のビジネスロジックと DB 操作を担う。
  *
- * @entity WorkoutExercise
+ * @entity WorkoutExercise, WorkoutExerciseCategory
  *
  * @functions
- * - getExercises   - 一覧取得（全件）
- * - createExercise - 新規作成
- * - updateExercise - 更新
- * - deleteExercise - 削除（紐付く記録がある場合は CONFLICT）
+ * - getExerciseCategories    - カテゴリ一覧取得
+ * - createExerciseCategory   - カテゴリ新規作成
+ * - updateExerciseCategory   - カテゴリ更新
+ * - deleteExerciseCategory   - カテゴリ削除
+ * - getExercises             - 種目一覧取得（カテゴリ JOIN）
+ * - createExercise           - 種目新規作成
+ * - updateExercise           - 種目更新
+ * - deleteExercise           - 種目削除（紐付く記録がある場合は CONFLICT）
  *
  * @test ./service.integration.test.ts
  */
 import { and, eq, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { AppError } from '$lib/server/errors';
-import { workoutExercise, workoutRecord } from '$lib/server/tables';
+import { workoutExercise, workoutExerciseCategory, workoutRecord } from '$lib/server/tables';
 import type * as schema from '$lib/server/tables';
-import type { ExerciseCreate, ExerciseUpdate } from '../schema';
+import type {
+	ExerciseCreate,
+	ExerciseUpdate,
+	ExerciseCategoryCreate,
+	ExerciseCategoryUpdate
+} from '../schema';
 
 type Db = DrizzleD1Database<typeof schema>;
 
-type Exercise = {
+type ExerciseCategory = {
 	id: string;
 	userId: string;
 	name: string;
 	createdAt: Date;
 };
 
+type ExerciseWithCategory = {
+	id: string;
+	userId: string;
+	name: string;
+	categoryId: string | null;
+	category: { id: string; name: string } | null;
+	createdAt: Date;
+};
+
 /**
- * 種目一覧を取得する（全件）。
+ * カテゴリ一覧を取得する（全件・createdAt 昇順）。
+ */
+export async function getExerciseCategories(db: Db, userId: string): Promise<ExerciseCategory[]> {
+	const rows = await db
+		.select()
+		.from(workoutExerciseCategory)
+		.where(eq(workoutExerciseCategory.userId, userId))
+		.orderBy(workoutExerciseCategory.createdAt);
+
+	return rows as ExerciseCategory[];
+}
+
+/**
+ * カテゴリを新規作成する。
+ */
+export async function createExerciseCategory(
+	db: Db,
+	userId: string,
+	data: ExerciseCategoryCreate
+): Promise<ExerciseCategory> {
+	const id = crypto.randomUUID();
+	const now = new Date();
+
+	const [row] = await db
+		.insert(workoutExerciseCategory)
+		.values({ id, userId, name: data.name, createdAt: now })
+		.returning();
+
+	return row as ExerciseCategory;
+}
+
+/**
+ * カテゴリを更新する。
+ * @throws {NOT_FOUND} - 該当カテゴリが存在しない・他ユーザーの場合
+ */
+export async function updateExerciseCategory(
+	db: Db,
+	userId: string,
+	id: string,
+	data: ExerciseCategoryUpdate
+): Promise<ExerciseCategory> {
+	const existing = await db
+		.select()
+		.from(workoutExerciseCategory)
+		.where(and(eq(workoutExerciseCategory.id, id), eq(workoutExerciseCategory.userId, userId)))
+		.get();
+	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
+
+	const [row] = await db
+		.update(workoutExerciseCategory)
+		.set({ name: data.name })
+		.where(and(eq(workoutExerciseCategory.id, id), eq(workoutExerciseCategory.userId, userId)))
+		.returning();
+
+	return row as ExerciseCategory;
+}
+
+/**
+ * カテゴリを削除する。紐付く種目の categoryId は DB FK (set null) で自動的に null になる。
+ * @throws {NOT_FOUND} - 該当カテゴリが存在しない・他ユーザーの場合
+ */
+export async function deleteExerciseCategory(db: Db, userId: string, id: string): Promise<void> {
+	const existing = await db
+		.select()
+		.from(workoutExerciseCategory)
+		.where(and(eq(workoutExerciseCategory.id, id), eq(workoutExerciseCategory.userId, userId)))
+		.get();
+	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
+
+	await db
+		.delete(workoutExerciseCategory)
+		.where(and(eq(workoutExerciseCategory.id, id), eq(workoutExerciseCategory.userId, userId)));
+}
+
+/**
+ * 種目一覧を取得する（全件・カテゴリ JOIN）。
  */
 export async function getExercises(
 	db: Db,
 	userId: string
-): Promise<{ items: Exercise[]; total: number; page: number; limit: number }> {
+): Promise<{ items: ExerciseWithCategory[]; total: number; page: number; limit: number }> {
 	const rows = await db
-		.select()
+		.select({
+			id: workoutExercise.id,
+			userId: workoutExercise.userId,
+			name: workoutExercise.name,
+			categoryId: workoutExercise.categoryId,
+			categoryJoinId: workoutExerciseCategory.id,
+			categoryName: workoutExerciseCategory.name,
+			createdAt: workoutExercise.createdAt
+		})
 		.from(workoutExercise)
+		.leftJoin(workoutExerciseCategory, eq(workoutExercise.categoryId, workoutExerciseCategory.id))
 		.where(eq(workoutExercise.userId, userId))
 		.orderBy(workoutExercise.createdAt);
 
+	const items = rows.map((row) => ({
+		id: row.id,
+		userId: row.userId,
+		name: row.name,
+		categoryId: row.categoryId,
+		category: row.categoryJoinId ? { id: row.categoryJoinId, name: row.categoryName! } : null,
+		createdAt: row.createdAt
+	})) as ExerciseWithCategory[];
+
 	return {
-		items: rows as Exercise[],
-		total: rows.length,
+		items,
+		total: items.length,
 		page: 1,
-		limit: rows.length
+		limit: items.length
 	};
 }
 
@@ -60,16 +171,41 @@ export async function createExercise(
 	db: Db,
 	userId: string,
 	data: ExerciseCreate
-): Promise<Exercise> {
+): Promise<ExerciseWithCategory> {
 	const id = crypto.randomUUID();
 	const now = new Date();
 
-	const [row] = await db
-		.insert(workoutExercise)
-		.values({ id, userId, name: data.name, createdAt: now })
-		.returning();
+	await db.insert(workoutExercise).values({
+		id,
+		userId,
+		name: data.name,
+		categoryId: data.categoryId ?? null,
+		createdAt: now
+	});
 
-	return row as Exercise;
+	const row = await db
+		.select({
+			id: workoutExercise.id,
+			userId: workoutExercise.userId,
+			name: workoutExercise.name,
+			categoryId: workoutExercise.categoryId,
+			categoryJoinId: workoutExerciseCategory.id,
+			categoryName: workoutExerciseCategory.name,
+			createdAt: workoutExercise.createdAt
+		})
+		.from(workoutExercise)
+		.leftJoin(workoutExerciseCategory, eq(workoutExercise.categoryId, workoutExerciseCategory.id))
+		.where(eq(workoutExercise.id, id))
+		.get();
+
+	return {
+		id: row!.id,
+		userId: row!.userId,
+		name: row!.name,
+		categoryId: row!.categoryId,
+		category: row!.categoryJoinId ? { id: row!.categoryJoinId, name: row!.categoryName! } : null,
+		createdAt: row!.createdAt
+	} as ExerciseWithCategory;
 }
 
 /**
@@ -81,7 +217,7 @@ export async function updateExercise(
 	userId: string,
 	id: string,
 	data: ExerciseUpdate
-): Promise<Exercise> {
+): Promise<ExerciseWithCategory> {
 	const existing = await db
 		.select()
 		.from(workoutExercise)
@@ -89,13 +225,37 @@ export async function updateExercise(
 		.get();
 	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 
-	const [row] = await db
+	await db
 		.update(workoutExercise)
-		.set({ name: data.name })
-		.where(and(eq(workoutExercise.id, id), eq(workoutExercise.userId, userId)))
-		.returning();
+		.set({
+			name: data.name,
+			categoryId: data.categoryId !== undefined ? data.categoryId : existing.categoryId
+		})
+		.where(and(eq(workoutExercise.id, id), eq(workoutExercise.userId, userId)));
 
-	return row as Exercise;
+	const row = await db
+		.select({
+			id: workoutExercise.id,
+			userId: workoutExercise.userId,
+			name: workoutExercise.name,
+			categoryId: workoutExercise.categoryId,
+			categoryJoinId: workoutExerciseCategory.id,
+			categoryName: workoutExerciseCategory.name,
+			createdAt: workoutExercise.createdAt
+		})
+		.from(workoutExercise)
+		.leftJoin(workoutExerciseCategory, eq(workoutExercise.categoryId, workoutExerciseCategory.id))
+		.where(eq(workoutExercise.id, id))
+		.get();
+
+	return {
+		id: row!.id,
+		userId: row!.userId,
+		name: row!.name,
+		categoryId: row!.categoryId,
+		category: row!.categoryJoinId ? { id: row!.categoryJoinId, name: row!.categoryName! } : null,
+		createdAt: row!.createdAt
+	} as ExerciseWithCategory;
 }
 
 /**

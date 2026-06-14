@@ -19,4 +19,4 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
-<WorkoutExercisesPage exercises={data.exercises} />
+<WorkoutExercisesPage exercises={data.exercises} categories={data.categories} />
