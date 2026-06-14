@@ -9,7 +9,7 @@
  * @endpoints
  * - GET /workout/exercises → 200 { items: Exercise[]; total: number; page: number; limit: number } - 種目一覧取得
  * - POST /workout/exercises → 201 Exercise - 種目登録
- *   @body exerciseCreateSchema
+ *   @body exerciseCreateSchema（name, categoryId?）
  *   @errors 400(VALIDATION_ERROR)
  *
  * @service ./service.ts

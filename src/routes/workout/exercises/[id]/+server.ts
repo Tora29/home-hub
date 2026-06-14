@@ -8,7 +8,7 @@
  *
  * @endpoints
  * - PUT /workout/exercises/[id] → 200 Exercise - 種目更新
- *   @body exerciseUpdateSchema
+ *   @body exerciseUpdateSchema（name, categoryId?）
  *   @errors 400(VALIDATION_ERROR), 404(NOT_FOUND)
  * - DELETE /workout/exercises/[id] → 204 - 種目削除
  *   @errors 404(NOT_FOUND), 409(CONFLICT)
