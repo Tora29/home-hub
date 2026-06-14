@@ -94,7 +94,7 @@
 	let formError = $state('');
 	let formLoading = $state(false);
 
-	const recordsByDate = $derived(() => {
+	const recordsByDate = $derived.by(() => {
 		const map = new SvelteMap<string, WorkoutRecord[]>();
 		for (const r of records) {
 			const list = map.get(r.date) ?? [];
@@ -104,13 +104,13 @@
 		return Array.from(map.entries()).map(([date, recs]) => ({ date, records: recs }));
 	});
 
-	const RECORDS_PREVIEW_COUNT = 3;
+	const RECORDS_PREVIEW_COUNT = 1;
 	let showAllRecords = $state(false);
-	const visibleRecordsByDate = $derived(() =>
-		showAllRecords ? recordsByDate() : recordsByDate().slice(0, RECORDS_PREVIEW_COUNT)
+	const visibleRecordsByDate = $derived.by(() =>
+		showAllRecords ? recordsByDate : recordsByDate.slice(0, RECORDS_PREVIEW_COUNT)
 	);
 
-	const prevRecord = $derived(() => {
+	const prevRecord = $derived.by(() => {
 		if (!formExerciseId) return null;
 		const rec = records.find((r) => r.exerciseId === formExerciseId);
 		return rec ?? null;
@@ -407,9 +407,9 @@
 					{/each}
 				</Select>
 			</div>
-			{#if prevRecord()}
+			{#if prevRecord}
 				<p data-testid="workout-form-prev-record-hint" class="mt-2 text-xs text-secondary">
-					前回: {prevRecord()?.weight}kg × {prevRecord()?.reps}回
+					前回: {prevRecord?.weight}kg × {prevRecord?.reps}回
 				</p>
 			{/if}
 			{#if formError}
@@ -450,7 +450,7 @@
 			<p class="py-8 text-center text-sm text-secondary">記録がありません</p>
 		{:else}
 			<div data-testid="workout-record-list" class="flex flex-col gap-3">
-				{#each visibleRecordsByDate() as group (group.date)}
+				{#each visibleRecordsByDate as group (group.date)}
 					<div>
 						<div class="mb-1 flex items-center gap-2">
 							<span class="text-xs font-medium text-secondary">{group.date}</span>
@@ -492,14 +492,14 @@
 					</div>
 				{/each}
 			</div>
-			{#if recordsByDate().length > RECORDS_PREVIEW_COUNT}
+			{#if recordsByDate.length > RECORDS_PREVIEW_COUNT}
 				<button
 					onclick={() => (showAllRecords = !showAllRecords)}
 					class="mt-1 w-full py-1.5 text-xs text-secondary hover:text-label"
 				>
 					{showAllRecords
 						? '折りたたむ ▲'
-						: `もっと見る（残り ${recordsByDate().length - RECORDS_PREVIEW_COUNT} 日分）▼`}
+						: `もっと見る（残り ${recordsByDate.length - RECORDS_PREVIEW_COUNT} 日分）▼`}
 				</button>
 			{/if}
 		{/if}

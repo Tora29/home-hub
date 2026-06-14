@@ -37,33 +37,31 @@
 		...bodyWeightPoints.map((p) => p.weight)
 	]);
 
-	const yMin = $derived(() => {
+	const yMin = $derived.by(() => {
 		if (allValues.length === 0) return 0;
 		const range = Math.max(...allValues) - Math.min(...allValues);
 		const step = range <= 30 ? 5 : range <= 60 ? 10 : range <= 120 ? 20 : 25;
 		return Math.floor(Math.min(...allValues) / step) * step;
 	});
 
-	const yMax = $derived(() => {
+	const yMax = $derived.by(() => {
 		if (allValues.length === 0) return 100;
 		const range = Math.max(...allValues) - Math.min(...allValues);
 		const step = range <= 30 ? 5 : range <= 60 ? 10 : range <= 120 ? 20 : 25;
 		return Math.ceil(Math.max(...allValues) / step) * step;
 	});
 
-	const step = $derived(() => {
-		const range = yMax() - yMin();
+	const step = $derived.by(() => {
+		const range = yMax - yMin;
 		return range <= 30 ? 5 : range <= 60 ? 10 : range <= 120 ? 20 : 25;
 	});
 
 	function toY(v: number): number {
-		const mn = yMin();
-		const mx = yMax();
-		if (mx === mn) return chartHeight / 2;
-		return chartHeight - ((v - mn) / (mx - mn)) * chartHeight;
+		if (yMax === yMin) return chartHeight / 2;
+		return chartHeight - ((v - yMin) / (yMax - yMin)) * chartHeight;
 	}
 
-	const allDates = $derived(() => {
+	const allDates = $derived.by(() => {
 		const dates = new Set([
 			...exercisePoints.map((p) => p.date),
 			...bodyWeightPoints.map((p) => p.date)
@@ -72,33 +70,31 @@
 	});
 
 	function toX(date: string): number {
-		const dates = allDates();
-		if (dates.length <= 1) return chartWidth / 2;
-		const idx = dates.indexOf(date);
-		return (idx / (dates.length - 1)) * chartWidth;
+		if (allDates.length <= 1) return chartWidth / 2;
+		const idx = allDates.indexOf(date);
+		return (idx / (allDates.length - 1)) * chartWidth;
 	}
 
-	const exercisePath = $derived(() => {
+	const exercisePath = $derived.by(() => {
 		if (exercisePoints.length === 0) return '';
 		return exercisePoints
 			.map((p, i) => `${i === 0 ? 'M' : 'L'} ${toX(p.date)} ${toY(p.maxWeight)}`)
 			.join(' ');
 	});
 
-	const bodyWeightPath = $derived(() => {
+	const bodyWeightPath = $derived.by(() => {
 		if (bodyWeightPoints.length === 0) return '';
 		return bodyWeightPoints
 			.map((p, i) => `${i === 0 ? 'M' : 'L'} ${toX(p.date)} ${toY(p.weight)}`)
 			.join(' ');
 	});
 
-	const xLabels = $derived(() => {
-		const dates = allDates();
-		if (dates.length === 0) return [];
+	const xLabels = $derived.by(() => {
+		if (allDates.length === 0) return [];
 		const maxLabels = 6;
-		const step = Math.max(1, Math.floor(dates.length / maxLabels));
-		return dates
-			.filter((_, i) => i % step === 0 || i === dates.length - 1)
+		const step = Math.max(1, Math.floor(allDates.length / maxLabels));
+		return allDates
+			.filter((_, i) => i % step === 0 || i === allDates.length - 1)
 			.map((d) => ({
 				date: d,
 				x: toX(d),
@@ -106,12 +102,9 @@
 			}));
 	});
 
-	const yTicks = $derived(() => {
-		const mn = yMin();
-		const mx = yMax();
-		const s = step();
+	const yTicks = $derived.by(() => {
 		const ticks = [];
-		for (let v = mn; v <= mx; v += s) {
+		for (let v = yMin; v <= yMax; v += step) {
 			ticks.push({ v, y: toY(v) });
 		}
 		return ticks;
@@ -132,7 +125,7 @@
 	>
 		<g transform="translate({PADDING.left},{PADDING.top})">
 			<!-- Y軸グリッドとラベル -->
-			{#each yTicks() as tick (tick.v)}
+			{#each yTicks as tick (tick.v)}
 				<line
 					x1="0"
 					y1={tick.y}
@@ -147,7 +140,7 @@
 			{/each}
 
 			<!-- X軸ラベル -->
-			{#each xLabels() as label (label.date)}
+			{#each xLabels as label (label.date)}
 				<text
 					x={label.x}
 					y={chartHeight + 20}
@@ -160,9 +153,9 @@
 			{/each}
 
 			<!-- 種目重量ライン（実線・accent色） -->
-			{#if exercisePath()}
+			{#if exercisePath}
 				<path
-					d={exercisePath()}
+					d={exercisePath}
 					fill="none"
 					stroke="var(--color-accent)"
 					stroke-width="2"
@@ -175,9 +168,9 @@
 			{/if}
 
 			<!-- 体重ライン（破線・success色） -->
-			{#if bodyWeightPath()}
+			{#if bodyWeightPath}
 				<path
-					d={bodyWeightPath()}
+					d={bodyWeightPath}
 					fill="none"
 					stroke="var(--color-success)"
 					stroke-width="2"
