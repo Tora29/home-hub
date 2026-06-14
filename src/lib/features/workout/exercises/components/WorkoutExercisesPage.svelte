@@ -4,11 +4,12 @@
   @feature workout/exercises
 
   @description
-  筋トレ種目の一覧表示・追加・編集・削除を行う管理画面コンポーネント。
+  筋トレ種目の一覧表示・追加・編集・削除、および種目カテゴリの管理を行う画面コンポーネント。
   role === 'main' のユーザーのみアクセス可能。
 
   @props
-  - exercises: { items: Exercise[] } - 種目一覧
+  - exercises: { items: ExerciseWithCategory[] } - 種目一覧（カテゴリ情報含む）
+  - categories: Category[] - カテゴリ一覧
 -->
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
@@ -16,27 +17,149 @@
 	import Button from '$lib/components/Button.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Input from '$lib/components/Input.svelte';
+	import Select from '$lib/components/Select.svelte';
 
-	type Exercise = { id: string; name: string; userId: string; createdAt: Date };
+	type Category = { id: string; name: string; createdAt: Date };
+	type ExerciseWithCategory = {
+		id: string;
+		name: string;
+		userId: string;
+		categoryId: string | null;
+		category: { id: string; name: string } | null;
+		createdAt: Date;
+	};
 
 	let {
-		exercises
+		exercises,
+		categories
 	}: {
-		exercises: { items: Exercise[] };
+		exercises: { items: ExerciseWithCategory[] };
+		categories: Category[];
 	} = $props();
 
+	// --- カテゴリ追加 ---
+	let newCategoryName = $state('');
+	let newCategoryNameError = $state('');
+	let isAddingCategory = $state(false);
+
+	// --- カテゴリ編集 ---
+	let editingCategoryId = $state<string | null>(null);
+	let editingCategoryName = $state('');
+	let editingCategoryNameError = $state('');
+	let isSavingCategoryEdit = $state(false);
+
+	// --- カテゴリ削除 ---
+	let deletingCategory = $state<Category | null>(null);
+	let isDeletingCategory = $state(false);
+	let deleteCategoryError = $state('');
+
+	// --- 種目追加 ---
 	let newName = $state('');
 	let newNameError = $state('');
+	let newCategoryId = $state(''); // '' = 未設定
 	let isAdding = $state(false);
 
+	// --- 種目編集 ---
 	let editingId = $state<string | null>(null);
 	let editingName = $state('');
 	let editingNameError = $state('');
+	let editingCategoryIdForExercise = $state('');
 	let isSavingEdit = $state(false);
 
-	let deletingExercise = $state<Exercise | null>(null);
+	// --- 種目削除 ---
+	let deletingExercise = $state<ExerciseWithCategory | null>(null);
 	let isDeleting = $state(false);
 	let deleteError = $state('');
+
+	async function handleAddCategory() {
+		newCategoryNameError = '';
+		if (!newCategoryName.trim()) {
+			newCategoryNameError = 'カテゴリ名は必須です';
+			return;
+		}
+		if (newCategoryName.length > 30) {
+			newCategoryNameError = '30文字以内で入力してください';
+			return;
+		}
+		isAddingCategory = true;
+		try {
+			const res = await fetch('/workout/exercises/categories', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name: newCategoryName.trim() })
+			});
+			if (!res.ok) {
+				const err = (await res.json()) as { message?: string };
+				newCategoryNameError = err.message ?? 'エラーが発生しました';
+				return;
+			}
+			newCategoryName = '';
+			await invalidateAll();
+		} finally {
+			isAddingCategory = false;
+		}
+	}
+
+	function startEditCategory(cat: Category) {
+		editingCategoryId = cat.id;
+		editingCategoryName = cat.name;
+		editingCategoryNameError = '';
+	}
+
+	function cancelEditCategory() {
+		editingCategoryId = null;
+		editingCategoryName = '';
+		editingCategoryNameError = '';
+	}
+
+	async function handleEditCategorySave(id: string) {
+		editingCategoryNameError = '';
+		if (!editingCategoryName.trim()) {
+			editingCategoryNameError = 'カテゴリ名は必須です';
+			return;
+		}
+		if (editingCategoryName.length > 30) {
+			editingCategoryNameError = '30文字以内で入力してください';
+			return;
+		}
+		isSavingCategoryEdit = true;
+		try {
+			const res = await fetch(`/workout/exercises/categories/${id}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name: editingCategoryName.trim() })
+			});
+			if (!res.ok) {
+				const err = (await res.json()) as { message?: string };
+				editingCategoryNameError = err.message ?? 'エラーが発生しました';
+				return;
+			}
+			editingCategoryId = null;
+			await invalidateAll();
+		} finally {
+			isSavingCategoryEdit = false;
+		}
+	}
+
+	async function handleDeleteCategoryConfirm() {
+		if (!deletingCategory) return;
+		isDeletingCategory = true;
+		deleteCategoryError = '';
+		try {
+			const res = await fetch(`/workout/exercises/categories/${deletingCategory.id}`, {
+				method: 'DELETE'
+			});
+			if (!res.ok) {
+				const err = (await res.json()) as { message?: string };
+				deleteCategoryError = err.message ?? 'エラーが発生しました';
+				return;
+			}
+			deletingCategory = null;
+			await invalidateAll();
+		} finally {
+			isDeletingCategory = false;
+		}
+	}
 
 	async function handleAdd() {
 		newNameError = '';
@@ -54,7 +177,7 @@
 			const res = await fetch('/workout/exercises', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: newName.trim() })
+				body: JSON.stringify({ name: newName.trim(), categoryId: newCategoryId || null })
 			});
 
 			if (!res.ok) {
@@ -64,22 +187,25 @@
 			}
 
 			newName = '';
+			newCategoryId = '';
 			await invalidateAll();
 		} finally {
 			isAdding = false;
 		}
 	}
 
-	function startEdit(exercise: Exercise) {
+	function startEdit(exercise: ExerciseWithCategory) {
 		editingId = exercise.id;
 		editingName = exercise.name;
 		editingNameError = '';
+		editingCategoryIdForExercise = exercise.categoryId ?? '';
 	}
 
 	function cancelEdit() {
 		editingId = null;
 		editingName = '';
 		editingNameError = '';
+		editingCategoryIdForExercise = '';
 	}
 
 	async function handleEditSave(id: string) {
@@ -98,7 +224,10 @@
 			const res = await fetch(`/workout/exercises/${id}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: editingName.trim() })
+				body: JSON.stringify({
+					name: editingName.trim(),
+					categoryId: editingCategoryIdForExercise || null
+				})
 			});
 
 			if (!res.ok) {
@@ -150,33 +279,155 @@
 		<h1 class="flex-1 text-2xl font-medium text-label">種目管理</h1>
 	</div>
 
+	<!-- カテゴリ管理カード -->
 	<div class="mb-6 rounded-3xl bg-bg-card p-6 shadow-md">
-		<h2 class="mb-3 text-sm font-medium text-secondary">新しい種目を追加</h2>
+		<h2 class="mb-4 text-sm font-medium text-secondary">カテゴリ管理</h2>
+
+		{#if categories.length > 0}
+			<ul data-testid="workout-category-list" class="mb-4 flex flex-col gap-2">
+				{#each categories as cat (cat.id)}
+					<li
+						data-testid="workout-category-item"
+						class="rounded-2xl border border-separator px-3 py-2"
+					>
+						{#if editingCategoryId === cat.id}
+							<div class="flex items-start gap-2">
+								<div class="min-w-0 flex-1">
+									<Input
+										data-testid="workout-category-edit-input"
+										type="text"
+										bind:value={editingCategoryName}
+										maxlength={30}
+										class="w-full"
+										onkeydown={(e) => {
+											if (e.key === 'Enter') void handleEditCategorySave(cat.id);
+											if (e.key === 'Escape') cancelEditCategory();
+										}}
+									/>
+									{#if editingCategoryNameError}
+										<p class="mt-1 text-xs text-destructive">{editingCategoryNameError}</p>
+									{/if}
+								</div>
+								<Button
+									variant="primary"
+									size="sm"
+									onclick={() => void handleEditCategorySave(cat.id)}
+									disabled={isSavingCategoryEdit}
+									aria-label="保存"
+									type="button"
+								>
+									<Check size={14} />
+								</Button>
+								<Button
+									variant="secondary"
+									size="sm"
+									onclick={cancelEditCategory}
+									aria-label="キャンセル"
+									type="button"
+								>
+									<X size={14} />
+								</Button>
+							</div>
+						{:else}
+							<div class="flex items-center gap-2">
+								<span class="flex-1 text-sm text-label">{cat.name}</span>
+								<Button
+									data-testid="workout-category-edit-button"
+									variant="secondary"
+									size="sm"
+									onclick={() => startEditCategory(cat)}
+									aria-label="編集"
+									type="button"
+								>
+									<Pencil size={14} />
+								</Button>
+								<Button
+									data-testid="workout-category-delete-button"
+									variant="ghost-destructive"
+									size="sm"
+									onclick={() => (deletingCategory = cat)}
+									aria-label="削除"
+									type="button"
+								>
+									<Trash2 size={14} />
+								</Button>
+							</div>
+						{/if}
+					</li>
+				{/each}
+			</ul>
+		{/if}
+
 		<div class="flex items-start gap-2">
 			<div class="min-w-0 flex-1">
 				<Input
-					data-testid="workout-exercise-name-input"
+					data-testid="workout-category-name-input"
 					type="text"
-					bind:value={newName}
-					placeholder="種目名（例: ベンチプレス）"
-					maxlength={50}
+					bind:value={newCategoryName}
+					placeholder="カテゴリ名（例: 胸）"
+					maxlength={30}
 					class="w-full"
-					onkeydown={(e) => e.key === 'Enter' && !isAdding && void handleAdd()}
+					onkeydown={(e) => e.key === 'Enter' && !isAddingCategory && void handleAddCategory()}
 				/>
-				{#if newNameError}
-					<p class="mt-1 text-xs text-destructive">{newNameError}</p>
+				{#if newCategoryNameError}
+					<p class="mt-1 text-xs text-destructive">{newCategoryNameError}</p>
 				{/if}
 			</div>
 			<Button
-				data-testid="workout-exercise-add-button"
+				data-testid="workout-category-add-button"
 				variant="primary"
 				size="md"
-				onclick={() => void handleAdd()}
-				disabled={isAdding}
+				onclick={() => void handleAddCategory()}
+				disabled={isAddingCategory}
 				type="button"
 			>
 				追加
 			</Button>
+		</div>
+	</div>
+
+	<!-- 種目追加カード -->
+	<div class="mb-6 rounded-3xl bg-bg-card p-6 shadow-md">
+		<h2 class="mb-3 text-sm font-medium text-secondary">新しい種目を追加</h2>
+		<div class="flex flex-col gap-2">
+			<div class="flex items-start gap-2">
+				<div class="min-w-0 flex-1">
+					<Input
+						data-testid="workout-exercise-name-input"
+						type="text"
+						bind:value={newName}
+						placeholder="種目名（例: ベンチプレス）"
+						maxlength={50}
+						class="w-full"
+						onkeydown={(e) => e.key === 'Enter' && !isAdding && void handleAdd()}
+					/>
+					{#if newNameError}
+						<p class="mt-1 text-xs text-destructive">{newNameError}</p>
+					{/if}
+				</div>
+				<Button
+					data-testid="workout-exercise-add-button"
+					variant="primary"
+					size="md"
+					onclick={() => void handleAdd()}
+					disabled={isAdding}
+					type="button"
+				>
+					追加
+				</Button>
+			</div>
+			{#if categories.length > 0}
+				<Select
+					data-testid="workout-exercise-category-select"
+					bind:value={newCategoryId}
+					class="w-full"
+				>
+					<option value="">カテゴリなし</option>
+					{#each categories as cat (cat.id)}
+						<option value={cat.id}>{cat.name}</option>
+					{/each}
+				</Select>
+			{/if}
 		</div>
 	</div>
 
@@ -189,46 +440,65 @@
 			{#each exercises.items as exercise (exercise.id)}
 				<li data-testid="workout-exercise-item" class="rounded-3xl bg-bg-card px-4 py-3 shadow-md">
 					{#if editingId === exercise.id}
-						<div class="flex items-start gap-2">
-							<div class="min-w-0 flex-1">
-								<Input
-									data-testid="workout-exercise-edit-input"
-									type="text"
-									bind:value={editingName}
-									maxlength={50}
-									class="w-full"
-									onkeydown={(e) => {
-										if (e.key === 'Enter') void handleEditSave(exercise.id);
-										if (e.key === 'Escape') cancelEdit();
-									}}
-								/>
-								{#if editingNameError}
-									<p class="mt-1 text-xs text-destructive">{editingNameError}</p>
-								{/if}
+						<div class="flex flex-col gap-2">
+							<div class="flex items-start gap-2">
+								<div class="min-w-0 flex-1">
+									<Input
+										data-testid="workout-exercise-edit-input"
+										type="text"
+										bind:value={editingName}
+										maxlength={50}
+										class="w-full"
+										onkeydown={(e) => {
+											if (e.key === 'Enter') void handleEditSave(exercise.id);
+											if (e.key === 'Escape') cancelEdit();
+										}}
+									/>
+									{#if editingNameError}
+										<p class="mt-1 text-xs text-destructive">{editingNameError}</p>
+									{/if}
+								</div>
+								<Button
+									variant="primary"
+									size="sm"
+									onclick={() => void handleEditSave(exercise.id)}
+									disabled={isSavingEdit}
+									aria-label="保存"
+									type="button"
+								>
+									<Check size={14} />
+								</Button>
+								<Button
+									variant="secondary"
+									size="sm"
+									onclick={cancelEdit}
+									aria-label="キャンセル"
+									type="button"
+								>
+									<X size={14} />
+								</Button>
 							</div>
-							<Button
-								variant="primary"
-								size="sm"
-								onclick={() => void handleEditSave(exercise.id)}
-								disabled={isSavingEdit}
-								aria-label="保存"
-								type="button"
-							>
-								<Check size={14} />
-							</Button>
-							<Button
-								variant="secondary"
-								size="sm"
-								onclick={cancelEdit}
-								aria-label="キャンセル"
-								type="button"
-							>
-								<X size={14} />
-							</Button>
+							{#if categories.length > 0}
+								<Select
+									data-testid="workout-exercise-edit-category-select"
+									bind:value={editingCategoryIdForExercise}
+									class="w-full"
+								>
+									<option value="">カテゴリなし</option>
+									{#each categories as cat (cat.id)}
+										<option value={cat.id}>{cat.name}</option>
+									{/each}
+								</Select>
+							{/if}
 						</div>
 					{:else}
 						<div class="flex items-center gap-2">
-							<span class="flex-1 text-sm font-medium text-label">{exercise.name}</span>
+							<div class="flex min-w-0 flex-1 flex-col">
+								<span class="text-sm font-medium text-label">{exercise.name}</span>
+								{#if exercise.category}
+									<span class="text-xs text-secondary">{exercise.category.name}</span>
+								{/if}
+							</div>
 							<Button
 								data-testid="workout-exercise-edit-button"
 								variant="secondary"
@@ -256,6 +526,25 @@
 		</ul>
 	{/if}
 </div>
+
+<ConfirmDialog
+	open={deletingCategory !== null}
+	title="カテゴリを削除しますか？"
+	description={deletingCategory
+		? `「${deletingCategory.name}」を削除します。紐付く種目のカテゴリは未設定になります。`
+		: ''}
+	confirmLabel="削除する"
+	confirmVariant="destructive"
+	loading={isDeletingCategory}
+	error={deleteCategoryError}
+	data-testid="workout-category-delete-dialog"
+	confirmTestid="workout-category-delete-confirm-button"
+	onConfirm={() => void handleDeleteCategoryConfirm()}
+	onCancel={() => {
+		deletingCategory = null;
+		deleteCategoryError = '';
+	}}
+/>
 
 <ConfirmDialog
 	open={deletingExercise !== null}

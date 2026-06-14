@@ -6,6 +6,7 @@
  * @scenarios
  * - 初期表示: 筋トレ記録ページが表示される
  * - 種目管理: 種目を追加・編集・削除できる
+ * - 種目カテゴリ管理: カテゴリを追加・種目に設定・削除できる
  * - 記録登録: 記録フォームから登録でき、前回ヒントが表示される
  * - 記録削除: 確認ダイアログから記録を削除できる
  * - 体重登録: 体重フォームから登録できる
@@ -348,5 +349,98 @@ test.describe('筋トレ記録 - フィルタ', () => {
 		await page.getByTestId('workout-filter-exercise-select').selectOption(exerciseId);
 		await expect(page).toHaveURL(new RegExp(`exerciseId=${exerciseId}`));
 		await expect(page.getByTestId('workout-record-item').first()).toBeVisible();
+	});
+});
+
+test.describe('筋トレ記録 - 種目カテゴリ管理', () => {
+	async function deleteCategory(page: Page, id: string): Promise<void> {
+		await page.request.delete(`/workout/exercises/categories/${id}`);
+	}
+
+	test('カテゴリを追加できる', async ({ page }) => {
+		await page.goto('/workout/exercises');
+
+		await page.getByTestId('workout-category-name-input').fill('胸');
+		await page.getByTestId('workout-category-add-button').click();
+
+		await expect(page.getByTestId('workout-category-list')).toBeVisible();
+		await expect(page.getByTestId('workout-category-item').filter({ hasText: '胸' })).toBeVisible();
+
+		// クリーンアップ
+		const res = await page.request.get('/workout/exercises/categories');
+		const categories = await res.json();
+		for (const cat of categories as { id: string; name: string }[]) {
+			if (cat.name === '胸') await deleteCategory(page, cat.id);
+		}
+	});
+
+	test('種目追加時にカテゴリを選択でき、種目一覧にカテゴリ名が表示される', async ({ page }) => {
+		// カテゴリを API で作成
+		const catRes = await page.request.post('/workout/exercises/categories', {
+			data: { name: '背中' },
+			headers: { 'Content-Type': 'application/json' }
+		});
+		const category = await catRes.json();
+
+		await page.goto('/workout/exercises');
+
+		// 種目名とカテゴリ選択
+		await page.getByTestId('workout-exercise-name-input').fill('懸垂');
+		await page.getByTestId('workout-exercise-category-select').selectOption(category.id);
+		await page.getByTestId('workout-exercise-add-button').click();
+
+		// 種目一覧にカテゴリ名が表示される
+		await expect(
+			page.getByTestId('workout-exercise-item').filter({ hasText: '懸垂' })
+		).toBeVisible();
+		await expect(
+			page.getByTestId('workout-exercise-item').filter({ hasText: '背中' })
+		).toBeVisible();
+
+		// クリーンアップ
+		const exercisesRes = await page.request.get('/workout/exercises');
+		const exercises = await exercisesRes.json();
+		for (const ex of exercises.items as { id: string; name: string }[]) {
+			if (ex.name === '懸垂') await deleteExercise(page, ex.id);
+		}
+		await deleteCategory(page, category.id);
+	});
+
+	test('カテゴリを削除すると種目のカテゴリ名が消える', async ({ page }) => {
+		// カテゴリと種目を API で作成
+		const catRes = await page.request.post('/workout/exercises/categories', {
+			data: { name: '肩' },
+			headers: { 'Content-Type': 'application/json' }
+		});
+		const category = await catRes.json();
+		const exRes = await page.request.post('/workout/exercises', {
+			data: { name: 'ショルダープレス', categoryId: category.id },
+			headers: { 'Content-Type': 'application/json' }
+		});
+		const exercise = await exRes.json();
+
+		await page.goto('/workout/exercises');
+
+		// カテゴリ削除
+		const catItem = page.getByTestId('workout-category-item').filter({ hasText: '肩' });
+		await catItem.getByTestId('workout-category-delete-button').click();
+		await expect(page.getByTestId('workout-category-delete-dialog')).toBeVisible();
+		await page.getByTestId('workout-category-delete-confirm-button').click();
+
+		// カテゴリが消える
+		await expect(
+			page.getByTestId('workout-category-item').filter({ hasText: '肩' })
+		).not.toBeVisible();
+
+		// 種目のカテゴリ名も消える
+		const exItem = page
+			.getByTestId('workout-exercise-item')
+			.filter({ hasText: 'ショルダープレス' })
+			.first();
+		await expect(exItem).toBeVisible();
+		await expect(exItem.getByText('肩')).not.toBeVisible();
+
+		// クリーンアップ
+		await deleteExercise(page, exercise.id).catch(() => {});
 	});
 });
