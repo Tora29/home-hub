@@ -11,6 +11,7 @@
  * - recipe                              — アプリ固有テーブル
  * - expenseCategory                     — 支出カテゴリテーブル
  * - expense                             — 支出テーブル（payerUserId + status 含む）
+ * - workoutExerciseCategory             — 筋トレ種目カテゴリテーブル
  * - workoutExercise                     — 筋トレ種目テーブル（role=main ユーザー限定）
  * - workoutRecord                       — 筋トレ記録テーブル（1レコード = 1セット）
  * - bodyWeightRecord                    — 体重記録テーブル（同日upsert）
@@ -93,12 +94,24 @@ export const expense = sqliteTable('Expense', {
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
 });
 
+export const workoutExerciseCategory = sqliteTable('WorkoutExerciseCategory', {
+	id: text('id').primaryKey(),
+	userId: text('userId')
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	name: text('name').notNull(),
+	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
+});
+
 export const workoutExercise = sqliteTable('WorkoutExercise', {
 	id: text('id').primaryKey(),
 	userId: text('userId')
 		.notNull()
 		.references(() => user.id, { onDelete: 'cascade' }),
 	name: text('name').notNull(),
+	categoryId: text('categoryId').references(() => workoutExerciseCategory.id, {
+		onDelete: 'set null'
+	}),
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
 });
 
