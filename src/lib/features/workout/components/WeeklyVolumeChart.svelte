@@ -26,20 +26,18 @@
 
 	const maxVolume = $derived(points.length > 0 ? Math.max(...points.map((p) => p.volume)) : 0);
 
-	const yMax = $derived(() => {
+	const yMax = $derived.by(() => {
 		if (maxVolume === 0) return 1000;
 		const step = maxVolume <= 1000 ? 200 : maxVolume <= 5000 ? 1000 : 2000;
 		return Math.ceil(maxVolume / step) * step;
 	});
 
-	const yStep = $derived(() => {
-		const mx = yMax();
-		return mx <= 1000 ? 200 : mx <= 5000 ? 1000 : 2000;
+	const yStep = $derived.by(() => {
+		return yMax <= 1000 ? 200 : yMax <= 5000 ? 1000 : 2000;
 	});
 
 	function toY(v: number): number {
-		const mx = yMax();
-		return chartHeight - (v / mx) * chartHeight;
+		return chartHeight - (v / yMax) * chartHeight;
 	}
 
 	const barWidth = $derived(points.length > 0 ? Math.max(4, chartWidth / points.length - 4) : 0);
@@ -49,7 +47,7 @@
 		return (i / points.length) * chartWidth;
 	}
 
-	const xLabels = $derived(() => {
+	const xLabels = $derived.by(() => {
 		if (points.length === 0) return [];
 		const maxLabels = 6;
 		const step = Math.max(1, Math.floor(points.length / maxLabels));
@@ -61,11 +59,9 @@
 			});
 	});
 
-	const yTicks = $derived(() => {
-		const mx = yMax();
-		const s = yStep();
+	const yTicks = $derived.by(() => {
 		const ticks = [];
-		for (let v = 0; v <= mx; v += s) {
+		for (let v = 0; v <= yMax; v += yStep) {
 			ticks.push({ v, y: toY(v) });
 		}
 		return ticks;
@@ -84,7 +80,7 @@
 	>
 		<g transform="translate({PADDING.left},{PADDING.top})">
 			<!-- Y軸グリッドとラベル -->
-			{#each yTicks() as tick (tick.v)}
+			{#each yTicks as tick (tick.v)}
 				<line
 					x1="0"
 					y1={tick.y}
@@ -99,7 +95,7 @@
 			{/each}
 
 			<!-- X軸ラベル -->
-			{#each xLabels() as label (label.label)}
+			{#each xLabels as label (label.label)}
 				<text
 					x={label.x}
 					y={chartHeight + 20}
