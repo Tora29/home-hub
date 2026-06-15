@@ -110,6 +110,9 @@
 		showAllRecords ? recordsByDate : recordsByDate.slice(0, RECORDS_PREVIEW_COUNT)
 	);
 
+	const GROUP_PREVIEW_COUNT = 3;
+	let expandedGroups = new SvelteMap<string, boolean>();
+
 	const uniqueCategories = $derived([
 		...new Map(
 			exercises.items.filter((ex) => ex.category).map((ex) => [ex.category!.id, ex.category!])
@@ -474,13 +477,14 @@
 		{:else}
 			<div data-testid="workout-record-list" class="flex flex-col gap-3">
 				{#each visibleRecordsByDate as group (group.date)}
+					{@const isExpanded = expandedGroups.get(group.date)}
 					<div>
 						<div class="mb-1 flex items-center gap-2">
 							<span class="text-xs font-medium text-secondary">{group.date}</span>
 							<div class="h-px flex-1 bg-separator"></div>
 						</div>
 						<ul class="flex flex-col gap-0.5">
-							{#each group.records as record (record.id)}
+							{#each isExpanded ? group.records : group.records.slice(0, GROUP_PREVIEW_COUNT) as record (record.id)}
 								<li
 									data-testid="workout-record-item"
 									class="flex items-center gap-2 rounded-xl px-3 py-1.5 hover:bg-bg"
@@ -512,6 +516,17 @@
 								</li>
 							{/each}
 						</ul>
+						{#if group.records.length > GROUP_PREVIEW_COUNT}
+							<button
+								type="button"
+								onclick={() => expandedGroups.set(group.date, !isExpanded)}
+								class="mt-0.5 w-full py-1 text-xs text-secondary hover:text-label"
+							>
+								{isExpanded
+									? '折りたたむ ▲'
+									: `残り ${group.records.length - GROUP_PREVIEW_COUNT} 件 ▼`}
+							</button>
+						{/if}
 					</div>
 				{/each}
 			</div>
