@@ -104,7 +104,8 @@ describe('createRecord', () => {
 			exerciseId,
 			date: '2024-01-15',
 			weight: 80,
-			reps: 5
+			reps: 5,
+			isBodyWeight: false
 		});
 		expect(created.weight).toBe(80);
 		expect(created.reps).toBe(5);
@@ -120,9 +121,44 @@ describe('createRecord', () => {
 				exerciseId: 'nonexistent',
 				date: '2024-01-15',
 				weight: 80,
-				reps: 5
+				reps: 5,
+				isBodyWeight: false
 			})
 		).rejects.toMatchObject({ code: 'NOT_FOUND' });
+	});
+
+	test('isBodyWeight=true のとき同日の体重記録が存在すれば、その値で記録できる', async () => {
+		const db = createDb(env.DB);
+		const userId = await insertUser(db);
+		const exerciseId = await insertExercise(db, userId);
+
+		await upsertBodyWeight(db, userId, { date: '2024-01-15', weight: 72.5 });
+
+		const record = await createRecord(db, userId, {
+			exerciseId,
+			date: '2024-01-15',
+			weight: 0,
+			reps: 5,
+			isBodyWeight: true
+		});
+		expect(record.isBodyWeight).toBe(true);
+		expect(record.weight).toBe(72); // Math.floor(72.5) = 72
+	});
+
+	test('isBodyWeight=true のとき同日の体重記録が存在しない場合、VALIDATION_ERROR になる', async () => {
+		const db = createDb(env.DB);
+		const userId = await insertUser(db);
+		const exerciseId = await insertExercise(db, userId);
+
+		await expect(
+			createRecord(db, userId, {
+				exerciseId,
+				date: '2099-01-01',
+				weight: 0,
+				reps: 5,
+				isBodyWeight: true
+			})
+		).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
 	});
 });
 

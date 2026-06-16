@@ -36,6 +36,7 @@ export type WorkoutRecord = {
 	date: string;
 	weight: number;
 	reps: number;
+	isBodyWeight: boolean;
 	createdAt: Date;
 };
 
@@ -87,6 +88,7 @@ export async function getRecords(
 			date: workoutRecord.date,
 			weight: workoutRecord.weight,
 			reps: workoutRecord.reps,
+			isBodyWeight: workoutRecord.isBodyWeight,
 			createdAt: workoutRecord.createdAt
 		})
 		.from(workoutRecord)
@@ -98,8 +100,9 @@ export async function getRecords(
 }
 
 /**
- * 記録を新規作成する。
+ * 記録を新規作成する。isBodyWeight=true のとき同日の体重記録を weight に上書き保存する。
  * @throws {NOT_FOUND} - exerciseId に該当する種目が存在しない場合
+ * @throws {VALIDATION_ERROR} - isBodyWeight=true かつ同日の体重記録がない場合
  */
 export async function createRecord(
 	db: Db,
@@ -113,6 +116,24 @@ export async function createRecord(
 		.get();
 	if (!exercise) throw new AppError('NOT_FOUND', 404, '該当種目が見つかりません');
 
+	// 自重モード: 同日の体重記録を解決して weight に上書き
+	let resolvedWeight = data.weight;
+	if (data.isBodyWeight) {
+		const bwRecord = await db
+			.select()
+			.from(bodyWeightRecord)
+			.where(and(eq(bodyWeightRecord.userId, userId), eq(bodyWeightRecord.date, data.date)))
+			.get();
+		if (!bwRecord) {
+			throw new AppError(
+				'VALIDATION_ERROR',
+				400,
+				'同日の体重が記録されていません。先に体重を記録してください'
+			);
+		}
+		resolvedWeight = Math.floor(bwRecord.weight);
+	}
+
 	const id = crypto.randomUUID();
 	const now = new Date();
 
@@ -121,8 +142,9 @@ export async function createRecord(
 		userId,
 		exerciseId: data.exerciseId,
 		date: data.date,
-		weight: data.weight,
+		weight: resolvedWeight,
 		reps: data.reps,
+		isBodyWeight: data.isBodyWeight,
 		createdAt: now
 	});
 
@@ -135,6 +157,7 @@ export async function createRecord(
 			date: workoutRecord.date,
 			weight: workoutRecord.weight,
 			reps: workoutRecord.reps,
+			isBodyWeight: workoutRecord.isBodyWeight,
 			createdAt: workoutRecord.createdAt
 		})
 		.from(workoutRecord)
