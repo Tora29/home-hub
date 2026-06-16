@@ -122,8 +122,9 @@ export const workoutRecord = sqliteTable('WorkoutRecord', {
 		.notNull()
 		.references(() => workoutExercise.id, { onDelete: 'restrict' }),
 	date: text('date').notNull(), // YYYY-MM-DD
-	weight: real('weight').notNull(), // kg（例: 70.5）
+	weight: real('weight').notNull(), // kg（自重時は同日の bodyWeightRecord.weight を Math.floor して使用）
 	reps: integer('reps').notNull(), // 1〜10（このレコード1セット分の回数）
+	isBodyWeight: integer('isBodyWeight', { mode: 'boolean' }).notNull().default(false), // 自重種目フラグ
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
 });
 

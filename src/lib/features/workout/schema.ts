@@ -20,19 +20,30 @@
  */
 import { z } from 'zod';
 
-export const recordCreateSchema = z.object({
-	exerciseId: z.string().min(1, '種目を選択してください'),
-	date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日付の形式が正しくありません'),
-	weight: z
-		.number({ error: () => '重量は必須です' })
-		.positive('重量は0より大きい値を入力してください')
-		.max(999, '重量は999以下で入力してください'),
-	reps: z
-		.number({ error: () => '回数は必須です' })
-		.int()
-		.min(1, '回数は1以上')
-		.max(10, '回数は10以下')
-});
+export const recordCreateSchema = z
+	.object({
+		exerciseId: z.string().min(1, '種目を選択してください'),
+		date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日付の形式が正しくありません'),
+		weight: z
+			.number({ error: () => '重量は必須です' })
+			.min(0, '重量は0以上で入力してください')
+			.max(999, '重量は999以下で入力してください'),
+		reps: z
+			.number({ error: () => '回数は必須です' })
+			.int()
+			.min(1, '回数は1以上')
+			.max(10, '回数は10以下'),
+		isBodyWeight: z.boolean().default(false)
+	})
+	.superRefine((data, ctx) => {
+		if (!data.isBodyWeight && data.weight <= 0) {
+			ctx.addIssue({
+				path: ['weight'],
+				code: 'custom',
+				message: '重量は0より大きい値を入力してください'
+			});
+		}
+	});
 
 export const bodyWeightCreateSchema = z.object({
 	date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日付の形式が正しくありません'),
