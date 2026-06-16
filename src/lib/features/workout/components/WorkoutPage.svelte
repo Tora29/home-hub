@@ -34,6 +34,7 @@
 		date: string;
 		weight: number;
 		reps: number;
+		isBodyWeight: boolean;
 	};
 	type ChartPoint = { date: string; maxWeight: number };
 	type BodyWeightPoint = { date: string; weight: number };
@@ -91,6 +92,7 @@
 	let formExerciseId = $state('');
 	let formWeight = $state('');
 	let formReps = $state('5');
+	let formIsBodyWeight = $state(false);
 	let formError = $state('');
 	let formLoading = $state(false);
 
@@ -127,22 +129,30 @@
 
 	async function handleAddRecord() {
 		formError = '';
-		const w = parseFloat(formWeight);
 		const r = parseInt(formReps);
 		if (!formExerciseId) {
 			formError = '種目を選択してください';
 			return;
 		}
-		if (!formWeight || isNaN(w) || w <= 0) {
-			formError = '重量を入力してください';
-			return;
+		if (!formIsBodyWeight) {
+			const w = parseFloat(formWeight);
+			if (!formWeight || isNaN(w) || w <= 0) {
+				formError = '重量を入力してください';
+				return;
+			}
 		}
 		formLoading = true;
 		try {
 			const res = await fetch('/workout', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ exerciseId: formExerciseId, date: formDate, weight: w, reps: r })
+				body: JSON.stringify({
+					exerciseId: formExerciseId,
+					date: formDate,
+					weight: formIsBodyWeight ? 0 : parseFloat(formWeight),
+					reps: r,
+					isBodyWeight: formIsBodyWeight
+				})
 			});
 			if (!res.ok) {
 				const err = (await res.json()) as { message?: string };
@@ -417,21 +427,41 @@
 						{/each}
 					{/if}
 				</Select>
-				<Input
-					data-testid="workout-form-weight-input"
-					type="number"
-					step="0.5"
-					min="0"
-					max="999"
-					bind:value={formWeight}
-					placeholder="重量 (kg)"
-					class="w-full"
-				/>
+				{#if formIsBodyWeight}
+					<div
+						class="flex items-center rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-secondary"
+					>
+						自重（登録体重を使用）
+					</div>
+				{:else}
+					<Input
+						data-testid="workout-form-weight-input"
+						type="number"
+						step="0.5"
+						min="0"
+						max="999"
+						bind:value={formWeight}
+						placeholder="重量 (kg)"
+						class="w-full"
+					/>
+				{/if}
 				<Select data-testid="workout-form-reps-select" bind:value={formReps} class="w-full">
 					{#each Array.from({ length: 10 }, (_, i) => i + 1) as n (n)}
 						<option value={String(n)}>{n}回</option>
 					{/each}
 				</Select>
+			</div>
+			<div class="col-span-2 flex items-center sm:col-span-4">
+				<Checkbox
+					data-testid="workout-form-bodyweight-checkbox"
+					checked={formIsBodyWeight}
+					onchange={() => {
+						formIsBodyWeight = !formIsBodyWeight;
+						if (formIsBodyWeight) formWeight = '';
+					}}
+				>
+					自重
+				</Checkbox>
 			</div>
 			{#if prevRecord}
 				<p data-testid="workout-form-prev-record-hint" class="mt-2 text-xs text-secondary">
@@ -492,6 +522,12 @@
 									{#if !filterExerciseId}
 										<span class="w-28 min-w-0 shrink-0 truncate text-sm font-medium text-label"
 											>{record.exerciseName}</span
+										>
+									{/if}
+									{#if record.isBodyWeight}
+										<span
+											class="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent"
+											>自重</span
 										>
 									{/if}
 									<span class="shrink-0 text-sm font-medium text-label">{record.weight}kg</span>
@@ -762,7 +798,7 @@
 	open={deletingRecord !== null}
 	title="記録を削除しますか？"
 	description={deletingRecord
-		? `${deletingRecord.date} ${deletingRecord.exerciseName} ${deletingRecord.weight}kg × ${deletingRecord.reps}回 を削除します。`
+		? `${deletingRecord.date} ${deletingRecord.exerciseName} ${deletingRecord.isBodyWeight ? '自重 ' : ''}${deletingRecord.weight}kg × ${deletingRecord.reps}回 を削除します。`
 		: ''}
 	confirmLabel="削除する"
 	confirmVariant="destructive"
