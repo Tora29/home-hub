@@ -120,9 +120,55 @@ describe('recordCreateSchema', () => {
 	});
 
 	test('sets フィールドは存在しない（1レコード = 1セット）', () => {
-		const schema = recordCreateSchema;
-		const shape = schema.shape;
-		expect('sets' in shape).toBe(false);
+		const result = recordCreateSchema.safeParse({
+			exerciseId: 'exercise-1',
+			date: '2024-01-15',
+			weight: 80,
+			reps: 5,
+			sets: 3
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect('sets' in result.data).toBe(false);
+		}
+	});
+
+	test('isBodyWeight=true のとき重量が0でも登録できる', () => {
+		const result = recordCreateSchema.safeParse({
+			exerciseId: 'exercise-1',
+			date: '2024-01-15',
+			weight: 0,
+			reps: 5,
+			isBodyWeight: true
+		});
+		expect(result.success).toBe(true);
+	});
+
+	test('isBodyWeight=false のとき重量が0の場合、VALIDATION_ERROR が返る', () => {
+		const result = recordCreateSchema.safeParse({
+			exerciseId: 'exercise-1',
+			date: '2024-01-15',
+			weight: 0,
+			reps: 5,
+			isBodyWeight: false
+		});
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toBe('重量は0より大きい値を入力してください');
+		}
+	});
+
+	test('isBodyWeight を省略した場合、デフォルト false として扱われる', () => {
+		const result = recordCreateSchema.safeParse({
+			exerciseId: 'exercise-1',
+			date: '2024-01-15',
+			weight: 80,
+			reps: 5
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.isBodyWeight).toBe(false);
+		}
 	});
 
 	test('exerciseId が空の場合、VALIDATION_ERROR が返る', () => {
