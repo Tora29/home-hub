@@ -84,6 +84,15 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		return json({ url: 'https://placehold.co/400x300?text=Recipe+Image', key: null });
 	}
 
+	const publicUrl = platform?.env.RECIPE_IMAGES_PUBLIC_URL;
+	if (!publicUrl) {
+		console.error('[upload] RECIPE_IMAGES_PUBLIC_URL is not configured');
+		return json(
+			{ code: 'INTERNAL_SERVER_ERROR', message: 'サーバーエラーが発生しました' },
+			{ status: 500 }
+		);
+	}
+
 	try {
 		const ext = EXT_MAP[file.type];
 		const key = `${crypto.randomUUID()}.${ext}`;
@@ -93,7 +102,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			httpMetadata: { contentType: file.type }
 		});
 
-		const url = `${platform!.env.RECIPE_IMAGES_PUBLIC_URL}/${key}`;
+		const url = `${publicUrl}/${key}`;
 		return json({ url, key });
 	} catch (e) {
 		console.error(e);
