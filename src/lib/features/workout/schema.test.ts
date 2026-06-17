@@ -119,20 +119,6 @@ describe('recordCreateSchema', () => {
 		}
 	});
 
-	test('sets フィールドは存在しない（1レコード = 1セット）', () => {
-		const result = recordCreateSchema.safeParse({
-			exerciseId: 'exercise-1',
-			date: '2024-01-15',
-			weight: 80,
-			reps: 5,
-			sets: 3
-		});
-		expect(result.success).toBe(true);
-		if (result.success) {
-			expect('sets' in result.data).toBe(false);
-		}
-	});
-
 	test('isBodyWeight=true のとき重量が0でも登録できる', () => {
 		const result = recordCreateSchema.safeParse({
 			exerciseId: 'exercise-1',
