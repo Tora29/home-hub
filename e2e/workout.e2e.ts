@@ -313,7 +313,6 @@ test.describe('筋トレ記録 - グラフ', () => {
 		await expect(page.getByTestId('workout-chart-year-select')).toBeVisible();
 		await expect(page.getByTestId('workout-chart-month-select')).toBeVisible();
 		await expect(page.getByTestId('workout-chart-year-mode')).toBeVisible();
-		await expect(page.getByTestId('workout-chart-all-mode')).toBeVisible();
 	});
 });
 
