@@ -204,7 +204,7 @@
 	}
 
 	let chartExerciseId = $state(untrack(() => exercises.items[0]?.id ?? ''));
-	let chartMode = $state<'month' | 'year' | 'all'>('month');
+	let chartMode = $state<'month' | 'year'>('month');
 	let chartYear = $state(new Date().getFullYear().toString());
 	let chartMonth = $state(String(new Date().getMonth() + 1).padStart(2, '0'));
 	let chartData = $state<{
@@ -218,8 +218,7 @@
 
 	function chartQueryParams() {
 		if (chartMode === 'month') return `period=1m&month=${chartYear}-${chartMonth}`;
-		if (chartMode === 'year') return `period=year&month=${chartYear}-01`;
-		return 'period=all';
+		return `period=year&month=${chartYear}-01`;
 	}
 
 	async function fetchChartData() {
@@ -250,7 +249,7 @@
 		}
 	});
 
-	let volumeMode = $state<'month' | 'year' | 'all'>('month');
+	let volumeMode = $state<'month' | 'year'>('month');
 	let volumeYear = $state(new Date().getFullYear().toString());
 	let volumeMonth = $state(String(new Date().getMonth() + 1).padStart(2, '0'));
 	let volumeData = $state<WeeklyVolumePoint[]>([]);
@@ -260,8 +259,7 @@
 
 	function volumeQueryParams() {
 		if (volumeMode === 'month') return `period=1m&month=${volumeYear}-${volumeMonth}`;
-		if (volumeMode === 'year') return `period=year&month=${volumeYear}-01`;
-		return 'period=all';
+		return `period=year&month=${volumeYear}-01`;
 	}
 
 	async function fetchVolumeData() {
@@ -427,41 +425,41 @@
 						{/each}
 					{/if}
 				</Select>
-				{#if formIsBodyWeight}
-					<div
-						class="flex items-center rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-secondary"
+				<div class="flex items-center gap-2">
+					{#if formIsBodyWeight}
+						<div
+							class="flex min-w-0 flex-1 items-center rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-secondary"
+						>
+							自重
+						</div>
+					{:else}
+						<Input
+							data-testid="workout-form-weight-input"
+							type="number"
+							step="0.5"
+							min="0"
+							max="999"
+							bind:value={formWeight}
+							placeholder="重量 (kg)"
+							class="min-w-0 flex-1"
+						/>
+					{/if}
+					<Checkbox
+						data-testid="workout-form-bodyweight-checkbox"
+						checked={formIsBodyWeight}
+						onchange={() => {
+							formIsBodyWeight = !formIsBodyWeight;
+							if (formIsBodyWeight) formWeight = '';
+						}}
 					>
-						自重（登録体重を使用）
-					</div>
-				{:else}
-					<Input
-						data-testid="workout-form-weight-input"
-						type="number"
-						step="0.5"
-						min="0"
-						max="999"
-						bind:value={formWeight}
-						placeholder="重量 (kg)"
-						class="w-full"
-					/>
-				{/if}
+						自重
+					</Checkbox>
+				</div>
 				<Select data-testid="workout-form-reps-select" bind:value={formReps} class="w-full">
 					{#each Array.from({ length: 10 }, (_, i) => i + 1) as n (n)}
 						<option value={String(n)}>{n}回</option>
 					{/each}
 				</Select>
-			</div>
-			<div class="col-span-2 flex items-center sm:col-span-4">
-				<Checkbox
-					data-testid="workout-form-bodyweight-checkbox"
-					checked={formIsBodyWeight}
-					onchange={() => {
-						formIsBodyWeight = !formIsBodyWeight;
-						if (formIsBodyWeight) formWeight = '';
-					}}
-				>
-					自重
-				</Checkbox>
 			</div>
 			{#if prevRecord}
 				<p data-testid="workout-form-prev-record-hint" class="mt-2 text-xs text-secondary">
@@ -618,24 +616,12 @@
 					<Checkbox
 						data-testid="workout-chart-year-mode"
 						checked={chartMode === 'year'}
-						disabled={chartMode === 'all'}
 						onchange={() => {
 							chartMode = chartMode === 'year' ? 'month' : 'year';
 							void fetchChartData();
 						}}
 					>
 						年間
-					</Checkbox>
-					<Checkbox
-						data-testid="workout-chart-all-mode"
-						checked={chartMode === 'all'}
-						disabled={chartMode === 'year'}
-						onchange={() => {
-							chartMode = chartMode === 'all' ? 'month' : 'all';
-							void fetchChartData();
-						}}
-					>
-						全期間
 					</Checkbox>
 					{#if chartData}
 						<div class="ml-auto flex flex-col items-end gap-1 text-xs text-label">
@@ -713,24 +699,12 @@
 				<Checkbox
 					data-testid="workout-volume-year-mode"
 					checked={volumeMode === 'year'}
-					disabled={volumeMode === 'all'}
 					onchange={() => {
 						volumeMode = volumeMode === 'year' ? 'month' : 'year';
 						void fetchVolumeData();
 					}}
 				>
 					年間
-				</Checkbox>
-				<Checkbox
-					data-testid="workout-volume-all-mode"
-					checked={volumeMode === 'all'}
-					disabled={volumeMode === 'year'}
-					onchange={() => {
-						volumeMode = volumeMode === 'all' ? 'month' : 'all';
-						void fetchVolumeData();
-					}}
-				>
-					全期間
 				</Checkbox>
 			</div>
 			{#if volumeError}

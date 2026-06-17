@@ -14,6 +14,7 @@
   - expense: ExpenseWithRelations - 支出データ（リレーション付き）
   - currentUserId: string - 現在のログインユーザー ID
   - openMenuId: string | null - 開いているメニューの支出 ID
+  - checkLoading: boolean - チェック/アンチェック操作中フラグ
   - onCheckToggle: (id: string, action: 'check' | 'uncheck') => void - チェック切り替えコールバック
   - onEdit: (expense: ExpenseWithRelations) => void - 編集コールバック
   - onDelete: (expense: ExpenseWithRelations) => void - 削除コールバック
@@ -29,6 +30,7 @@
 		expense,
 		currentUserId,
 		openMenuId,
+		checkLoading = false,
 		onCheckToggle,
 		onEdit,
 		onDelete,
@@ -37,6 +39,7 @@
 		expense: ExpenseWithRelations;
 		currentUserId: string;
 		openMenuId: string | null;
+		checkLoading?: boolean;
 		onCheckToggle: (id: string, action: 'check' | 'uncheck') => void;
 		onEdit: (expense: ExpenseWithRelations) => void;
 		onDelete: (expense: ExpenseWithRelations) => void;
@@ -103,7 +106,8 @@
 				type="checkbox"
 				checked={isChecked}
 				onchange={handleCheckboxChange}
-				class="h-4 w-4 cursor-pointer accent-accent"
+				disabled={checkLoading}
+				class="h-4 w-4 cursor-pointer accent-accent disabled:cursor-not-allowed disabled:opacity-50"
 				aria-label="確認済みにする"
 			/>
 		{:else}

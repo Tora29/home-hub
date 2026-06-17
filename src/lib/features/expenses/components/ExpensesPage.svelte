@@ -19,6 +19,7 @@
 -->
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { Plus, Tag } from '@lucide/svelte';
 	import Button from '$lib/components/Button.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
@@ -63,7 +64,8 @@
 	let approveLoading = $state(false);
 	let approveError = $state('');
 
-	// check/uncheck エラー（一覧上部に表示）
+	// check/uncheck ローディング（per-item）・エラー（一覧上部に表示）
+	let checkLoadingIds = new SvelteSet<string>();
 	let actionError = $state('');
 
 	// モバイルメニュー（開いている行の ID）
@@ -104,6 +106,7 @@
 	// ---- Check / Uncheck ----
 	async function handleCheckToggle(id: string, action: 'check' | 'uncheck') {
 		actionError = '';
+		checkLoadingIds.add(id);
 		try {
 			const res = await fetch(`/expenses/${id}/${action}`, { method: 'POST' });
 			if (!res.ok) {
@@ -114,6 +117,8 @@
 			await invalidateAll();
 		} catch {
 			actionError = '通信エラーが発生しました';
+		} finally {
+			checkLoadingIds.delete(id);
 		}
 	}
 
@@ -321,6 +326,7 @@
 					{expense}
 					{currentUserId}
 					{openMenuId}
+					checkLoading={checkLoadingIds.has(expense.id)}
 					onCheckToggle={handleCheckToggle}
 					onEdit={(exp) => (editTarget = exp)}
 					onDelete={(exp) => (deleteTarget = exp)}
