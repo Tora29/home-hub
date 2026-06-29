@@ -10,7 +10,7 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
-import { getRecords } from '$workout/server/service';
+import { getRecords, getTodayBodyWeight } from '$workout/server/service';
 import { getExercises } from '$workout/exercises/server/service';
 
 export const load: PageServerLoad = async ({ locals, platform, url, parent }) => {
@@ -20,14 +20,20 @@ export const load: PageServerLoad = async ({ locals, platform, url, parent }) =>
 	const db = createDb(platform!.env.DB);
 	const exerciseId = url.searchParams.get('exerciseId') ?? undefined;
 
-	const [recordsResult, exercisesResult] = await Promise.all([
+	// JST で今日の日付を取得
+	const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+	const today = jstNow.toISOString().slice(0, 10);
+
+	const [recordsResult, exercisesResult, todayBodyWeight] = await Promise.all([
 		getRecords(db, locals.user!.id, exerciseId),
-		getExercises(db, locals.user!.id)
+		getExercises(db, locals.user!.id),
+		getTodayBodyWeight(db, locals.user!.id, today)
 	]);
 
 	return {
 		records: recordsResult,
 		exercises: exercisesResult,
-		filterExerciseId: exerciseId ?? null
+		filterExerciseId: exerciseId ?? null,
+		todayBodyWeight
 	};
 };
