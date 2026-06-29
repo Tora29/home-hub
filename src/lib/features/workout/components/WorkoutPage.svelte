@@ -11,6 +11,7 @@
   - records: WorkoutRecord[] - 記録一覧
   - exercises: { items: Exercise[] } - 種目一覧
   - filterExerciseId: string | null - フィルタ中の種目ID
+  - todayBodyWeight: number | null - 本日記録済みの体重（null = 未記録）
 -->
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
@@ -43,11 +44,13 @@
 	let {
 		records,
 		exercises,
-		filterExerciseId
+		filterExerciseId,
+		todayBodyWeight
 	}: {
 		records: WorkoutRecord[];
 		exercises: { items: Exercise[] };
 		filterExerciseId: string | null;
+		todayBodyWeight: number | null;
 	} = $props();
 
 	function todayStr(): string {
@@ -121,10 +124,11 @@
 		).values()
 	]);
 
-	const prevRecord = $derived.by(() => {
+	const bestRecord = $derived.by(() => {
 		if (!formExerciseId) return null;
-		const rec = records.find((r) => r.exerciseId === formExerciseId);
-		return rec ?? null;
+		const filtered = records.filter((r) => r.exerciseId === formExerciseId);
+		if (filtered.length === 0) return null;
+		return filtered.reduce((best, r) => (r.weight > best.weight ? r : best));
 	});
 
 	async function handleAddRecord() {
@@ -348,38 +352,68 @@
 
 	<div class="rounded-3xl bg-bg-card p-5 shadow-md">
 		<h2 class="mb-3 text-sm font-medium text-secondary">体重記録</h2>
-		<div class="flex items-start gap-2">
-			<input
-				data-testid="workout-body-weight-date"
-				type="date"
-				bind:value={bodyWeightDate}
-				class="rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-label focus:ring-2 focus:ring-accent focus:outline-none"
-			/>
-			<div class="min-w-0 flex-1">
-				<Input
-					data-testid="workout-body-weight-input"
-					type="number"
-					step="0.1"
-					min="0"
-					max="300"
-					bind:value={bodyWeightInput}
-					placeholder="体重 (kg)"
-					class="w-full"
+		{#if todayBodyWeight !== null}
+			<div class="flex items-center gap-2">
+				<input
+					data-testid="workout-body-weight-date"
+					type="date"
+					value={todayStr()}
+					disabled
+					class="cursor-not-allowed rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-secondary opacity-50"
 				/>
+				<div class="min-w-0 flex-1">
+					<Input
+						data-testid="workout-body-weight-input"
+						type="number"
+						value={String(todayBodyWeight)}
+						disabled
+						class="w-full"
+					/>
+				</div>
+				<Button
+					data-testid="workout-body-weight-submit-button"
+					variant="secondary"
+					size="md"
+					disabled
+					type="button"
+				>
+					記録済み
+				</Button>
 			</div>
-			<Button
-				data-testid="workout-body-weight-submit-button"
-				variant="secondary"
-				size="md"
-				onclick={() => void handleBodyWeightSubmit()}
-				disabled={bodyWeightLoading}
-				type="button"
-			>
-				{bodyWeightLoading ? '記録中...' : '記録'}
-			</Button>
-		</div>
-		{#if bodyWeightError}
-			<p role="alert" class="mt-2 text-xs text-destructive">{bodyWeightError}</p>
+		{:else}
+			<div class="flex items-start gap-2">
+				<input
+					data-testid="workout-body-weight-date"
+					type="date"
+					bind:value={bodyWeightDate}
+					class="rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-label focus:ring-2 focus:ring-accent focus:outline-none"
+				/>
+				<div class="min-w-0 flex-1">
+					<Input
+						data-testid="workout-body-weight-input"
+						type="number"
+						step="0.1"
+						min="0"
+						max="300"
+						bind:value={bodyWeightInput}
+						placeholder="体重 (kg)"
+						class="w-full"
+					/>
+				</div>
+				<Button
+					data-testid="workout-body-weight-submit-button"
+					variant="secondary"
+					size="md"
+					onclick={() => void handleBodyWeightSubmit()}
+					disabled={bodyWeightLoading}
+					type="button"
+				>
+					{bodyWeightLoading ? '記録中...' : '記録'}
+				</Button>
+			</div>
+			{#if bodyWeightError}
+				<p role="alert" class="mt-2 text-xs text-destructive">{bodyWeightError}</p>
+			{/if}
 		{/if}
 	</div>
 
@@ -461,9 +495,9 @@
 					{/each}
 				</Select>
 			</div>
-			{#if prevRecord}
+			{#if bestRecord}
 				<p data-testid="workout-form-prev-record-hint" class="mt-2 text-xs text-secondary">
-					前回: {prevRecord?.weight}kg × {prevRecord?.reps}回
+					過去のMAX: {bestRecord.weight}kg × {bestRecord.reps}回
 				</p>
 			{/if}
 			{#if formError}
@@ -494,9 +528,26 @@
 				class="text-sm"
 			>
 				<option value="">すべての種目</option>
-				{#each exercises.items as ex (ex.id)}
-					<option value={ex.id}>{ex.name}</option>
-				{/each}
+				{#if uniqueCategories.length > 0}
+					{#each uniqueCategories as cat (cat.id)}
+						<optgroup label={cat.name}>
+							{#each exercises.items.filter((ex) => ex.category?.id === cat.id) as ex (ex.id)}
+								<option value={ex.id}>{ex.name}</option>
+							{/each}
+						</optgroup>
+					{/each}
+					{#if exercises.items.some((ex) => !ex.category)}
+						<optgroup label="その他">
+							{#each exercises.items.filter((ex) => !ex.category) as ex (ex.id)}
+								<option value={ex.id}>{ex.name}</option>
+							{/each}
+						</optgroup>
+					{/if}
+				{:else}
+					{#each exercises.items as ex (ex.id)}
+						<option value={ex.id}>{ex.name}</option>
+					{/each}
+				{/if}
 			</Select>
 		</div>
 
@@ -587,9 +638,26 @@
 						bind:value={chartExerciseId}
 						class="text-sm"
 					>
-						{#each exercises.items as ex (ex.id)}
-							<option value={ex.id}>{ex.name}</option>
-						{/each}
+						{#if uniqueCategories.length > 0}
+							{#each uniqueCategories as cat (cat.id)}
+								<optgroup label={cat.name}>
+									{#each exercises.items.filter((ex) => ex.category?.id === cat.id) as ex (ex.id)}
+										<option value={ex.id}>{ex.name}</option>
+									{/each}
+								</optgroup>
+							{/each}
+							{#if exercises.items.some((ex) => !ex.category)}
+								<optgroup label="その他">
+									{#each exercises.items.filter((ex) => !ex.category) as ex (ex.id)}
+										<option value={ex.id}>{ex.name}</option>
+									{/each}
+								</optgroup>
+							{/if}
+						{:else}
+							{#each exercises.items as ex (ex.id)}
+								<option value={ex.id}>{ex.name}</option>
+							{/each}
+						{/if}
 					</Select>
 					<Select
 						data-testid="workout-chart-year-select"
