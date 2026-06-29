@@ -16,6 +16,7 @@
  * - getWeeklyVolume             - 週間ボリューム集計
  * - getWeeklyVolumeBreakdown   - 指定週の種目別ボリューム内訳
  * - upsertBodyWeight           - 体重登録（同日upsert）
+ * - getTodayBodyWeight         - 指定日の体重取得
  *
  * @test ./service.integration.test.ts
  */
@@ -296,6 +297,22 @@ export async function getWeeklyVolumeBreakdown(
 		.orderBy(desc(sql`sum(${workoutRecord.weight} * ${workoutRecord.reps})`));
 
 	return rows.map((r) => ({ exerciseName: r.exerciseName, volume: Number(r.volume) }));
+}
+
+/**
+ * 指定日の体重を取得する。記録がない場合は null を返す。
+ */
+export async function getTodayBodyWeight(
+	db: Db,
+	userId: string,
+	date: string
+): Promise<number | null> {
+	const row = await db
+		.select({ weight: bodyWeightRecord.weight })
+		.from(bodyWeightRecord)
+		.where(and(eq(bodyWeightRecord.userId, userId), eq(bodyWeightRecord.date, date)))
+		.get();
+	return row ? Number(row.weight) : null;
 }
 
 /**
