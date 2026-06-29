@@ -7,7 +7,7 @@
  * - 初期表示: 筋トレ記録ページが表示される
  * - 種目管理: 種目を追加・編集・削除できる
  * - 種目カテゴリ管理: カテゴリを追加・種目に設定・削除できる
- * - 記録登録: 記録フォームから登録でき、前回ヒントが表示される
+ * - 記録登録: 記録フォームから登録でき、過去MAXヒントが表示される
  * - 記録削除: 確認ダイアログから記録を削除できる
  * - 体重登録: 体重フォームから登録できる
  * - グラフ: 記録後にグラフ種目セレクトが表示される
@@ -134,7 +134,7 @@ test.describe('筋トレ記録 - 種目管理', () => {
 	});
 });
 
-test.describe('筋トレ記録 - 記録登録・前回ヒント', () => {
+test.describe('筋トレ記録 - 記録登録・MAXヒント', () => {
 	let exerciseId = '';
 
 	test.beforeEach(async ({ page }) => {
@@ -172,7 +172,7 @@ test.describe('筋トレ記録 - 記録登録・前回ヒント', () => {
 		await expect(page.getByTestId('workout-record-item').first()).toBeVisible();
 	});
 
-	test('記録後に同じ種目を選択すると前回ヒントが表示される', async ({ page }) => {
+	test('記録後に同じ種目を選択すると過去MAXヒントが表示される', async ({ page }) => {
 		const today = new Date();
 		const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 		const record = await createRecord(page, {
@@ -261,11 +261,11 @@ test.describe('筋トレ記録 - 体重登録', () => {
 		await expect(page.getByTestId('workout-body-weight-input')).toHaveValue('');
 	});
 
-	test('体重が空のとき登録するとエラーが表示される', async ({ page }) => {
+	test('体重が登録済みのときはフォームが無効化される', async ({ page }) => {
 		await page.goto('/workout');
 
-		await page.getByTestId('workout-body-weight-submit-button').click();
-		await expect(page.getByText('体重を入力してください')).toBeVisible();
+		await expect(page.getByTestId('workout-body-weight-submit-button')).toBeDisabled();
+		await expect(page.getByTestId('workout-body-weight-input')).toBeDisabled();
 	});
 });
 

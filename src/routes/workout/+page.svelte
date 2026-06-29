@@ -23,4 +23,5 @@
 	records={data.records}
 	exercises={data.exercises}
 	filterExerciseId={data.filterExerciseId}
+	todayBodyWeight={data.todayBodyWeight}
 />
