@@ -8,7 +8,8 @@ const config = {
 			$expenses: 'src/lib/features/expenses',
 			$recipes: 'src/lib/features/recipes',
 			$dashboard: 'src/lib/features/dashboard',
-			$workout: 'src/lib/features/workout'
+			$workout: 'src/lib/features/workout',
+			$calendar: 'src/lib/features/calendar'
 		}
 	},
 	compilerOptions: {

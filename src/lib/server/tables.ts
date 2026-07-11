@@ -15,6 +15,7 @@
  * - workoutExercise                     — 筋トレ種目テーブル（role=main ユーザー限定）
  * - workoutRecord                       — 筋トレ記録テーブル（1レコード = 1セット）
  * - bodyWeightRecord                    — 体重記録テーブル（同日upsert）
+ * - calendarEvent                       — カレンダー予定テーブル（終日イベントのみ）
  */
 import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 
@@ -137,6 +138,18 @@ export const bodyWeightRecord = sqliteTable('BodyWeightRecord', {
 	weight: real('weight').notNull(), // kg（例: 72.3）
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull()
 	// UNIQUE(userId, date): 同日はupsert で1レコードに保つ
+});
+
+export const calendarEvent = sqliteTable('CalendarEvent', {
+	id: text('id').primaryKey(),
+	title: text('title').notNull(),
+	description: text('description'),
+	date: text('date').notNull(), // YYYY-MM-DD
+	createdByUserId: text('createdByUserId')
+		.notNull()
+		.references(() => user.id, { onDelete: 'restrict' }),
+	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
+	updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull()
 });
 
 export const recipe = sqliteTable('Recipe', {

@@ -56,6 +56,7 @@ function wranglerFile(file: string) {
 
 export default async function globalSetup() {
 	// 既存ユーザーを全削除してから E2E ユーザーを挿入（外部キー制約に従い子テーブルから削除）
+	wranglerExecute(`DELETE FROM "CalendarEvent"`);
 	wranglerExecute(`DELETE FROM "Recipe"`);
 	wranglerExecute(`DELETE FROM "WorkoutRecord"`);
 	wranglerExecute(`DELETE FROM "WorkoutExercise"`);
