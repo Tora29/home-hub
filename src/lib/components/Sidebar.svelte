@@ -28,7 +28,7 @@
 	import { page } from '$app/state';
 	import {
 		UtensilsCrossed,
-		Wallet,
+		Home,
 		Dumbbell,
 		ChevronDown,
 		ChevronRight,
@@ -57,9 +57,12 @@
 		},
 		{
 			id: 'expense',
-			label: '収支系',
-			icon: Wallet,
-			items: [{ testid: 'sidebar-item-expenses', href: '/expenses', label: '家計簿' }]
+			label: '生活',
+			icon: Home,
+			items: [
+				{ testid: 'sidebar-item-expenses', href: '/expenses', label: '家計簿' },
+				{ testid: 'sidebar-item-calendar', href: '/calendar', label: 'カレンダー' }
+			]
 		},
 		{
 			id: 'workout',
