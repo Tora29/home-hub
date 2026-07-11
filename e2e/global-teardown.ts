@@ -18,6 +18,7 @@ function wranglerExecute(sql: string) {
 }
 
 export default async function globalTeardown() {
+	wranglerExecute(`DELETE FROM "CalendarEvent" WHERE "createdByUserId" = '${E2E_USER_ID}'`);
 	wranglerExecute(`DELETE FROM "Recipe" WHERE "userId" = '${E2E_USER_ID}'`);
 	wranglerExecute(`DELETE FROM "Expense"`);
 	wranglerExecute(`DELETE FROM "ExpenseCategory"`);
