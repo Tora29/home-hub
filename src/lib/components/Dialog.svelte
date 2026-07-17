@@ -24,7 +24,7 @@
 		onClose,
 		closeOnBackdrop = true,
 		disabled = false,
-		role = 'dialog' as 'dialog' | 'alertdialog',
+		role = 'dialog',
 		'aria-label': ariaLabel,
 		children
 	}: {

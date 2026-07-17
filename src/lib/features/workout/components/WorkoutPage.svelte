@@ -6,6 +6,11 @@
   @description
   筋トレ記録の登録・一覧・グラフ確認を行う画面コンポーネント。
   role === 'main' のユーザーのみアクセス可能。
+  体重記録・記録フォーム・記録一覧・重量グラフ・週間ボリュームの各カードは
+  サブコンポーネント（BodyWeightSection / RecordForm / RecordList / WeightChartSection /
+  VolumeChartSection）に分割し、このコンポーネントは状態の所有権とデータ取得を担う。
+  種目セレクトの中身（カテゴリ optgroup）は Snippet（exerciseOptions）として各サブ
+  コンポーネントに渡す。
 
   @props
   - records: WorkoutRecord[] - 記録一覧
@@ -16,30 +21,14 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount, untrack } from 'svelte';
-	import { SvelteMap } from 'svelte/reactivity';
 	import { Dumbbell, ListChecks } from '@lucide/svelte';
-	import Button from '$lib/components/Button.svelte';
-	import Input from '$lib/components/Input.svelte';
-	import Select from '$lib/components/Select.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Checkbox from '$lib/components/Checkbox.svelte';
-	import Dialog from '$lib/components/Dialog.svelte';
-	import WorkoutChart from './WorkoutChart.svelte';
-	import WeeklyVolumeChart from './WeeklyVolumeChart.svelte';
-
-	type Exercise = { id: string; name: string; category: { id: string; name: string } | null };
-	type WorkoutRecord = {
-		id: string;
-		exerciseId: string;
-		exerciseName: string;
-		date: string;
-		weight: number;
-		reps: number;
-		isBodyWeight: boolean;
-	};
-	type ChartPoint = { date: string; maxWeight: number };
-	type BodyWeightPoint = { date: string; weight: number };
-	type WeeklyVolumePoint = { weekStart: string; volume: number };
+	import BodyWeightSection from './BodyWeightSection.svelte';
+	import RecordForm from './RecordForm.svelte';
+	import RecordList from './RecordList.svelte';
+	import WeightChartSection from './WeightChartSection.svelte';
+	import VolumeChartSection from './VolumeChartSection.svelte';
+	import type { ChartData, Exercise, WeeklyVolumePoint, WorkoutRecord } from '../types';
 
 	let {
 		records,
@@ -58,7 +47,30 @@
 		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 	}
 
-	let bodyWeightDate = $state(todayStr());
+	const today = todayStr();
+
+	/**
+	 * 期間モード（月間/年間）に応じたクエリ文字列を生成する。
+	 * chart・volume の両エンドポイントで共通利用する。
+	 */
+	function periodQueryParams(mode: 'month' | 'year', year: string, month: string): string {
+		return mode === 'month' ? `period=1m&month=${year}-${month}` : `period=year&month=${year}-01`;
+	}
+
+	/**
+	 * fetchSeq による競合回避付きの fetch 実行ガードを生成する。
+	 * 呼び出しごとに採番し、最新の呼び出しのみ結果を反映させる判定に使う。
+	 */
+	function createFetchSeq() {
+		let seq = 0;
+		return {
+			begin: () => ++seq,
+			isLatest: (s: number) => s === seq
+		};
+	}
+
+	// --- 体重記録 ---
+	let bodyWeightDate = $state(today);
 	let bodyWeightInput = $state('');
 	let bodyWeightError = $state('');
 	let bodyWeightLoading = $state(false);
@@ -91,32 +103,14 @@
 		}
 	}
 
-	let formDate = $state(todayStr());
+	// --- セット記録フォーム ---
+	let formDate = $state(today);
 	let formExerciseId = $state('');
 	let formWeight = $state('');
 	let formReps = $state('5');
 	let formIsBodyWeight = $state(false);
 	let formError = $state('');
 	let formLoading = $state(false);
-
-	const recordsByDate = $derived.by(() => {
-		const map = new SvelteMap<string, WorkoutRecord[]>();
-		for (const r of records) {
-			const list = map.get(r.date) ?? [];
-			list.push(r);
-			map.set(r.date, list);
-		}
-		return Array.from(map.entries()).map(([date, recs]) => ({ date, records: recs }));
-	});
-
-	const RECORDS_PREVIEW_COUNT = 1;
-	let showAllRecords = $state(false);
-	const visibleRecordsByDate = $derived.by(() =>
-		showAllRecords ? recordsByDate : recordsByDate.slice(0, RECORDS_PREVIEW_COUNT)
-	);
-
-	const GROUP_PREVIEW_COUNT = 3;
-	let expandedGroups = new SvelteMap<string, boolean>();
 
 	const uniqueCategories = $derived([
 		...new Map(
@@ -182,6 +176,7 @@
 		});
 	}
 
+	// --- 記録削除 ---
 	let deletingRecord = $state<WorkoutRecord | null>(null);
 	let deleteLoading = $state(false);
 	let deleteError = $state('');
@@ -207,42 +202,34 @@
 		}
 	}
 
+	// --- 重量推移グラフ ---
 	let chartExerciseId = $state(untrack(() => exercises.items[0]?.id ?? ''));
 	let chartMode = $state<'month' | 'year'>('month');
 	let chartYear = $state(new Date().getFullYear().toString());
 	let chartMonth = $state(String(new Date().getMonth() + 1).padStart(2, '0'));
-	let chartData = $state<{
-		exercise: Exercise;
-		exercisePoints: ChartPoint[];
-		bodyWeightPoints: BodyWeightPoint[];
-	} | null>(null);
+	let chartData = $state<ChartData | null>(null);
 	let chartLoading = $state(false);
 	let chartError = $state('');
-	let chartFetchSeq = 0;
-
-	function chartQueryParams() {
-		if (chartMode === 'month') return `period=1m&month=${chartYear}-${chartMonth}`;
-		return `period=year&month=${chartYear}-01`;
-	}
+	const chartSeq = createFetchSeq();
 
 	async function fetchChartData() {
 		if (!chartExerciseId) return;
 		chartLoading = true;
 		chartError = '';
-		const seq = ++chartFetchSeq;
+		const seq = chartSeq.begin();
 		try {
-			const res = await fetch(`/workout/chart?exerciseId=${chartExerciseId}&${chartQueryParams()}`);
+			const res = await fetch(
+				`/workout/chart?exerciseId=${chartExerciseId}&${periodQueryParams(chartMode, chartYear, chartMonth)}`
+			);
 			if (!res.ok) {
-				if (seq === chartFetchSeq) chartError = 'グラフデータの取得に失敗しました';
+				if (chartSeq.isLatest(seq)) chartError = 'グラフデータの取得に失敗しました';
 				return;
 			}
-			if (seq === chartFetchSeq) {
-				chartData = await res.json();
-			}
+			if (chartSeq.isLatest(seq)) chartData = await res.json();
 		} catch {
-			if (seq === chartFetchSeq) chartError = '通信エラーが発生しました';
+			if (chartSeq.isLatest(seq)) chartError = '通信エラーが発生しました';
 		} finally {
-			if (seq === chartFetchSeq) chartLoading = false;
+			if (chartSeq.isLatest(seq)) chartLoading = false;
 		}
 	}
 
@@ -253,75 +240,46 @@
 		}
 	});
 
+	function handleChartToggleMode() {
+		chartMode = chartMode === 'year' ? 'month' : 'year';
+		void fetchChartData();
+	}
+
+	// --- 週間ボリューム ---
 	let volumeMode = $state<'month' | 'year'>('month');
 	let volumeYear = $state(new Date().getFullYear().toString());
 	let volumeMonth = $state(String(new Date().getMonth() + 1).padStart(2, '0'));
 	let volumeData = $state<WeeklyVolumePoint[]>([]);
 	let volumeLoading = $state(false);
 	let volumeError = $state('');
-	let volumeFetchSeq = 0;
-
-	function volumeQueryParams() {
-		if (volumeMode === 'month') return `period=1m&month=${volumeYear}-${volumeMonth}`;
-		return `period=year&month=${volumeYear}-01`;
-	}
+	const volumeSeq = createFetchSeq();
 
 	async function fetchVolumeData() {
 		volumeLoading = true;
 		volumeError = '';
-		const seq = ++volumeFetchSeq;
+		const seq = volumeSeq.begin();
 		try {
-			const res = await fetch(`/workout/volume?${volumeQueryParams()}`);
+			const res = await fetch(
+				`/workout/volume?${periodQueryParams(volumeMode, volumeYear, volumeMonth)}`
+			);
 			if (!res.ok) {
-				if (seq === volumeFetchSeq) volumeError = 'ボリュームデータの取得に失敗しました';
+				if (volumeSeq.isLatest(seq)) volumeError = 'ボリュームデータの取得に失敗しました';
 				return;
 			}
-			if (seq === volumeFetchSeq) {
-				volumeData = await res.json();
-			}
+			if (volumeSeq.isLatest(seq)) volumeData = await res.json();
 		} catch {
-			if (seq === volumeFetchSeq) volumeError = '通信エラーが発生しました';
+			if (volumeSeq.isLatest(seq)) volumeError = '通信エラーが発生しました';
 		} finally {
-			if (seq === volumeFetchSeq) volumeLoading = false;
+			if (volumeSeq.isLatest(seq)) volumeLoading = false;
 		}
+	}
+
+	function handleVolumeToggleMode() {
+		volumeMode = volumeMode === 'year' ? 'month' : 'year';
+		void fetchVolumeData();
 	}
 
 	onMount(() => void fetchVolumeData());
-
-	type BreakdownItem = { exerciseName: string; volume: number };
-	let breakdownWeekStart = $state<string | null>(null);
-	let breakdownItems = $state<BreakdownItem[]>([]);
-	let breakdownLoading = $state(false);
-	let breakdownError = $state('');
-
-	function weekStartLabel(weekStart: string): string {
-		const [y, m, d] = weekStart.split('-');
-		return `${y}/${m}/${d} 〜`;
-	}
-
-	async function handleVolumeBarClick(weekStart: string) {
-		breakdownWeekStart = weekStart;
-		breakdownItems = [];
-		breakdownLoading = true;
-		breakdownError = '';
-		try {
-			const res = await fetch(`/workout/volume?weekStart=${weekStart}`);
-			if (!res.ok) {
-				breakdownError = '取得に失敗しました';
-				return;
-			}
-			breakdownItems = (await res.json()) as BreakdownItem[];
-		} catch {
-			breakdownError = '通信エラーが発生しました';
-		} finally {
-			breakdownLoading = false;
-		}
-	}
-
-	function estimatedOneRM(weight: number, reps: number): number {
-		if (reps === 1) return weight;
-		return Math.floor(weight / (1.0278 - 0.0278 * reps));
-	}
 
 	function yearOptions(): { value: string; label: string }[] {
 		const cur = new Date().getFullYear();
@@ -331,11 +289,35 @@
 		});
 	}
 
+	const YEAR_OPTIONS = yearOptions();
 	const MONTHS = Array.from({ length: 12 }, (_, i) => ({
 		value: String(i + 1).padStart(2, '0'),
 		label: `${i + 1}月`
 	}));
 </script>
+
+{#snippet exerciseOptions()}
+	{#if uniqueCategories.length > 0}
+		{#each uniqueCategories as cat (cat.id)}
+			<optgroup label={cat.name}>
+				{#each exercises.items.filter((ex) => ex.category?.id === cat.id) as ex (ex.id)}
+					<option value={ex.id}>{ex.name}</option>
+				{/each}
+			</optgroup>
+		{/each}
+		{#if exercises.items.some((ex) => !ex.category)}
+			<optgroup label="その他">
+				{#each exercises.items.filter((ex) => !ex.category) as ex (ex.id)}
+					<option value={ex.id}>{ex.name}</option>
+				{/each}
+			</optgroup>
+		{/if}
+	{:else}
+		{#each exercises.items as ex (ex.id)}
+			<option value={ex.id}>{ex.name}</option>
+		{/each}
+	{/if}
+{/snippet}
 
 <div class="mx-auto max-w-2xl space-y-6">
 	<div class="flex items-center gap-3">
@@ -350,491 +332,68 @@
 		</a>
 	</div>
 
-	<div class="rounded-3xl bg-bg-card p-5 shadow-md">
-		<h2 class="mb-3 text-sm font-medium text-secondary">体重記録</h2>
-		{#if todayBodyWeight !== null}
-			<div class="flex items-center gap-2">
-				<input
-					data-testid="workout-body-weight-date"
-					type="date"
-					value={todayStr()}
-					disabled
-					class="cursor-not-allowed rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-secondary opacity-50"
-				/>
-				<div class="min-w-0 flex-1">
-					<Input
-						data-testid="workout-body-weight-input"
-						type="number"
-						value={String(todayBodyWeight)}
-						disabled
-						class="w-full"
-					/>
-				</div>
-				<Button
-					data-testid="workout-body-weight-submit-button"
-					variant="secondary"
-					size="md"
-					disabled
-					type="button"
-				>
-					記録済み
-				</Button>
-			</div>
-		{:else}
-			<div class="flex items-start gap-2">
-				<input
-					data-testid="workout-body-weight-date"
-					type="date"
-					bind:value={bodyWeightDate}
-					class="rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-label focus:ring-2 focus:ring-accent focus:outline-none"
-				/>
-				<div class="min-w-0 flex-1">
-					<Input
-						data-testid="workout-body-weight-input"
-						type="number"
-						step="0.1"
-						min="0"
-						max="300"
-						bind:value={bodyWeightInput}
-						placeholder="体重 (kg)"
-						class="w-full"
-					/>
-				</div>
-				<Button
-					data-testid="workout-body-weight-submit-button"
-					variant="secondary"
-					size="md"
-					onclick={() => void handleBodyWeightSubmit()}
-					disabled={bodyWeightLoading}
-					type="button"
-				>
-					{bodyWeightLoading ? '記録中...' : '記録'}
-				</Button>
-			</div>
-			{#if bodyWeightError}
-				<p role="alert" class="mt-2 text-xs text-destructive">{bodyWeightError}</p>
-			{/if}
-		{/if}
-	</div>
+	<BodyWeightSection
+		{todayBodyWeight}
+		{today}
+		bind:date={bodyWeightDate}
+		bind:input={bodyWeightInput}
+		error={bodyWeightError}
+		loading={bodyWeightLoading}
+		onSubmit={() => void handleBodyWeightSubmit()}
+	/>
 
-	<div class="rounded-3xl bg-bg-card p-5 shadow-md">
-		<h2 class="mb-3 text-sm font-medium text-secondary">セット記録</h2>
-		{#if exercises.items.length === 0}
-			<p class="text-sm text-secondary">
-				<a href="/workout/exercises" class="text-accent hover:underline">種目管理</a
-				>から種目を追加してください。
-			</p>
-		{:else}
-			<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-				<input
-					data-testid="workout-form-date"
-					type="date"
-					bind:value={formDate}
-					class="col-span-2 rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-label focus:ring-2 focus:ring-accent focus:outline-none sm:col-span-1"
-				/>
-				<Select
-					data-testid="workout-form-exercise-select"
-					bind:value={formExerciseId}
-					class="col-span-2 sm:col-span-1"
-				>
-					<option value="">種目を選択</option>
-					{#if uniqueCategories.length > 0}
-						{#each uniqueCategories as cat (cat.id)}
-							<optgroup label={cat.name}>
-								{#each exercises.items.filter((ex) => ex.category?.id === cat.id) as ex (ex.id)}
-									<option value={ex.id}>{ex.name}</option>
-								{/each}
-							</optgroup>
-						{/each}
-						{#if exercises.items.some((ex) => !ex.category)}
-							<optgroup label="その他">
-								{#each exercises.items.filter((ex) => !ex.category) as ex (ex.id)}
-									<option value={ex.id}>{ex.name}</option>
-								{/each}
-							</optgroup>
-						{/if}
-					{:else}
-						{#each exercises.items as ex (ex.id)}
-							<option value={ex.id}>{ex.name}</option>
-						{/each}
-					{/if}
-				</Select>
-				<div class="flex items-center gap-2">
-					{#if formIsBodyWeight}
-						<div
-							class="flex min-w-0 flex-1 items-center rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-secondary"
-						>
-							自重
-						</div>
-					{:else}
-						<Input
-							data-testid="workout-form-weight-input"
-							type="number"
-							step="0.5"
-							min="0"
-							max="999"
-							bind:value={formWeight}
-							placeholder="重量 (kg)"
-							class="min-w-0 flex-1"
-						/>
-					{/if}
-					<Checkbox
-						data-testid="workout-form-bodyweight-checkbox"
-						checked={formIsBodyWeight}
-						onchange={() => {
-							formIsBodyWeight = !formIsBodyWeight;
-							if (formIsBodyWeight) formWeight = '';
-						}}
-					>
-						自重
-					</Checkbox>
-				</div>
-				<Select data-testid="workout-form-reps-select" bind:value={formReps} class="w-full">
-					{#each Array.from({ length: 10 }, (_, i) => i + 1) as n (n)}
-						<option value={String(n)}>{n}回</option>
-					{/each}
-				</Select>
-			</div>
-			{#if bestRecord}
-				<p data-testid="workout-form-prev-record-hint" class="mt-2 text-xs text-secondary">
-					過去のMAX: {bestRecord.weight}kg × {bestRecord.reps}回
-				</p>
-			{/if}
-			{#if formError}
-				<p role="alert" class="mt-2 text-xs text-destructive">{formError}</p>
-			{/if}
-			<div class="mt-3 flex justify-end">
-				<Button
-					data-testid="workout-form-add-button"
-					variant="primary"
-					size="md"
-					onclick={() => void handleAddRecord()}
-					disabled={formLoading}
-					type="button"
-				>
-					{formLoading ? '追加中...' : '追加'}
-				</Button>
-			</div>
-		{/if}
-	</div>
+	<RecordForm
+		{exercises}
+		bind:date={formDate}
+		bind:exerciseId={formExerciseId}
+		bind:weight={formWeight}
+		bind:reps={formReps}
+		bind:isBodyWeight={formIsBodyWeight}
+		{bestRecord}
+		error={formError}
+		loading={formLoading}
+		onSubmit={() => void handleAddRecord()}
+		{exerciseOptions}
+	/>
 
-	<div class="rounded-3xl bg-bg-card p-5 shadow-md">
-		<div class="mb-3 flex items-center gap-2">
-			<h2 class="flex-1 text-sm font-medium text-secondary">記録一覧</h2>
-			<Select
-				data-testid="workout-filter-exercise-select"
-				value={filterExerciseId ?? ''}
-				onchange={handleFilterChange}
-				class="text-sm"
-			>
-				<option value="">すべての種目</option>
-				{#if uniqueCategories.length > 0}
-					{#each uniqueCategories as cat (cat.id)}
-						<optgroup label={cat.name}>
-							{#each exercises.items.filter((ex) => ex.category?.id === cat.id) as ex (ex.id)}
-								<option value={ex.id}>{ex.name}</option>
-							{/each}
-						</optgroup>
-					{/each}
-					{#if exercises.items.some((ex) => !ex.category)}
-						<optgroup label="その他">
-							{#each exercises.items.filter((ex) => !ex.category) as ex (ex.id)}
-								<option value={ex.id}>{ex.name}</option>
-							{/each}
-						</optgroup>
-					{/if}
-				{:else}
-					{#each exercises.items as ex (ex.id)}
-						<option value={ex.id}>{ex.name}</option>
-					{/each}
-				{/if}
-			</Select>
-		</div>
-
-		{#if records.length === 0}
-			<p class="py-8 text-center text-sm text-secondary">記録がありません</p>
-		{:else}
-			<div data-testid="workout-record-list" class="flex flex-col gap-3">
-				{#each visibleRecordsByDate as group (group.date)}
-					{@const isExpanded = expandedGroups.get(group.date)}
-					<div>
-						<div class="mb-1 flex items-center gap-2">
-							<span class="text-xs font-medium text-secondary">{group.date}</span>
-							<div class="h-px flex-1 bg-separator"></div>
-						</div>
-						<ul class="flex flex-col gap-0.5">
-							{#each isExpanded ? group.records : group.records.slice(0, GROUP_PREVIEW_COUNT) as record (record.id)}
-								<li
-									data-testid="workout-record-item"
-									class="flex items-center gap-2 rounded-xl px-3 py-1.5 hover:bg-bg"
-								>
-									{#if !filterExerciseId}
-										<span class="w-28 min-w-0 shrink-0 truncate text-sm font-medium text-label"
-											>{record.exerciseName}</span
-										>
-									{/if}
-									{#if record.isBodyWeight}
-										<span
-											class="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent"
-											>自重</span
-										>
-									{/if}
-									<span class="shrink-0 text-sm font-medium text-label">{record.weight}kg</span>
-									<span class="shrink-0 text-xs text-secondary">×{record.reps}回</span>
-									<span
-										data-testid="workout-record-estimated-1rm"
-										class="shrink-0 text-xs text-tertiary"
-									>
-										1RM≈{estimatedOneRM(record.weight, record.reps)}kg
-									</span>
-									<span class="flex-1"></span>
-									<Button
-										data-testid="workout-record-delete-button"
-										variant="ghost-destructive"
-										size="sm"
-										onclick={() => (deletingRecord = record)}
-										aria-label="削除"
-										type="button"
-									>
-										×
-									</Button>
-								</li>
-							{/each}
-						</ul>
-						{#if group.records.length > GROUP_PREVIEW_COUNT}
-							<button
-								type="button"
-								onclick={() => expandedGroups.set(group.date, !isExpanded)}
-								class="mt-0.5 w-full py-1 text-xs text-secondary hover:text-label"
-							>
-								{isExpanded
-									? '折りたたむ ▲'
-									: `残り ${group.records.length - GROUP_PREVIEW_COUNT} 件 ▼`}
-							</button>
-						{/if}
-					</div>
-				{/each}
-			</div>
-			{#if recordsByDate.length > RECORDS_PREVIEW_COUNT}
-				<button
-					onclick={() => (showAllRecords = !showAllRecords)}
-					class="mt-1 w-full py-1.5 text-xs text-secondary hover:text-label"
-				>
-					{showAllRecords
-						? '折りたたむ ▲'
-						: `もっと見る（残り ${recordsByDate.length - RECORDS_PREVIEW_COUNT} 日分）▼`}
-				</button>
-			{/if}
-		{/if}
-	</div>
+	<RecordList
+		{records}
+		{filterExerciseId}
+		{exerciseOptions}
+		onFilterChange={(e) => void handleFilterChange(e)}
+		onDeleteRequest={(record) => (deletingRecord = record)}
+	/>
 
 	{#if exercises.items.length > 0}
-		<div class="rounded-3xl bg-bg-card p-5 shadow-md">
-			<h2 class="mb-3 text-sm font-medium text-secondary">重量推移グラフ</h2>
-			<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-				<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-					<Select
-						data-testid="workout-chart-exercise-select"
-						bind:value={chartExerciseId}
-						class="text-sm"
-					>
-						{#if uniqueCategories.length > 0}
-							{#each uniqueCategories as cat (cat.id)}
-								<optgroup label={cat.name}>
-									{#each exercises.items.filter((ex) => ex.category?.id === cat.id) as ex (ex.id)}
-										<option value={ex.id}>{ex.name}</option>
-									{/each}
-								</optgroup>
-							{/each}
-							{#if exercises.items.some((ex) => !ex.category)}
-								<optgroup label="その他">
-									{#each exercises.items.filter((ex) => !ex.category) as ex (ex.id)}
-										<option value={ex.id}>{ex.name}</option>
-									{/each}
-								</optgroup>
-							{/if}
-						{:else}
-							{#each exercises.items as ex (ex.id)}
-								<option value={ex.id}>{ex.name}</option>
-							{/each}
-						{/if}
-					</Select>
-					<Select
-						data-testid="workout-chart-year-select"
-						bind:value={chartYear}
-						disabled={chartMode !== 'month'}
-						onchange={() => void fetchChartData()}
-						class="text-sm {chartMode !== 'month' ? 'opacity-40' : ''}"
-					>
-						{#each yearOptions() as opt (opt.value)}
-							<option value={opt.value}>{opt.label}</option>
-						{/each}
-					</Select>
-					<Select
-						data-testid="workout-chart-month-select"
-						bind:value={chartMonth}
-						disabled={chartMode !== 'month'}
-						onchange={() => void fetchChartData()}
-						class="text-sm {chartMode !== 'month' ? 'opacity-40' : ''}"
-					>
-						{#each MONTHS as m (m.value)}
-							<option value={m.value}>{m.label}</option>
-						{/each}
-					</Select>
-					<Checkbox
-						data-testid="workout-chart-year-mode"
-						checked={chartMode === 'year'}
-						onchange={() => {
-							chartMode = chartMode === 'year' ? 'month' : 'year';
-							void fetchChartData();
-						}}
-					>
-						年間
-					</Checkbox>
-					{#if chartData}
-						<div class="ml-auto flex flex-col items-end gap-1 text-xs text-label">
-							<span class="flex items-center gap-1.5">
-								{chartData.exercise.name}
-								<svg width="20" height="10" class="shrink-0">
-									<line
-										x1="0"
-										y1="5"
-										x2="20"
-										y2="5"
-										stroke="var(--color-accent)"
-										stroke-width="2"
-									/>
-								</svg>
-							</span>
-							<span class="flex items-center gap-1.5">
-								体重
-								<svg width="20" height="10" class="shrink-0">
-									<line
-										x1="0"
-										y1="5"
-										x2="20"
-										y2="5"
-										stroke="var(--color-success)"
-										stroke-width="2"
-										stroke-dasharray="6 3"
-									/>
-								</svg>
-							</span>
-						</div>
-					{/if}
-				</div>
-			</div>
-			{#if chartError}
-				<p role="alert" class="py-4 text-center text-sm text-destructive">{chartError}</p>
-			{:else if chartData}
-				<div class={chartLoading ? 'opacity-40 transition-opacity duration-150' : ''}>
-					<WorkoutChart
-						exercisePoints={chartData.exercisePoints}
-						bodyWeightPoints={chartData.bodyWeightPoints}
-						exerciseName={chartData.exercise.name}
-					/>
-				</div>
-			{:else if chartLoading}
-				<p class="py-8 text-center text-sm text-secondary">読み込み中...</p>
-			{/if}
-		</div>
+		<WeightChartSection
+			{exerciseOptions}
+			bind:exerciseId={chartExerciseId}
+			mode={chartMode}
+			bind:year={chartYear}
+			bind:month={chartMonth}
+			yearOptions={YEAR_OPTIONS}
+			months={MONTHS}
+			data={chartData}
+			loading={chartLoading}
+			error={chartError}
+			onToggleMode={handleChartToggleMode}
+			onPeriodChange={() => void fetchChartData()}
+		/>
 
-		<div class="rounded-3xl bg-bg-card p-5 shadow-md">
-			<h2 class="mb-3 text-sm font-medium text-secondary">週間ボリューム</h2>
-			<div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-				<Select
-					data-testid="workout-volume-year-select"
-					bind:value={volumeYear}
-					disabled={volumeMode !== 'month'}
-					onchange={() => void fetchVolumeData()}
-					class="text-sm {volumeMode !== 'month' ? 'opacity-40' : ''}"
-				>
-					{#each yearOptions() as opt (opt.value)}
-						<option value={opt.value}>{opt.label}</option>
-					{/each}
-				</Select>
-				<Select
-					data-testid="workout-volume-month-select"
-					bind:value={volumeMonth}
-					disabled={volumeMode !== 'month'}
-					onchange={() => void fetchVolumeData()}
-					class="text-sm {volumeMode !== 'month' ? 'opacity-40' : ''}"
-				>
-					{#each MONTHS as m (m.value)}
-						<option value={m.value}>{m.label}</option>
-					{/each}
-				</Select>
-				<Checkbox
-					data-testid="workout-volume-year-mode"
-					checked={volumeMode === 'year'}
-					onchange={() => {
-						volumeMode = volumeMode === 'year' ? 'month' : 'year';
-						void fetchVolumeData();
-					}}
-				>
-					年間
-				</Checkbox>
-			</div>
-			{#if volumeError}
-				<p role="alert" class="py-4 text-center text-sm text-destructive">{volumeError}</p>
-			{:else if volumeData.length > 0}
-				<div class={volumeLoading ? 'opacity-40 transition-opacity duration-150' : ''}>
-					<WeeklyVolumeChart points={volumeData} onBarClick={handleVolumeBarClick} />
-				</div>
-			{:else if volumeLoading}
-				<p class="py-8 text-center text-sm text-secondary">読み込み中...</p>
-			{:else}
-				<WeeklyVolumeChart points={volumeData} onBarClick={handleVolumeBarClick} />
-			{/if}
-		</div>
+		<VolumeChartSection
+			mode={volumeMode}
+			bind:year={volumeYear}
+			bind:month={volumeMonth}
+			yearOptions={YEAR_OPTIONS}
+			months={MONTHS}
+			data={volumeData}
+			loading={volumeLoading}
+			error={volumeError}
+			onToggleMode={handleVolumeToggleMode}
+			onPeriodChange={() => void fetchVolumeData()}
+		/>
 	{/if}
 </div>
-
-<Dialog
-	open={breakdownWeekStart !== null}
-	onClose={() => (breakdownWeekStart = null)}
-	aria-label="週間ボリューム内訳"
->
-	<div class="w-full max-w-sm rounded-3xl bg-bg-card p-6 shadow-lg">
-		<h2 class="mb-4 text-base font-medium text-label">
-			{breakdownWeekStart ? weekStartLabel(breakdownWeekStart) : ''} 内訳
-		</h2>
-		{#if breakdownLoading}
-			<p class="py-4 text-center text-sm text-secondary">読み込み中...</p>
-		{:else if breakdownError}
-			<p role="alert" class="text-sm text-destructive">{breakdownError}</p>
-		{:else if breakdownItems.length === 0}
-			<p class="text-sm text-secondary">データがありません</p>
-		{:else}
-			<ul class="flex flex-col gap-2">
-				{#each breakdownItems as item (item.exerciseName)}
-					<li class="flex items-center justify-between gap-4">
-						<span class="min-w-0 truncate text-sm text-label">{item.exerciseName}</span>
-						<span class="shrink-0 text-sm font-medium text-label"
-							>{item.volume.toLocaleString()}</span
-						>
-					</li>
-				{/each}
-			</ul>
-			<div class="mt-3 border-t border-separator pt-3">
-				<div class="flex items-center justify-between">
-					<span class="text-xs text-secondary">合計</span>
-					<span class="text-sm font-medium text-accent">
-						{breakdownItems.reduce((s, i) => s + i.volume, 0).toLocaleString()}
-					</span>
-				</div>
-			</div>
-		{/if}
-		<div class="mt-4 flex justify-end">
-			<button
-				onclick={() => (breakdownWeekStart = null)}
-				class="text-sm text-secondary hover:text-label"
-			>
-				閉じる
-			</button>
-		</div>
-	</div>
-</Dialog>
 
 <ConfirmDialog
 	open={deletingRecord !== null}

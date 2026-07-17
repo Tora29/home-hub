@@ -52,12 +52,10 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
 
 	return {
 		expenses: expenseData.items,
-		total: expenseData.total,
 		monthTotal: expenseData.monthTotal,
 		categories,
 		users,
 		currentUserId: userId,
-		currentMonth,
 		selectedMonth,
 		partnerPendingCount
 	};

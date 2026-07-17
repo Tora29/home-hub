@@ -28,7 +28,7 @@
 		title,
 		description,
 		confirmLabel = '確定',
-		confirmVariant = 'primary' as 'primary' | 'destructive',
+		confirmVariant = 'primary',
 		loading = false,
 		error = '',
 		onConfirm,

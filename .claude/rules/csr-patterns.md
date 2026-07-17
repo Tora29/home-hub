@@ -37,6 +37,32 @@ async function handleSomeAction() {
 
 ---
 
+## 類似フォームの共通ヘルパー抽出
+
+同一ページ・同一コンポーネントに「バリデーション → fetch → エラー処理 → ローディング解除」が
+ほぼ同じ形で繰り返される複数フォーム（例: カテゴリ/種目の追加・編集・削除）がある場合、
+定型フローをヘルパー関数に抽出する（`{feature}/components/form-helpers.ts` 等に配置）。
+
+```typescript
+export async function submitNamedForm(options: {
+	name: string;
+	maxLength: number;
+	requiredMessage: string;
+	maxLengthMessage: string;
+	setError: (message: string) => void;
+	setLoading: (loading: boolean) => void;
+	request: () => Promise<Response>;
+	onSuccess: () => void;
+}): Promise<void> {
+	// バリデーション → request() 実行 → エラー処理 → onSuccess の定型フローを共通化
+}
+```
+
+- 呼び出し側は `name` / `request` / `onSuccess` 等を渡すだけになり、個々のハンドラから重複コードが消える
+- フォームが 1〜2 個しかない場合は抽出せず、素直に「基本 fetch フロー」をそのまま書く
+
+---
+
 ## ローディング状態管理
 
 ```typescript
@@ -172,9 +198,4 @@ vi.mock('$app/navigation', () => ({
 
 ## なぜ必要か
 
-- scaffold-fe スキルがクライアントサイドの fetch コードを生成する際の規約
 - 競合回避・ローディング管理・エラー表示を統一してバグを防ぐため
-
-## 参照するスキル
-
-- scaffold-fe, scaffold-test-unit

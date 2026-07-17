@@ -19,9 +19,7 @@
 import { json } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
-
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+import { RECIPE_IMAGE_ALLOWED_TYPES, RECIPE_IMAGE_MAX_SIZE } from '$recipes/schema';
 
 const EXT_MAP: Record<string, string> = {
 	'image/jpeg': 'jpg',
@@ -58,7 +56,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		);
 	}
 
-	if (!ALLOWED_TYPES.includes(file.type)) {
+	if (!RECIPE_IMAGE_ALLOWED_TYPES.includes(file.type)) {
 		return json(
 			{
 				code: 'VALIDATION_ERROR',
@@ -69,7 +67,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		);
 	}
 
-	if (file.size > MAX_SIZE) {
+	if (file.size > RECIPE_IMAGE_MAX_SIZE) {
 		return json(
 			{
 				code: 'VALIDATION_ERROR',

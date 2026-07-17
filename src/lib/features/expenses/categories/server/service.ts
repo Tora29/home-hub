@@ -25,14 +25,9 @@ import { AppError } from '$lib/server/errors';
 import { expense, expenseCategory } from '$lib/server/tables';
 import type * as schema from '$lib/server/tables';
 import type { CategoryCreate, CategoryUpdate } from '../schema';
+import type { Category } from '../../types';
 
 type Db = DrizzleD1Database<typeof schema>;
-
-type Category = {
-	id: string;
-	name: string;
-	createdAt: Date;
-};
 
 /**
  * カテゴリ一覧を取得する（全件・全ユーザー共通）。

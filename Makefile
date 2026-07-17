@@ -44,7 +44,7 @@ db-migrate:
 	npm run db:migrate:local
 
 db-migrate-remote:
-	wrangler d1 migrations apply home-hub --remote
+	npx wrangler d1 migrations apply home-hub --remote
 
 db-migrate-all: db-migrate db-migrate-remote
 

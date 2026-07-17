@@ -4,9 +4,13 @@
   @feature calendar
 
   @description
-  予定の作成・編集をモーダルダイアログで行うコンポーネント。
-  作成者本人の場合のみ入力フォーム・削除ボタンを表示し、
-  作成者以外は読み取り専用表示にする。
+  予定の作成・編集をモーダルダイアログで行うシェルコンポーネント。
+  Dialog ラッパー・open/onClose 制御・作成者以外向けの読み取り専用表示・
+  削除確認 ConfirmDialog を担当する。
+  フォーム本体（title/description/date の状態管理）は EventForm に委譲し、
+  {#if open} の中で子コンポーネントとしてマウントする。
+  これにより open が true になるたびに EventForm が新規インスタンス化され、
+  前回入力値が残留しない（旧実装の modalSessionId 強制再マウントハックは不要）。
 
   @props
   - open: boolean - 表示状態
@@ -19,12 +23,10 @@
   - onClose: () => void - 閉じる時コールバック
 -->
 <script lang="ts">
-	import { untrack } from 'svelte';
 	import Dialog from '$lib/components/Dialog.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Input from '$lib/components/Input.svelte';
-	import Textarea from '$lib/components/Textarea.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import EventForm from './EventForm.svelte';
 	import type { CalendarEvent } from '../types';
 
 	let {
@@ -49,80 +51,9 @@
 
 	const isOwner = $derived(mode === 'create' || event?.createdByUserId === currentUserId);
 
-	let title = $state(untrack(() => event?.title ?? ''));
-	let description = $state(untrack(() => event?.description ?? ''));
-	let date = $state(untrack(() => event?.date ?? defaultDate ?? ''));
-	let titleError = $state('');
-	let dateError = $state('');
-	let errorMessage = $state('');
-	let isLoading = $state(false);
 	let deleteDialogOpen = $state(false);
 	let deleteLoading = $state(false);
 	let deleteError = $state('');
-
-	function validate(): boolean {
-		titleError = '';
-		dateError = '';
-		let valid = true;
-
-		if (!title.trim()) {
-			titleError = 'タイトルは必須です';
-			valid = false;
-		} else if (title.length > 100) {
-			titleError = '100文字以内で入力してください';
-			valid = false;
-		}
-
-		if (!date) {
-			dateError = '日付は必須です';
-			valid = false;
-		}
-
-		return valid;
-	}
-
-	async function handleSubmit() {
-		if (!validate()) return;
-
-		isLoading = true;
-		errorMessage = '';
-
-		const body = { title: title.trim(), description: description.trim() || null, date };
-		const url = mode === 'create' ? '/calendar/events' : `/calendar/events/${event!.id}`;
-		const method = mode === 'create' ? 'POST' : 'PUT';
-
-		try {
-			const res = await fetch(url, {
-				method,
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body)
-			});
-
-			if (!res.ok) {
-				const err = (await res.json()) as {
-					code?: string;
-					message?: string;
-					fields?: { field: string; message: string }[];
-				};
-				if (err.code === 'VALIDATION_ERROR' && err.fields) {
-					for (const f of err.fields) {
-						if (f.field === 'title') titleError = f.message;
-						if (f.field === 'date') dateError = f.message;
-					}
-				} else {
-					errorMessage = err.message ?? '操作に失敗しました';
-				}
-				return;
-			}
-
-			const saved = (await res.json()) as CalendarEvent;
-			onSuccess(saved);
-		} catch {
-			errorMessage = '通信エラーが発生しました';
-		} finally {
-			isLoading = false;
-		}
-	}
 
 	async function handleDelete() {
 		if (!event) return;
@@ -181,100 +112,14 @@
 						<Button variant="secondary" onclick={onClose} type="button">閉じる</Button>
 					</div>
 				{:else}
-					<form
-						data-testid="calendar-event-form"
-						class="flex flex-col gap-4"
-						onsubmit={(e) => {
-							e.preventDefault();
-							void handleSubmit();
-						}}
-					>
-						<div>
-							<label for="calendar-event-title" class="mb-1 block text-sm font-medium text-label">
-								タイトル<span class="ml-1 text-destructive">*</span>
-							</label>
-							<Input
-								id="calendar-event-title"
-								data-testid="calendar-event-title-input"
-								type="text"
-								bind:value={title}
-								maxlength={100}
-								class="w-full"
-							/>
-							{#if titleError}
-								<p class="mt-1 text-xs text-destructive">{titleError}</p>
-							{/if}
-						</div>
-
-						<div>
-							<label for="calendar-event-date" class="mb-1 block text-sm font-medium text-label">
-								日付<span class="ml-1 text-destructive">*</span>
-							</label>
-							<Input
-								id="calendar-event-date"
-								data-testid="calendar-event-date-input"
-								type="date"
-								bind:value={date}
-								class="w-full"
-							/>
-							{#if dateError}
-								<p class="mt-1 text-xs text-destructive">{dateError}</p>
-							{/if}
-						</div>
-
-						<div>
-							<label
-								for="calendar-event-description"
-								class="mb-1 block text-sm font-medium text-label"
-							>
-								概要
-							</label>
-							<Textarea
-								id="calendar-event-description"
-								data-testid="calendar-event-description-input"
-								bind:value={description}
-								maxlength={500}
-								class="w-full"
-							/>
-						</div>
-
-						{#if mode === 'edit'}
-							<p class="text-xs text-secondary">作成者: {event?.createdByName}</p>
-						{/if}
-
-						{#if errorMessage}
-							<p role="alert" class="text-sm text-destructive">{errorMessage}</p>
-						{/if}
-
-						<div class="flex items-center justify-between gap-3">
-							{#if mode === 'edit'}
-								<Button
-									data-testid="calendar-event-delete-button"
-									variant="ghost-destructive"
-									onclick={() => (deleteDialogOpen = true)}
-									disabled={isLoading}
-									type="button"
-								>
-									削除
-								</Button>
-							{:else}
-								<span></span>
-							{/if}
-							<div class="flex gap-3">
-								<Button variant="secondary" onclick={onClose} disabled={isLoading} type="button">
-									キャンセル
-								</Button>
-								<Button
-									data-testid="calendar-event-submit-button"
-									type="submit"
-									variant="primary"
-									disabled={isLoading}
-								>
-									保存
-								</Button>
-							</div>
-						</div>
-					</form>
+					<EventForm
+						{mode}
+						{event}
+						{defaultDate}
+						{onSuccess}
+						onCancel={onClose}
+						onDeleteClick={mode === 'edit' ? () => (deleteDialogOpen = true) : undefined}
+					/>
 				{/if}
 			</div>
 		</div>
