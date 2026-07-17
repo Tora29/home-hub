@@ -17,42 +17,22 @@
  *
  * @test ./service.integration.test.ts
  */
-import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lt, sql, type SQL } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { expense, expenseCategory, user as userTable } from '$lib/server/tables';
 import type * as schema from '$lib/server/tables';
+import { getCurrentMonth } from '$lib/utils/date';
+import type { DashboardSummary } from '../types';
 
 type Db = DrizzleD1Database<typeof schema>;
-
-type PayerSummary = {
-	payerId: string;
-	payerName: string | null;
-	total: number;
-};
-
-type CategoryPayerSummary = {
-	payerId: string;
-	payerName: string | null;
-	total: number;
-};
-
-type CategorySummary = {
-	categoryId: string;
-	categoryName: string;
-	total: number;
-	byPayer: CategoryPayerSummary[];
-};
-
-type DashboardSummary = {
-	overall: number;
-	byPayer: PayerSummary[];
-	byCategory: CategorySummary[];
-};
 
 type SummaryOptions = {
 	period: 'month' | 'all';
 	month?: string;
 };
+
+// 支出金額合計の SQL 式（NULL 時は 0）。複数の集計クエリで共通利用する。
+const totalExpr = sql<number>`coalesce(sum(${expense.amount}), 0)`;
 
 /**
  * 集計サマリーを取得する。period=month の場合は指定月、period=all の場合は全期間。
@@ -63,31 +43,24 @@ export async function getDashboardSummary(
 	db: Db,
 	options: SummaryOptions
 ): Promise<DashboardSummary> {
-	let periodFilter;
+	let whereClause: SQL | undefined;
 	if (options.period === 'month') {
-		const now = new Date();
-		const month =
-			options.month ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+		const month = options.month ?? getCurrentMonth();
 		const [year, mon] = month.split('-').map(Number);
 		const monthStart = new Date(year, mon - 1, 1);
 		const monthEnd = new Date(year, mon, 1);
-		periodFilter = and(gte(expense.createdAt, monthStart), lt(expense.createdAt, monthEnd));
+		whereClause = and(gte(expense.createdAt, monthStart), lt(expense.createdAt, monthEnd));
 	}
 
-	const whereClause = periodFilter;
-
 	// 全体合計
-	const [overallRow] = await db
-		.select({ total: sql<number>`coalesce(sum(${expense.amount}), 0)` })
-		.from(expense)
-		.where(whereClause);
+	const [overallRow] = await db.select({ total: totalExpr }).from(expense).where(whereClause);
 
 	// 支払者別合計（多い順）
 	const payerRows = await db
 		.select({
 			payerId: userTable.id,
 			payerName: userTable.name,
-			total: sql<number>`coalesce(sum(${expense.amount}), 0)`
+			total: totalExpr
 		})
 		.from(expense)
 		.innerJoin(userTable, eq(expense.payerUserId, userTable.id))
@@ -100,7 +73,7 @@ export async function getDashboardSummary(
 		.select({
 			categoryId: expenseCategory.id,
 			categoryName: expenseCategory.name,
-			total: sql<number>`coalesce(sum(${expense.amount}), 0)`
+			total: totalExpr
 		})
 		.from(expense)
 		.innerJoin(expenseCategory, eq(expense.categoryId, expenseCategory.id))
@@ -114,7 +87,7 @@ export async function getDashboardSummary(
 			categoryId: expenseCategory.id,
 			payerId: userTable.id,
 			payerName: userTable.name,
-			total: sql<number>`coalesce(sum(${expense.amount}), 0)`
+			total: totalExpr
 		})
 		.from(expense)
 		.innerJoin(expenseCategory, eq(expense.categoryId, expenseCategory.id))

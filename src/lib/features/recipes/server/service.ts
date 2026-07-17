@@ -27,31 +27,9 @@ import { AppError } from '$lib/server/errors';
 import { recipe } from '$lib/server/tables';
 import type * as schema from '$lib/server/tables';
 import type { RecipeCreate, RecipeUpdate } from '../schema';
+import type { Ingredient, Recipe } from '../types';
 
 type Db = DrizzleD1Database<typeof schema>;
-
-type Ingredient = { name: string; amount?: string };
-
-type Recipe = {
-	id: string;
-	userId: string;
-	name: string;
-	description: string | null;
-	imageUrl: string | null;
-	r2ImageKey: string | null;
-	ingredients: Ingredient[] | null;
-	steps: string[] | null;
-	sourceUrl: string | null;
-	servings: number | null;
-	cookingTimeMinutes: number | null;
-	cookedCount: number;
-	lastCookedAt: Date | null;
-	rating: string | null;
-	difficulty: string | null;
-	memo: string | null;
-	createdAt: Date;
-	updatedAt: Date;
-};
 
 function parseRow(row: typeof recipe.$inferSelect): Recipe {
 	return {

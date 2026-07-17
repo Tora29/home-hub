@@ -13,28 +13,30 @@ import type { D1Database } from '@cloudflare/workers-types';
 import { createDb } from './db';
 import { user, session, account, verification } from './tables';
 
-export function createAuth(
-	d1: D1Database,
-	secret: string,
-	baseURL: string,
-	googleClientId: string,
-	googleClientSecret: string,
-	allowedEmails?: string
-) {
-	const db = createDb(d1);
-	const allowedList = allowedEmails ? allowedEmails.split(',').map((e) => e.trim()) : [];
+export function createAuth(config: {
+	d1: D1Database;
+	secret: string;
+	baseURL: string;
+	googleClientId: string;
+	googleClientSecret: string;
+	allowedEmails?: string;
+}) {
+	const db = createDb(config.d1);
+	const allowedList = config.allowedEmails
+		? config.allowedEmails.split(',').map((e) => e.trim())
+		: [];
 
 	return betterAuth({
-		secret,
-		baseURL,
+		secret: config.secret,
+		baseURL: config.baseURL,
 		database: drizzleAdapter(db, {
 			provider: 'sqlite',
 			schema: { user, session, account, verification }
 		}),
 		socialProviders: {
 			google: {
-				clientId: googleClientId,
-				clientSecret: googleClientSecret
+				clientId: config.googleClientId,
+				clientSecret: config.googleClientSecret
 			}
 		},
 		databaseHooks: {

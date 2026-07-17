@@ -5,13 +5,15 @@
 
   @description
   週間ボリューム（重量×回数合計）を棒グラフで表示するSVGコンポーネント。
+  Y軸グリッド・X軸ラベルの描画は `ChartAxes.svelte` に委譲する。
 
   @props
   - points: WeeklyVolumePoint[] - 週ごとのボリュームデータ
   - onBarClick: (weekStart: string) => void - バークリック時のコールバック（省略可）
 -->
 <script lang="ts">
-	type WeeklyVolumePoint = { weekStart: string; volume: number };
+	import ChartAxes from './ChartAxes.svelte';
+	import type { WeeklyVolumePoint } from '../types';
 
 	let {
 		points = [],
@@ -50,19 +52,16 @@
 	const xLabels = $derived.by(() => {
 		if (points.length === 0) return [];
 		const maxLabels = 6;
-		const step = Math.max(1, Math.floor(points.length / maxLabels));
+		const labelStep = Math.max(1, Math.floor(points.length / maxLabels));
 		return points
-			.filter((_, i) => i % step === 0 || i === points.length - 1)
-			.map((p, _i, _arr) => {
-				const idx = points.indexOf(p);
-				return { label: p.weekStart.slice(5), x: toX(idx) + barWidth / 2 };
-			});
+			.map((p, i) => ({ key: p.weekStart, x: toX(i) + barWidth / 2, label: p.weekStart.slice(5) }))
+			.filter((_, i) => i % labelStep === 0 || i === points.length - 1);
 	});
 
 	const yTicks = $derived.by(() => {
 		const ticks = [];
 		for (let v = 0; v <= yMax; v += yStep) {
-			ticks.push({ v, y: toY(v) });
+			ticks.push({ value: v, y: toY(v) });
 		}
 		return ticks;
 	});
@@ -79,33 +78,7 @@
 		class="overflow-visible"
 	>
 		<g transform="translate({PADDING.left},{PADDING.top})">
-			<!-- Y軸グリッドとラベル -->
-			{#each yTicks as tick (tick.v)}
-				<line
-					x1="0"
-					y1={tick.y}
-					x2={chartWidth}
-					y2={tick.y}
-					stroke="var(--color-separator)"
-					stroke-width="1"
-				/>
-				<text x="-6" y={tick.y + 4} text-anchor="end" class="fill-secondary" font-size="11">
-					{tick.v}
-				</text>
-			{/each}
-
-			<!-- X軸ラベル -->
-			{#each xLabels as label (label.label)}
-				<text
-					x={label.x}
-					y={chartHeight + 20}
-					text-anchor="middle"
-					class="fill-secondary"
-					font-size="11"
-				>
-					{label.label}
-				</text>
-			{/each}
+			<ChartAxes {chartWidth} {chartHeight} {yTicks} {xLabels} labelClass="fill-secondary" />
 
 			<!-- 棒グラフ -->
 			{#each points as p, i (p.weekStart)}

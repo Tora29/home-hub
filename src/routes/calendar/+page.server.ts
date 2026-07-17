@@ -12,6 +12,7 @@ import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
 import { calendarQuerySchema } from '$calendar/schema';
 import { getEvents } from '$calendar/server/service';
+import { getCurrentMonth } from '$lib/utils/date';
 
 export const load: PageServerLoad = async ({ platform, locals, url }) => {
 	const db = createDb(platform!.env.DB);
@@ -22,8 +23,7 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
 		redirect(302, '/calendar');
 	}
 
-	const now = new Date();
-	const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+	const currentMonth = getCurrentMonth();
 	const selectedMonth = parsed.data.month ?? currentMonth;
 
 	const { items: events } = await getEvents(db, selectedMonth);

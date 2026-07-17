@@ -15,8 +15,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Input from '$lib/components/Input.svelte';
-
-	type Category = { id: string; name: string; createdAt: Date };
+	import type { Category } from '../../types';
 
 	let {
 		categories
@@ -37,14 +36,17 @@
 	let isDeleting = $state(false);
 	let deleteError = $state('');
 
+	function validateCategoryName(name: string): string | null {
+		if (!name.trim()) return 'カテゴリ名は必須です';
+		if (name.length > 50) return '50文字以内で入力してください';
+		return null;
+	}
+
 	async function handleAdd() {
 		newNameError = '';
-		if (!newName.trim()) {
-			newNameError = 'カテゴリ名は必須です';
-			return;
-		}
-		if (newName.length > 50) {
-			newNameError = '50文字以内で入力してください';
+		const error = validateCategoryName(newName);
+		if (error) {
+			newNameError = error;
 			return;
 		}
 
@@ -83,12 +85,9 @@
 
 	async function handleEditSave(id: string) {
 		editingNameError = '';
-		if (!editingName.trim()) {
-			editingNameError = 'カテゴリ名は必須です';
-			return;
-		}
-		if (editingName.length > 50) {
-			editingNameError = '50文字以内で入力してください';
+		const error = validateCategoryName(editingName);
+		if (error) {
+			editingNameError = error;
 			return;
 		}
 

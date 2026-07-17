@@ -27,6 +27,8 @@
 	import ExpenseItem from './ExpenseItem.svelte';
 	import ExpenseFormDialog from './ExpenseFormDialog.svelte';
 	import type { ExpenseWithRelations, Category, User } from '../types';
+	import { generateMonthOptions } from '$lib/utils/date';
+	import { formatAmount } from '../format';
 
 	let {
 		expenses,
@@ -80,22 +82,7 @@
 	);
 
 	// ---- 月選択肢生成（AC-002b: 常に当月を起点とした過去13か月分固定） ----
-	function generateMonthOptions(): Array<{ value: string; label: string }> {
-		const now = new Date();
-		const options: Array<{ value: string; label: string }> = [];
-		for (let i = 0; i < 13; i++) {
-			const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-			const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-			const label = `${d.getFullYear()}年${d.getMonth() + 1}月`;
-			options.push({ value, label });
-		}
-		return options;
-	}
 	const monthOptions = generateMonthOptions();
-
-	function formatAmount(amount: number): string {
-		return `¥${amount.toLocaleString('ja-JP')}`;
-	}
 
 	// ---- 月切り替え ----
 	async function handleMonthChange(e: Event) {
@@ -155,21 +142,43 @@
 		}
 	}
 
+	// ---- 一括操作共通処理（fetch→エラー処理→onSuccess→invalidateAll） ----
+	async function runBulkAction({
+		url,
+		defaultErrorMessage,
+		setError,
+		onSuccess
+	}: {
+		url: string;
+		defaultErrorMessage: string;
+		setError: (message: string) => void;
+		onSuccess: () => void;
+	}): Promise<void> {
+		try {
+			const res = await fetch(url, { method: 'POST' });
+			if (!res.ok) {
+				const err = (await res.json()) as { message?: string };
+				setError(err.message ?? defaultErrorMessage);
+				return;
+			}
+			onSuccess();
+			await invalidateAll();
+		} catch {
+			setError('通信エラーが発生しました');
+		}
+	}
+
 	// ---- 一括承認依頼 ----
 	async function handleRequest() {
 		requestLoading = true;
 		requestError = '';
 		try {
-			const res = await fetch('/expenses/request', { method: 'POST' });
-			if (!res.ok) {
-				const err = (await res.json()) as { message?: string };
-				requestError = err.message ?? '承認依頼に失敗しました';
-				return;
-			}
-			requestDialogOpen = false;
-			await invalidateAll();
-		} catch {
-			requestError = '通信エラーが発生しました';
+			await runBulkAction({
+				url: '/expenses/request',
+				defaultErrorMessage: '承認依頼に失敗しました',
+				setError: (message) => (requestError = message),
+				onSuccess: () => (requestDialogOpen = false)
+			});
 		} finally {
 			requestLoading = false;
 		}
@@ -180,16 +189,12 @@
 		cancelLoading = true;
 		cancelError = '';
 		try {
-			const res = await fetch('/expenses/cancel', { method: 'POST' });
-			if (!res.ok) {
-				const err = (await res.json()) as { message?: string };
-				cancelError = err.message ?? '申請取り消しに失敗しました';
-				return;
-			}
-			cancelDialogOpen = false;
-			await invalidateAll();
-		} catch {
-			cancelError = '通信エラーが発生しました';
+			await runBulkAction({
+				url: '/expenses/cancel',
+				defaultErrorMessage: '申請取り消しに失敗しました',
+				setError: (message) => (cancelError = message),
+				onSuccess: () => (cancelDialogOpen = false)
+			});
 		} finally {
 			cancelLoading = false;
 		}
@@ -200,16 +205,12 @@
 		approveLoading = true;
 		approveError = '';
 		try {
-			const res = await fetch('/expenses/approve', { method: 'POST' });
-			if (!res.ok) {
-				const err = (await res.json()) as { message?: string };
-				approveError = err.message ?? '承認に失敗しました';
-				return;
-			}
-			approveDialogOpen = false;
-			await invalidateAll();
-		} catch {
-			approveError = '通信エラーが発生しました';
+			await runBulkAction({
+				url: '/expenses/approve',
+				defaultErrorMessage: '承認に失敗しました',
+				setError: (message) => (approveError = message),
+				onSuccess: () => (approveDialogOpen = false)
+			});
 		} finally {
 			approveLoading = false;
 		}

@@ -33,9 +33,6 @@
 	let modalMode = $state<'create' | 'edit'>('create');
 	let selectedDate = $state<string | undefined>(undefined);
 	let selectedEvent = $state<CalendarEvent | null>(null);
-	// 同じ日付・イベントに対して連続でモーダルを開いても EventModal を必ず再マウントさせ、
-	// 前回の入力値・isLoading 等が残留しないようにするためのセッション ID
-	let modalSessionId = $state(0);
 
 	const monthLabel = $derived.by(() => {
 		const [y, m] = data.selectedMonth.split('-');
@@ -46,7 +43,6 @@
 		modalMode = 'create';
 		selectedDate = date;
 		selectedEvent = null;
-		modalSessionId++;
 		modalOpen = true;
 	}
 
@@ -54,7 +50,6 @@
 		modalMode = 'edit';
 		selectedEvent = event;
 		selectedDate = undefined;
-		modalSessionId++;
 		modalOpen = true;
 	}
 
@@ -62,12 +57,7 @@
 		modalOpen = false;
 	}
 
-	async function handleModalSuccess() {
-		modalOpen = false;
-		await invalidateAll();
-	}
-
-	async function handleModalDelete() {
+	async function handleModalChange() {
 		modalOpen = false;
 		await invalidateAll();
 	}
@@ -139,15 +129,13 @@
 	/>
 </div>
 
-{#key modalSessionId}
-	<EventModal
-		open={modalOpen}
-		mode={modalMode}
-		event={selectedEvent}
-		defaultDate={selectedDate}
-		currentUserId={data.currentUserId}
-		onSuccess={() => void handleModalSuccess()}
-		onDelete={() => void handleModalDelete()}
-		onClose={closeModal}
-	/>
-{/key}
+<EventModal
+	open={modalOpen}
+	mode={modalMode}
+	event={selectedEvent}
+	defaultDate={selectedDate}
+	currentUserId={data.currentUserId}
+	onSuccess={() => void handleModalChange()}
+	onDelete={() => void handleModalChange()}
+	onClose={closeModal}
+/>

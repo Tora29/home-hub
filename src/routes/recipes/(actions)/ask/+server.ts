@@ -21,10 +21,11 @@
 import { json } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
-import { AppError } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
+import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { askSchema } from '$recipes/schema';
 import { getAllRecipes } from '$recipes/server/service';
+import { runRecipeAi } from '$recipes/server/ai';
 
 /**
  * AI 献立相談。全レシピをコンテキストに含めて Workers AI に問い合わせる。
@@ -33,29 +34,11 @@ import { getAllRecipes } from '$recipes/server/service';
  * @throws VALIDATION_ERROR - 入力値が不正な場合
  */
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
-	let body: unknown;
-	try {
-		body = await request.json();
-	} catch {
-		return json(
-			{ code: 'VALIDATION_ERROR', message: 'リクエストボディが不正です', fields: [] },
-			{ status: 400 }
-		);
-	}
-	const result = askSchema.safeParse(body);
-	if (!result.success) {
-		return json(
-			{
-				code: 'VALIDATION_ERROR',
-				message: '入力値が正しくありません',
-				fields: result.error.issues.map((i) => ({
-					field: i.path.join('.'),
-					message: i.message
-				}))
-			},
-			{ status: 400 }
-		);
-	}
+	const bodyResult = await parseJsonBody(request);
+	if (!bodyResult.ok) return bodyResult.response;
+
+	const result = askSchema.safeParse(bodyResult.data);
+	if (!result.success) return validationErrorResponse(result.error.issues);
 
 	try {
 		const db = createDb(platform!.env.DB);
@@ -80,26 +63,12 @@ ${recipeContext || 'レシピが登録されていません。'}`;
 		if (dev) {
 			answer = `【ローカル開発用ダミー回答】\n「${result.data.question}」についての回答です。本番環境では Workers AI が実際の回答を生成します。`;
 		} else {
-			type AiRunner = { run: (model: string, opts: unknown) => Promise<{ response?: string }> };
-			const ai = platform!.env.AI as unknown as AiRunner;
-			const aiResponse = await ai.run('@cf/meta/llama-3.1-8b-instruct-fp8', {
-				messages: [
-					{ role: 'system', content: systemPrompt },
-					{ role: 'user', content: result.data.question }
-				]
-			});
-			answer = aiResponse.response ?? 'AI からの回答を取得できませんでした。';
+			const response = await runRecipeAi(platform!.env.AI, systemPrompt, result.data.question);
+			answer = response ?? 'AI からの回答を取得できませんでした。';
 		}
 
 		return json({ answer });
 	} catch (e) {
-		if (e instanceof AppError) {
-			return json({ code: e.code, message: e.message, fields: e.fields }, { status: e.status });
-		}
-		console.error(e);
-		return json(
-			{ code: 'INTERNAL_SERVER_ERROR', message: 'サーバーエラーが発生しました' },
-			{ status: 500 }
-		);
+		return handleApiError(e);
 	}
 };

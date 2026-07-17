@@ -113,6 +113,48 @@ function resolvePartnerLineUserId(role: string | null, lineEnv: LineEnv): string
 }
 
 /**
+ * 既存支出を取得し、存在チェック・所有者チェックを行う共通ヘルパー。
+ * @throws {NOT_FOUND} - 該当支出が存在しない場合
+ * @throws {FORBIDDEN} - 他ユーザーの支出の場合
+ */
+async function getOwnedExpenseOrThrow(
+	db: Db,
+	userId: string,
+	id: string
+): Promise<typeof expense.$inferSelect> {
+	const existing = await db.select().from(expense).where(eq(expense.id, id)).get();
+	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
+	if (existing.userId !== userId)
+		throw new AppError('FORBIDDEN', 403, '他のユーザーの支出は操作できません');
+	return existing;
+}
+
+/**
+ * 相手ユーザーに LINE 通知をベストエフォートで送信する。
+ * D1 がトランザクション非対応のため、失敗しても throw せずログのみで飲み込む。
+ */
+async function notifyPartnerBestEffort(
+	lineEnv: LineEnv,
+	role: string | null,
+	message: string
+): Promise<void> {
+	const partnerLineUserId = resolvePartnerLineUserId(role, lineEnv);
+	const shouldNotify =
+		partnerLineUserId && lineEnv.lineChannelAccessToken && lineEnv.lineMock !== 'true';
+	if (!shouldNotify) return;
+
+	try {
+		await sendLineMessage(
+			partnerLineUserId!,
+			[{ type: 'text', text: message }],
+			lineEnv.lineChannelAccessToken!
+		);
+	} catch (e) {
+		console.error('[LINE] 通知の送信に失敗しました:', e);
+	}
+}
+
+/**
  * 指定月の全ユーザーの支出一覧をページネーション付きで取得する。month 未指定時は当月。
  * @ac AC-001, AC-002, AC-014
  */
@@ -236,10 +278,7 @@ export async function updateExpense(
 	id: string,
 	data: ExpenseUpdate
 ): Promise<ExpenseWithRelations> {
-	const existing = await db.select().from(expense).where(eq(expense.id, id)).get();
-	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
-	if (existing.userId !== userId)
-		throw new AppError('FORBIDDEN', 403, '他のユーザーの支出は操作できません');
+	const existing = await getOwnedExpenseOrThrow(db, userId, id);
 	if (existing.status === 'pending' || existing.status === 'approved')
 		throw new AppError('CONFLICT', 409, '申請中または承認済みの支出は変更できません');
 
@@ -266,10 +305,7 @@ export async function updateExpense(
  * @throws {CONFLICT} - pending/approved の支出の場合
  */
 export async function deleteExpense(db: Db, userId: string, id: string): Promise<void> {
-	const existing = await db.select().from(expense).where(eq(expense.id, id)).get();
-	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
-	if (existing.userId !== userId)
-		throw new AppError('FORBIDDEN', 403, '他のユーザーの支出は操作できません');
+	const existing = await getOwnedExpenseOrThrow(db, userId, id);
 	if (existing.status === 'pending' || existing.status === 'approved')
 		throw new AppError('CONFLICT', 409, '申請中または承認済みの支出は変更できません');
 
@@ -288,10 +324,7 @@ export async function checkExpense(
 	userId: string,
 	id: string
 ): Promise<ExpenseWithRelations> {
-	const existing = await db.select().from(expense).where(eq(expense.id, id)).get();
-	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
-	if (existing.userId !== userId)
-		throw new AppError('FORBIDDEN', 403, '他のユーザーの支出は操作できません');
+	const existing = await getOwnedExpenseOrThrow(db, userId, id);
 	if (existing.status !== 'unapproved')
 		throw new AppError('CONFLICT', 409, '確認できる状態の支出ではありません');
 
@@ -312,10 +345,7 @@ export async function uncheckExpense(
 	userId: string,
 	id: string
 ): Promise<ExpenseWithRelations> {
-	const existing = await db.select().from(expense).where(eq(expense.id, id)).get();
-	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
-	if (existing.userId !== userId)
-		throw new AppError('FORBIDDEN', 403, '他のユーザーの支出は操作できません');
+	const existing = await getOwnedExpenseOrThrow(db, userId, id);
 	if (existing.status !== 'checked')
 		throw new AppError('CONFLICT', 409, '確認取消できる状態の支出ではありません');
 
@@ -328,7 +358,8 @@ export async function uncheckExpense(
  * 自分の checked 支出を一括で pending に変更し、相手に LINE 通知を送信する。
  * @ac AC-008, AC-115, AC-119, AC-120
  * @throws {CONFLICT} - checked 支出が 0 件の場合
- * @throws {BAD_GATEWAY} - LINE API 失敗の場合
+ *
+ * LINE 通知はベストエフォート。失敗してもロールバックしない。
  */
 export async function requestExpenses(
 	db: Db,
@@ -344,10 +375,6 @@ export async function requestExpenses(
 	if (checkedExpenses.length === 0)
 		throw new AppError('CONFLICT', 409, '確認済みの支出がありません');
 
-	const partnerLineUserId = resolvePartnerLineUserId(currentUserRole, lineEnv);
-	const shouldNotify =
-		partnerLineUserId && lineEnv.lineChannelAccessToken && lineEnv.lineMock !== 'true';
-
 	// DB 更新を先行（状態の正確性を優先）
 	await db
 		.update(expense)
@@ -356,22 +383,11 @@ export async function requestExpenses(
 
 	// LINE 通知はベストエフォート: 失敗しても DB 更新済みのため状態は正しい
 	// D1 が BEGIN トランザクション非対応のため、完全なロールバックは不可能（AC-120 は緩和）
-	if (shouldNotify) {
-		try {
-			await sendLineMessage(
-				partnerLineUserId!,
-				[
-					{
-						type: 'text',
-						text: '承認依頼が届いています。確認してください。\nhttps://home-hub.pages.dev/expenses'
-					}
-				],
-				lineEnv.lineChannelAccessToken!
-			);
-		} catch (e) {
-			console.error('[LINE] 承認依頼通知の送信に失敗しました:', e);
-		}
-	}
+	await notifyPartnerBestEffort(
+		lineEnv,
+		currentUserRole,
+		'承認依頼が届いています。確認してください。\nhttps://home-hub.pages.dev/expenses'
+	);
 
 	return { count: checkedExpenses.length };
 }
@@ -402,7 +418,8 @@ export async function cancelExpenses(db: Db, userId: string): Promise<{ count: n
  * 自分の pending は対象外（AC-010）。
  * @ac AC-010, AC-118, AC-119, AC-120
  * @throws {CONFLICT} - 承認対象の pending 支出が 0 件の場合
- * @throws {BAD_GATEWAY} - LINE API 失敗の場合
+ *
+ * LINE 通知はベストエフォート。失敗してもロールバックしない。
  */
 export async function approveExpenses(
 	db: Db,
@@ -418,10 +435,6 @@ export async function approveExpenses(
 	if (pendingExpenses.length === 0)
 		throw new AppError('CONFLICT', 409, '承認できる支出がありません');
 
-	const partnerLineUserId = resolvePartnerLineUserId(currentUserRole, lineEnv);
-	const shouldNotify =
-		partnerLineUserId && lineEnv.lineChannelAccessToken && lineEnv.lineMock !== 'true';
-
 	// DB 更新を先行（状態の正確性を優先）
 	await db
 		.update(expense)
@@ -429,17 +442,11 @@ export async function approveExpenses(
 		.where(and(ne(expense.userId, userId), eq(expense.status, 'pending')));
 
 	// LINE 通知はベストエフォート
-	if (shouldNotify) {
-		try {
-			await sendLineMessage(
-				partnerLineUserId!,
-				[{ type: 'text', text: '支出が承認されました。\nhttps://home-hub.pages.dev/expenses' }],
-				lineEnv.lineChannelAccessToken!
-			);
-		} catch (e) {
-			console.error('[LINE] 承認通知の送信に失敗しました:', e);
-		}
-	}
+	await notifyPartnerBestEffort(
+		lineEnv,
+		currentUserRole,
+		'支出が承認されました。\nhttps://home-hub.pages.dev/expenses'
+	);
 
 	return { count: pendingExpenses.length };
 }

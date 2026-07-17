@@ -25,14 +25,14 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const { DB, BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_EMAILS } =
 		event.platform!.env;
 	const baseURL = `${event.url.protocol}//${event.url.host}`;
-	const auth = createAuth(
-		DB,
-		BETTER_AUTH_SECRET,
+	const auth = createAuth({
+		d1: DB,
+		secret: BETTER_AUTH_SECRET,
 		baseURL,
-		GOOGLE_CLIENT_ID,
-		GOOGLE_CLIENT_SECRET,
-		ALLOWED_EMAILS
-	);
+		googleClientId: GOOGLE_CLIENT_ID,
+		googleClientSecret: GOOGLE_CLIENT_SECRET,
+		allowedEmails: ALLOWED_EMAILS
+	});
 
 	// Better Auth が /api/auth/* を自前で処理するので先に渡す
 	if (event.url.pathname.startsWith('/api/auth')) {

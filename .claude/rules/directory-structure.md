@@ -78,6 +78,20 @@ lib/features/{feature}/
     service.integration.test.ts
 ```
 
+### 任意のヘルパーファイル
+
+`schema.ts` / `types.ts` 以外にも、feature 内の複数箇所（`components/` 間・`components/` と `routes/`間）で共有する
+サーバー非依存の純粋関数は feature 直下にファイルを切り出せる。
+
+```
+lib/features/{feature}/
+  format.ts    # 表示整形（例: expenses/format.ts の formatAmount）
+  labels.ts    # ラベル変換・マップ（例: recipes/labels.ts の DIFFICULTY_LABEL）
+```
+
+- クライアントから import 可能な純粋関数のみを置く（DB アクセス・シークレット参照は `server/` へ）
+- 1 箇所でしか使わない関数は切り出さず、使用箇所にそのまま書く
+
 ### 責務が複数ある場合はファイル名で分割
 
 ```
@@ -175,7 +189,3 @@ lib/features/{feature}/
 - `src/routes/` にルーティングと実装が混在すると、URL 変更・機能削除・AI によるコード生成いずれも影響範囲が読めなくなる
 - `lib/features/` に実装を集約することで feature 単位の独立性が保たれ、AI がコンテキストを最小化して正確なコードを生成できる
 - `server/` サブディレクトリにより、クライアントに漏れてはいけないコードの境界が明確になる
-
-## 参照するスキル
-
-- scaffold-be, scaffold-fe, scaffold-test-unit, scaffold-test-e2e, review-changes

@@ -125,7 +125,8 @@ export async function updateEvent(
 		.update(calendarEvent)
 		.set({
 			title: data.title,
-			description: data.description ?? null,
+			description:
+				data.description !== undefined ? (data.description ?? null) : existing.description,
 			date: data.date,
 			updatedAt: new Date()
 		})

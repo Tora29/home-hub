@@ -25,6 +25,7 @@
 	import { fade } from 'svelte/transition';
 	import Button from '$lib/components/Button.svelte';
 	import type { ExpenseWithRelations } from '../types';
+	import { formatAmount } from '../format';
 
 	let {
 		expense,
@@ -52,10 +53,9 @@
 	const isPending = $derived(expense.status === 'pending');
 	const isApproved = $derived(expense.status === 'approved');
 
-	// チェックボックス表示: 自分の unapproved/checked のみ
-	const showCheckbox = $derived(isOwner && (isUnapproved || isChecked));
-	// 行メニューボタン表示: 自分の unapproved/checked のみ（モバイル）
-	const showMenuButton = $derived(isOwner && (isUnapproved || isChecked));
+	// チェックボックス（デスクトップ/モバイル共通）・行メニューボタン（モバイル）の表示判定:
+	// 自分の unapproved/checked のみ操作可能
+	const canManage = $derived(isOwner && (isUnapproved || isChecked));
 	// デスクトップ編集/削除ボタン表示: 自分の支出のみ
 	const showDesktopActions = $derived(isOwner);
 	// 編集/削除 disabled: pending の場合
@@ -71,10 +71,6 @@
 	};
 
 	const currentStatus = $derived(statusConfig[expense.status] ?? statusConfig.unapproved);
-
-	function formatAmount(amount: number): string {
-		return `¥${amount.toLocaleString('ja-JP')}`;
-	}
 
 	function formatDate(dateStr: string): string {
 		const d = new Date(dateStr);
@@ -100,7 +96,7 @@
 	<!-- デスクトップレイアウト（md+） -->
 	<div class="hidden items-center gap-3 md:flex">
 		<!-- チェックボックス -->
-		{#if showCheckbox}
+		{#if canManage}
 			<input
 				data-testid="expense-check-button"
 				type="checkbox"
@@ -170,13 +166,14 @@
 	<div class="md:hidden">
 		<!-- 1行目: チェックボックス + 金額 + メニューボタン -->
 		<div class="flex items-center gap-2">
-			{#if showCheckbox}
+			{#if canManage}
 				<input
 					data-testid="expense-check-button"
 					type="checkbox"
 					checked={isChecked}
 					onchange={handleCheckboxChange}
-					class="h-4 w-4 shrink-0 cursor-pointer accent-accent"
+					disabled={checkLoading}
+					class="h-4 w-4 shrink-0 cursor-pointer accent-accent disabled:cursor-not-allowed disabled:opacity-50"
 					aria-label="確認済みにする"
 				/>
 			{:else}
@@ -185,7 +182,7 @@
 			<span class="flex-1 text-lg font-semibold text-label">{formatAmount(expense.amount)}</span>
 
 			<!-- 行メニューボタン（自分の unapproved/checked のみ） -->
-			{#if showMenuButton}
+			{#if canManage}
 				<div class="relative">
 					<button
 						data-testid="expense-menu-button"
