@@ -13,31 +13,10 @@
 -->
 <script lang="ts">
 	import { UtensilsCrossed } from '@lucide/svelte';
-
-	interface Recipe {
-		id: string;
-		name: string;
-		imageUrl: string | null;
-		difficulty: string | null;
-		rating: string | null;
-		cookedCount: number;
-		lastCookedAt: Date | null;
-	}
+	import { DIFFICULTY_LABEL, RATING_LABEL, formatDate } from '../labels';
+	import type { Recipe } from '../types';
 
 	let { recipe }: { recipe: Recipe } = $props();
-
-	const DIFFICULTY_LABEL: Record<string, string> = {
-		easy: '簡単',
-		medium: '普通',
-		hard: '難しい'
-	};
-
-	const RATING_LABEL: Record<string, string> = {
-		excellent: '非常に美味しい',
-		good: '美味しい',
-		average: '普通',
-		poor: '微妙'
-	};
 
 	const RATING_CLASS: Record<string, string> = {
 		excellent: 'bg-success/20 text-success',
@@ -45,14 +24,6 @@
 		average: 'bg-bg-grouped text-secondary',
 		poor: 'bg-bg-grouped text-secondary'
 	};
-
-	function formatDate(date: Date | null | string): string {
-		if (!date) return '未調理';
-		const d = new Date(date);
-		return isNaN(d.getTime())
-			? '未調理'
-			: d.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' });
-	}
 </script>
 
 <a

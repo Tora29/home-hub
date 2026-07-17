@@ -15,20 +15,12 @@
 	import { goto } from '$app/navigation';
 	import { mobileOpen } from '$lib/stores/sidebar';
 
-	let isDark = $state(false);
+	let isDark = $state(
+		typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+	);
 
-	if (typeof document !== 'undefined') {
-		const saved = localStorage.getItem('theme');
-		if (saved === 'dark') {
-			isDark = true;
-			document.documentElement.classList.add('dark');
-		} else if (saved === 'light') {
-			isDark = false;
-			document.documentElement.classList.remove('dark');
-		} else {
-			isDark = document.documentElement.classList.contains('dark');
-		}
-	}
+	const navButtonClass =
+		'flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm text-label transition-colors hover:bg-bg-grouped focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none';
 
 	function toggleDark() {
 		const currentlyDark = document.documentElement.classList.contains('dark');
@@ -70,7 +62,7 @@
 			data-testid="header-dark-toggle"
 			aria-label={isDark ? 'ライトモードに切り替える' : 'ダークモードに切り替える'}
 			onclick={toggleDark}
-			class="flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm text-label transition-colors hover:bg-bg-grouped focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+			class={navButtonClass}
 		>
 			{#if isDark}
 				<Sun size={18} />
@@ -84,7 +76,7 @@
 			data-testid="header-logout-button"
 			aria-label="ログアウト"
 			onclick={logout}
-			class="flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm text-label transition-colors hover:bg-bg-grouped focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+			class={navButtonClass}
 		>
 			<LogOut size={16} />
 			<span class="hidden md:inline">ログアウト</span>

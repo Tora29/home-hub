@@ -21,8 +21,8 @@
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { AppError } from '$lib/server/errors';
 import { createDb } from '$lib/server/db';
+import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { recipeUpdateSchema } from '$recipes/schema';
 import { deleteRecipe, getRecipeById, updateRecipe } from '$recipes/server/service';
 
@@ -35,29 +35,11 @@ import { deleteRecipe, getRecipeById, updateRecipe } from '$recipes/server/servi
  * @throws VALIDATION_ERROR - 入力値が不正な場合
  */
 export const PUT: RequestHandler = async ({ params, request, locals, platform }) => {
-	let body: unknown;
-	try {
-		body = await request.json();
-	} catch {
-		return json(
-			{ code: 'VALIDATION_ERROR', message: 'リクエストボディが不正です', fields: [] },
-			{ status: 400 }
-		);
-	}
-	const result = recipeUpdateSchema.safeParse(body);
-	if (!result.success) {
-		return json(
-			{
-				code: 'VALIDATION_ERROR',
-				message: '入力値が正しくありません',
-				fields: result.error.issues.map((i) => ({
-					field: i.path.join('.'),
-					message: i.message
-				}))
-			},
-			{ status: 400 }
-		);
-	}
+	const bodyResult = await parseJsonBody(request);
+	if (!bodyResult.ok) return bodyResult.response;
+
+	const result = recipeUpdateSchema.safeParse(bodyResult.data);
+	if (!result.success) return validationErrorResponse(result.error.issues);
 
 	try {
 		const db = createDb(platform!.env.DB);
@@ -77,14 +59,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
 
 		return json(updated);
 	} catch (e) {
-		if (e instanceof AppError) {
-			return json({ code: e.code, message: e.message, fields: e.fields }, { status: e.status });
-		}
-		console.error(e);
-		return json(
-			{ code: 'INTERNAL_SERVER_ERROR', message: 'サーバーエラーが発生しました' },
-			{ status: 500 }
-		);
+		return handleApiError(e);
 	}
 };
 
@@ -110,13 +85,6 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 
 		return new Response(null, { status: 204 });
 	} catch (e) {
-		if (e instanceof AppError) {
-			return json({ code: e.code, message: e.message, fields: e.fields }, { status: e.status });
-		}
-		console.error(e);
-		return json(
-			{ code: 'INTERNAL_SERVER_ERROR', message: 'サーバーエラーが発生しました' },
-			{ status: 500 }
-		);
+		return handleApiError(e);
 	}
 };

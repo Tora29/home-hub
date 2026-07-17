@@ -7,6 +7,8 @@
   レシピの登録・編集フォーム。
   登録時は「AI で解析」タブと「手動入力」タブの 2 タブ構成。
   編集時は手動入力タブのみ表示する。
+  画像アップロードは RecipeImageUploader、材料・手順の動的リストは
+  RecipeIngredientsStepsEditor にサブコンポーネント化している。
 
   @spec specs/recipes/spec.md
   @acceptance AC-002, AC-004, AC-007, AC-011, AC-012, AC-014, AC-015, AC-016, AC-101, AC-116, AC-117
@@ -19,34 +21,14 @@
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { ImagePlus, LoaderCircle, Plus, Trash2, X } from '@lucide/svelte';
+	import { LoaderCircle, X } from '@lucide/svelte';
 	import Input from '$lib/components/Input.svelte';
 	import Textarea from '$lib/components/Textarea.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import Button from '$lib/components/Button.svelte';
-
-	interface Ingredient {
-		name: string;
-		amount?: string | null;
-	}
-
-	interface Recipe {
-		id: string;
-		name: string;
-		description: string | null;
-		imageUrl: string | null;
-		r2ImageKey: string | null;
-		ingredients: Ingredient[] | null;
-		steps: string[] | null;
-		sourceUrl: string | null;
-		servings: number | null;
-		cookingTimeMinutes: number | null;
-		cookedCount: number;
-		lastCookedAt: Date | null;
-		rating: string | null;
-		difficulty: string | null;
-		memo: string | null;
-	}
+	import RecipeImageUploader from './RecipeImageUploader.svelte';
+	import RecipeIngredientsStepsEditor from './RecipeIngredientsStepsEditor.svelte';
+	import type { Recipe } from '../types';
 
 	let {
 		mode,
@@ -66,6 +48,13 @@
 		if (isNaN(d.getTime())) return '';
 		const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
 		return local.toISOString().slice(0, 16);
+	}
+
+	/** 空文字は undefined、数値化できない値も undefined を返す（3 箇所の parseInt+isNaN 重複を解消）。 */
+	function parseOptionalInt(value: string): number | undefined {
+		if (value === '') return undefined;
+		const n = parseInt(value, 10);
+		return isNaN(n) ? undefined : n;
 	}
 
 	// Tab state - untrack props to intentionally capture only the initial value
@@ -98,80 +87,9 @@
 	let isSubmitting = $state(false);
 	let nameError = $state('');
 
-	// Image upload state
-	const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-	const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
-
+	// Image upload state（アップロード実行自体は handleSubmit が担う）
 	let imageFile = $state<File | null>(null);
-	let imagePreviewUrl = $state<string | null>(null);
-	let isDragOver = $state(false);
 	let imageError = $state('');
-	let imageInputEl = $state<HTMLInputElement | undefined>();
-
-	let imagePreviewSrc = $derived(imagePreviewUrl ?? (imageUrl || null));
-
-	function processFile(file: File) {
-		imageError = '';
-		if (!ALLOWED_TYPES.includes(file.type)) {
-			imageError = 'JPEG / PNG / WebP 形式のファイルを選択してください';
-			return;
-		}
-		if (file.size > MAX_SIZE) {
-			imageError = '5 MB 以下のファイルを選択してください';
-			return;
-		}
-		if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-		imageFile = file;
-		imagePreviewUrl = URL.createObjectURL(file);
-	}
-
-	function handleFileSelect(e: Event) {
-		const file = (e.target as HTMLInputElement).files?.[0];
-		if (file) processFile(file);
-	}
-
-	function handleDragOver(e: DragEvent) {
-		e.preventDefault();
-		isDragOver = true;
-	}
-
-	function handleDragLeave() {
-		isDragOver = false;
-	}
-
-	function handleDrop(e: DragEvent) {
-		e.preventDefault();
-		isDragOver = false;
-		const file = e.dataTransfer?.files[0];
-		if (file) processFile(file);
-	}
-
-	function handleImageRemove() {
-		imageFile = null;
-		if (imagePreviewUrl) {
-			URL.revokeObjectURL(imagePreviewUrl);
-			imagePreviewUrl = null;
-		}
-		imageUrl = '';
-		if (imageInputEl) imageInputEl.value = '';
-	}
-
-	// Dynamic list helpers
-	function addIngredient() {
-		ingredients = [...ingredients, { name: '', amount: '' }];
-	}
-
-	function removeIngredient(index: number) {
-		ingredients = ingredients.filter((_, i) => i !== index);
-	}
-
-	function addStep() {
-		steps = [...steps, ''];
-	}
-
-	function removeStep(index: number) {
-		steps = steps.filter((_, i) => i !== index);
-	}
 
 	// AI extract
 	async function handleExtract() {
@@ -216,6 +134,51 @@
 		}
 	}
 
+	function buildCreatePayload(
+		filteredIngredients: { name: string; amount?: string }[],
+		filteredSteps: string[],
+		servings: number | undefined,
+		cookingTimeMinutes: number | undefined
+	): Record<string, unknown> {
+		const payload: Record<string, unknown> = { name };
+		if (description) payload.description = description;
+		if (imageUrl) payload.imageUrl = imageUrl;
+		if (r2ImageKey) payload.r2ImageKey = r2ImageKey;
+		if (sourceUrl) payload.sourceUrl = sourceUrl;
+		if (servings !== undefined) payload.servings = servings;
+		if (cookingTimeMinutes !== undefined) payload.cookingTimeMinutes = cookingTimeMinutes;
+		if (difficulty) payload.difficulty = difficulty;
+		if (rating) payload.rating = rating;
+		if (filteredIngredients.length > 0) payload.ingredients = filteredIngredients;
+		if (filteredSteps.length > 0) payload.steps = filteredSteps;
+		if (memo) payload.memo = memo;
+		return payload;
+	}
+
+	function buildUpdatePayload(
+		filteredIngredients: { name: string; amount?: string }[],
+		filteredSteps: string[],
+		servings: number | undefined,
+		cookingTimeMinutes: number | undefined
+	) {
+		return {
+			name,
+			cookedCount: parseOptionalInt(cookedCountStr) ?? 0,
+			description: description || null,
+			imageUrl: imageUrl || null,
+			r2ImageKey,
+			sourceUrl: sourceUrl || null,
+			servings: servings ?? null,
+			cookingTimeMinutes: cookingTimeMinutes ?? null,
+			difficulty: difficulty || null,
+			rating: rating || null,
+			lastCookedAt: lastCookedAtStr ? new Date(lastCookedAtStr).toISOString() : null,
+			ingredients: filteredIngredients.length > 0 ? filteredIngredients : null,
+			steps: filteredSteps.length > 0 ? filteredSteps : null,
+			memo: memo || null
+		};
+	}
+
 	// Submit
 	async function handleSubmit() {
 		nameError = '';
@@ -228,11 +191,9 @@
 		const filteredIngredients = ingredients
 			.filter((i) => i.name.trim())
 			.map((i) => ({ name: i.name, ...(i.amount ? { amount: i.amount } : {}) }));
-
 		const filteredSteps = steps.filter((s) => s.trim());
-
-		const servings = servingsStr !== '' ? parseInt(servingsStr) : undefined;
-		const cookingTimeMinutes = cookingTimeStr !== '' ? parseInt(cookingTimeStr) : undefined;
+		const servings = parseOptionalInt(servingsStr);
+		const cookingTimeMinutes = parseOptionalInt(cookingTimeStr);
 
 		isSubmitting = true;
 		try {
@@ -254,56 +215,23 @@
 				r2ImageKey = uploadData.key;
 			}
 
-			let res: Response;
+			const payload =
+				mode === 'create'
+					? buildCreatePayload(filteredIngredients, filteredSteps, servings, cookingTimeMinutes)
+					: buildUpdatePayload(filteredIngredients, filteredSteps, servings, cookingTimeMinutes);
 
-			if (mode === 'create') {
-				const payload: Record<string, unknown> = { name };
-				if (description) payload.description = description;
-				if (imageUrl) payload.imageUrl = imageUrl;
-				if (r2ImageKey) payload.r2ImageKey = r2ImageKey;
-				if (sourceUrl) payload.sourceUrl = sourceUrl;
-				if (servings !== undefined && !isNaN(servings)) payload.servings = servings;
-				if (cookingTimeMinutes !== undefined && !isNaN(cookingTimeMinutes))
-					payload.cookingTimeMinutes = cookingTimeMinutes;
-				if (difficulty) payload.difficulty = difficulty;
-				if (rating) payload.rating = rating;
-				if (filteredIngredients.length > 0) payload.ingredients = filteredIngredients;
-				if (filteredSteps.length > 0) payload.steps = filteredSteps;
-				if (memo) payload.memo = memo;
-
-				res = await fetch('/recipes', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(payload)
-				});
-			} else {
-				const cookedCount = parseInt(cookedCountStr) || 0;
-				const payload = {
-					name,
-					cookedCount,
-					description: description || null,
-					imageUrl: imageUrl || null,
-					r2ImageKey: r2ImageKey,
-					sourceUrl: sourceUrl || null,
-					servings: servings !== undefined && !isNaN(servings) ? servings : null,
-					cookingTimeMinutes:
-						cookingTimeMinutes !== undefined && !isNaN(cookingTimeMinutes)
-							? cookingTimeMinutes
-							: null,
-					difficulty: difficulty || null,
-					rating: rating || null,
-					lastCookedAt: lastCookedAtStr ? new Date(lastCookedAtStr).toISOString() : null,
-					ingredients: filteredIngredients.length > 0 ? filteredIngredients : null,
-					steps: filteredSteps.length > 0 ? filteredSteps : null,
-					memo: memo || null
-				};
-
-				res = await fetch(`/recipes/${recipe!.id}`, {
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(payload)
-				});
-			}
+			const res =
+				mode === 'create'
+					? await fetch('/recipes', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify(payload)
+						})
+					: await fetch(`/recipes/${recipe!.id}`, {
+							method: 'PUT',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify(payload)
+						});
 
 			const json = await res.json();
 			if (!res.ok) {
@@ -554,147 +482,9 @@
 				</div>
 			{/if}
 
-			<!-- Ingredients -->
-			<div class="flex flex-col gap-2">
-				<div class="flex items-center justify-between">
-					<span class="text-sm font-medium text-label">材料</span>
-					<button
-						type="button"
-						data-testid="recipes-ingredient-add-button"
-						onclick={addIngredient}
-						class="flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-medium text-accent hover:bg-bg-secondary"
-					>
-						<Plus size={14} />
-						追加
-					</button>
-				</div>
-				{#each ingredients as _ingredient, i (i)}
-					<div data-testid="recipes-ingredient-item" class="flex items-center gap-2">
-						<Input
-							type="text"
-							data-testid="recipes-ingredient-name-input"
-							bind:value={ingredients[i].name}
-							placeholder="材料名"
-							size="md"
-							class="flex-1"
-						/>
-						<Input
-							type="text"
-							data-testid="recipes-ingredient-amount-input"
-							bind:value={ingredients[i].amount}
-							placeholder="量（例: 300g）"
-							size="md"
-							class="w-32"
-						/>
-						<button
-							type="button"
-							data-testid="recipes-ingredient-remove-button"
-							onclick={() => removeIngredient(i)}
-							aria-label="材料を削除"
-							class="rounded-xl p-2 text-secondary transition-colors hover:text-destructive"
-						>
-							<Trash2 size={16} />
-						</button>
-					</div>
-				{/each}
-			</div>
+			<RecipeIngredientsStepsEditor bind:ingredients bind:steps />
 
-			<!-- Steps -->
-			<div class="flex flex-col gap-2">
-				<div class="flex items-center justify-between">
-					<span class="text-sm font-medium text-label">手順</span>
-					<button
-						type="button"
-						data-testid="recipes-step-add-button"
-						onclick={addStep}
-						class="flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-medium text-accent hover:bg-bg-secondary"
-					>
-						<Plus size={14} />
-						追加
-					</button>
-				</div>
-				{#each steps as _step, i (i)}
-					<div data-testid="recipes-step-item" class="flex items-start gap-2">
-						<span
-							class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-bg-secondary text-xs font-medium text-secondary"
-						>
-							{i + 1}
-						</span>
-						<Textarea
-							data-testid="recipes-step-input"
-							bind:value={steps[i]}
-							placeholder="手順を入力..."
-							rows={2}
-							size="md"
-							class="flex-1"
-						/>
-						<button
-							type="button"
-							data-testid="recipes-step-remove-button"
-							onclick={() => removeStep(i)}
-							aria-label="手順を削除"
-							class="mt-1 rounded-xl p-2 text-secondary transition-colors hover:text-destructive"
-						>
-							<Trash2 size={16} />
-						</button>
-					</div>
-				{/each}
-			</div>
-
-			<!-- Image upload -->
-			<div class="flex flex-col gap-1">
-				<span class="text-sm font-medium text-label">画像</span>
-				{#if imagePreviewSrc}
-					<div class="relative">
-						<img
-							data-testid="recipes-image-preview"
-							src={imagePreviewSrc}
-							alt="プレビュー"
-							class="h-48 w-full rounded-2xl object-cover"
-						/>
-						<button
-							type="button"
-							data-testid="recipes-image-remove-button"
-							onclick={handleImageRemove}
-							aria-label="画像を削除"
-							class="absolute top-2 right-2 rounded-full bg-bg-card/80 p-1.5 text-secondary transition-colors hover:text-destructive"
-						>
-							<X size={16} />
-						</button>
-					</div>
-				{:else}
-					<div
-						data-testid="recipes-image-upload-area"
-						role="button"
-						tabindex={0}
-						ondragover={handleDragOver}
-						ondragleave={handleDragLeave}
-						ondrop={handleDrop}
-						onclick={() => imageInputEl?.click()}
-						onkeydown={(e) => e.key === 'Enter' && imageInputEl?.click()}
-						class="flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed transition-colors {isDragOver
-							? 'border-accent bg-accent/5'
-							: 'border-separator hover:border-accent/50 hover:bg-bg-secondary'}"
-					>
-						<ImagePlus size={24} class="text-tertiary" />
-						<p class="text-center text-sm text-secondary">
-							<span class="hidden sm:inline">ここにドロップ または </span>クリック/タップして選択
-						</p>
-						<p class="text-xs text-tertiary">JPEG / PNG / WebP · 5 MB 以下</p>
-					</div>
-				{/if}
-				<input
-					bind:this={imageInputEl}
-					data-testid="recipes-image-upload-input"
-					type="file"
-					accept=".jpg,.jpeg,.png,.webp"
-					class="hidden"
-					onchange={handleFileSelect}
-				/>
-				{#if imageError}
-					<p class="text-xs text-destructive">{imageError}</p>
-				{/if}
-			</div>
+			<RecipeImageUploader bind:imageUrl bind:imageFile bind:imageError />
 
 			<!-- Source URL -->
 			<div class="flex flex-col gap-1">

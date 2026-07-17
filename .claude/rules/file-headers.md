@@ -3,8 +3,8 @@
 ソースコードから設計書をリバースエンジニアリングするインデックスとして、
 各ファイル先頭に構造化されたコメントを付与する規約。
 
-scaffold-be / scaffold-fe / scaffold-test-unit / scaffold-test-e2e スキルが
-コードを生成する際、**全ファイルにヘッダーコメントを付与すること**。
+scaffold-test-unit / scaffold-test-e2e スキルによるテスト生成を含め、
+コードを生成・実装する際は**全ファイルにヘッダーコメントを付与すること**。
 
 ---
 
@@ -273,7 +273,3 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 ## なぜ必要か
 
 - コードレビュー時に設計意図を即座に把握できるようにする
-
-## 参照するスキル
-
-- scaffold-be, scaffold-fe, scaffold-test-unit, scaffold-test-e2e, review-changes

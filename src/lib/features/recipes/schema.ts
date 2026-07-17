@@ -16,13 +16,20 @@
  * - listRecipesQuerySchema  - 一覧取得クエリパラメータ
  *
  * @types
- * - RecipeCreate     - 登録用入力型
- * - RecipeUpdate     - 更新用入力型
- * - AskRequest       - AI 相談入力型
- * - ExtractRequest   - AI 抽出入力型
- * - ListRecipesQuery - 一覧クエリ型
+ * - RecipeCreate - 登録用入力型
+ * - RecipeUpdate - 更新用入力型
+ *
+ * @constants
+ * - RECIPE_IMAGE_ALLOWED_TYPES - 画像アップロード許可 MIME タイプ（FE/BE 共通）
+ * - RECIPE_IMAGE_MAX_SIZE      - 画像アップロード上限サイズ（5 MB, FE/BE 共通）
  */
 import { z } from 'zod';
+
+/** 画像アップロードで許可する MIME タイプ（RecipeForm.svelte・(actions)/upload/+server.ts で共有）。 */
+export const RECIPE_IMAGE_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+/** 画像アップロードの上限サイズ（5 MB）。 */
+export const RECIPE_IMAGE_MAX_SIZE = 5 * 1024 * 1024;
 
 const ingredientSchema = z.object({
 	name: z.string(),
@@ -82,6 +89,3 @@ export const listRecipesQuerySchema = z.object({
 
 export type RecipeCreate = z.infer<typeof recipeCreateSchema>;
 export type RecipeUpdate = z.infer<typeof recipeUpdateSchema>;
-export type AskRequest = z.infer<typeof askSchema>;
-export type ExtractRequest = z.infer<typeof extractSchema>;
-export type ListRecipesQuery = z.infer<typeof listRecipesQuerySchema>;

@@ -15,22 +15,11 @@
 	import { page } from '$app/state';
 	import { ChefHat, LoaderCircle, MessageCircle, Plus, Send } from '@lucide/svelte';
 	import RecipeCard from './RecipeCard.svelte';
-	import RecipeForm from './RecipeForm.svelte';
+	import RecipeFormDialog from './RecipeFormDialog.svelte';
 	import Input from '$lib/components/Input.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Select from '$lib/components/Select.svelte';
-
-	type Recipe = {
-		id: string;
-		name: string;
-		description: string | null;
-		imageUrl: string | null;
-		rating: string | null;
-		difficulty: string | null;
-		cookedCount: number;
-		lastCookedAt: Date | null;
-		createdAt: Date;
-	};
+	import type { Recipe } from '../types';
 
 	let {
 		items
@@ -172,22 +161,9 @@
 	{/if}
 </div>
 
-{#if showCreateDialog}
-	<div
-		role="dialog"
-		aria-modal="true"
-		aria-label="レシピ登録"
-		tabindex={-1}
-		class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8"
-		onclick={(e) => e.target === e.currentTarget && (showCreateDialog = false)}
-		onkeydown={(e) => e.key === 'Escape' && (showCreateDialog = false)}
-	>
-		<div class="w-full max-w-2xl rounded-3xl bg-bg-card shadow-md">
-			<RecipeForm
-				mode="create"
-				onSuccess={handleCreateSuccess}
-				onCancel={() => (showCreateDialog = false)}
-			/>
-		</div>
-	</div>
-{/if}
+<RecipeFormDialog
+	open={showCreateDialog}
+	mode="create"
+	onSuccess={handleCreateSuccess}
+	onClose={() => (showCreateDialog = false)}
+/>

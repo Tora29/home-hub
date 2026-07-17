@@ -51,6 +51,42 @@ type ExerciseWithCategory = {
 };
 
 /**
+ * getExercises / createExercise / updateExercise で共通利用する SELECT 列リスト
+ * （カテゴリを LEFT JOIN で含む）。
+ */
+const exerciseSelectFields = {
+	id: workoutExercise.id,
+	userId: workoutExercise.userId,
+	name: workoutExercise.name,
+	categoryId: workoutExercise.categoryId,
+	categoryJoinId: workoutExerciseCategory.id,
+	categoryName: workoutExerciseCategory.name,
+	createdAt: workoutExercise.createdAt
+};
+
+/**
+ * exerciseSelectFields で取得した行を ExerciseWithCategory 形式にマッピングする。
+ */
+function mapExerciseRow(row: {
+	id: string;
+	userId: string;
+	name: string;
+	categoryId: string | null;
+	categoryJoinId: string | null;
+	categoryName: string | null;
+	createdAt: Date;
+}): ExerciseWithCategory {
+	return {
+		id: row.id,
+		userId: row.userId,
+		name: row.name,
+		categoryId: row.categoryId,
+		category: row.categoryJoinId ? { id: row.categoryJoinId, name: row.categoryName! } : null,
+		createdAt: row.createdAt
+	};
+}
+
+/**
  * カテゴリ一覧を取得する（全件・createdAt 昇順）。
  */
 export async function getExerciseCategories(db: Db, userId: string): Promise<ExerciseCategory[]> {
@@ -133,28 +169,13 @@ export async function getExercises(
 	userId: string
 ): Promise<{ items: ExerciseWithCategory[]; total: number; page: number; limit: number }> {
 	const rows = await db
-		.select({
-			id: workoutExercise.id,
-			userId: workoutExercise.userId,
-			name: workoutExercise.name,
-			categoryId: workoutExercise.categoryId,
-			categoryJoinId: workoutExerciseCategory.id,
-			categoryName: workoutExerciseCategory.name,
-			createdAt: workoutExercise.createdAt
-		})
+		.select(exerciseSelectFields)
 		.from(workoutExercise)
 		.leftJoin(workoutExerciseCategory, eq(workoutExercise.categoryId, workoutExerciseCategory.id))
 		.where(eq(workoutExercise.userId, userId))
 		.orderBy(workoutExercise.createdAt);
 
-	const items = rows.map((row) => ({
-		id: row.id,
-		userId: row.userId,
-		name: row.name,
-		categoryId: row.categoryId,
-		category: row.categoryJoinId ? { id: row.categoryJoinId, name: row.categoryName! } : null,
-		createdAt: row.createdAt
-	})) as ExerciseWithCategory[];
+	const items = rows.map(mapExerciseRow);
 
 	return {
 		items,
@@ -184,28 +205,13 @@ export async function createExercise(
 	});
 
 	const row = await db
-		.select({
-			id: workoutExercise.id,
-			userId: workoutExercise.userId,
-			name: workoutExercise.name,
-			categoryId: workoutExercise.categoryId,
-			categoryJoinId: workoutExerciseCategory.id,
-			categoryName: workoutExerciseCategory.name,
-			createdAt: workoutExercise.createdAt
-		})
+		.select(exerciseSelectFields)
 		.from(workoutExercise)
 		.leftJoin(workoutExerciseCategory, eq(workoutExercise.categoryId, workoutExerciseCategory.id))
 		.where(eq(workoutExercise.id, id))
 		.get();
 
-	return {
-		id: row!.id,
-		userId: row!.userId,
-		name: row!.name,
-		categoryId: row!.categoryId,
-		category: row!.categoryJoinId ? { id: row!.categoryJoinId, name: row!.categoryName! } : null,
-		createdAt: row!.createdAt
-	} as ExerciseWithCategory;
+	return mapExerciseRow(row!);
 }
 
 /**
@@ -234,28 +240,13 @@ export async function updateExercise(
 		.where(and(eq(workoutExercise.id, id), eq(workoutExercise.userId, userId)));
 
 	const row = await db
-		.select({
-			id: workoutExercise.id,
-			userId: workoutExercise.userId,
-			name: workoutExercise.name,
-			categoryId: workoutExercise.categoryId,
-			categoryJoinId: workoutExerciseCategory.id,
-			categoryName: workoutExerciseCategory.name,
-			createdAt: workoutExercise.createdAt
-		})
+		.select(exerciseSelectFields)
 		.from(workoutExercise)
 		.leftJoin(workoutExerciseCategory, eq(workoutExercise.categoryId, workoutExerciseCategory.id))
 		.where(eq(workoutExercise.id, id))
 		.get();
 
-	return {
-		id: row!.id,
-		userId: row!.userId,
-		name: row!.name,
-		categoryId: row!.categoryId,
-		category: row!.categoryJoinId ? { id: row!.categoryJoinId, name: row!.categoryName! } : null,
-		createdAt: row!.createdAt
-	} as ExerciseWithCategory;
+	return mapExerciseRow(row!);
 }
 
 /**

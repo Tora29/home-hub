@@ -93,6 +93,32 @@ const answer = aiResponse.response ?? 'AI からの回答を取得できませ�
 
 使用モデル: `@cf/meta/llama-3.1-8b-instruct-fp8`（固定）
 
+### 複数エンドポイントでの共通化
+
+同一 feature 内の複数エンドポイントで上記の `AiRunner` 型・`ai.run()` 呼び出しが重複する場合
+（例: レシピ機能の AI 献立相談 `ask` と AI レシピ抽出 `extract`）、
+`server/ai.ts` に共通ヘルパーとして抽出する。
+
+```typescript
+// lib/features/recipes/server/ai.ts
+export async function runRecipeAi(
+	ai: unknown,
+	systemPrompt: string,
+	userMessage: string
+): Promise<string | undefined> {
+	const runner = ai as unknown as AiRunner;
+	const aiResponse = await runner.run(AI_MODEL, {
+		messages: [
+			{ role: 'system', content: systemPrompt },
+			{ role: 'user', content: userMessage }
+		]
+	});
+	return aiResponse.response;
+}
+```
+
+エンドポイントが 1 つしかない場合は抽出せず、`+server.ts` にそのまま書く。
+
 ### プロンプト構成
 
 システムプロンプトにユーザーデータ（レシピ一覧等）をコンテキストとして含める。
@@ -206,9 +232,4 @@ try {
 
 ## なぜ必要か
 
-- scaffold-be スキルが外部サービス連携コードを生成する際の規約
 - dev 環境モックの統一パターンを明示することで、環境依存バグを防ぐため
-
-## 参照するスキル
-
-- scaffold-be

@@ -19,35 +19,23 @@
 	import Button from '$lib/components/Button.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import { generateMonthOptions } from '$lib/utils/date';
+	import type { DashboardSummary } from '../types';
 
-	type Summary = {
-		overall: number;
-		byPayer: { payerId: string; payerName: string | null; total: number }[];
-		byCategory: {
-			categoryId: string;
-			categoryName: string;
-			total: number;
-			byPayer: { payerId: string; payerName: string | null; total: number }[];
-		}[];
-	};
-
-	/* eslint-disable svelte/no-unused-props -- summary フィールドは $state 初期値として使用（直接参照せずローカル state に渡す） */
 	let {
 		unapprovedCount,
 		summary: initialSummary,
 		currentMonth
 	}: {
 		unapprovedCount: number;
-		summary: Summary;
+		summary: DashboardSummary;
 		currentMonth: string;
 	} = $props();
-	/* eslint-enable svelte/no-unused-props */
 
 	const monthOptions = $derived(generateMonthOptions(currentMonth));
 
 	let period = $state<'month' | 'all'>('month');
 	let selectedMonth = $state(untrack(() => currentMonth));
-	let summary = $state<Summary>(untrack(() => initialSummary));
+	let summary = $state<DashboardSummary>(untrack(() => initialSummary));
 	let fetchSeq = 0;
 
 	async function fetchSummary(): Promise<boolean> {

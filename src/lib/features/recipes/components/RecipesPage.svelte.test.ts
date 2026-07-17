@@ -23,14 +23,23 @@ vi.mock('$app/state', () => ({
 function makeRecipe(overrides = {}) {
 	return {
 		id: crypto.randomUUID(),
+		userId: 'test-user-id',
 		name: 'テストレシピ',
 		description: null,
 		imageUrl: null,
+		r2ImageKey: null,
+		ingredients: null,
+		steps: null,
+		sourceUrl: null,
+		servings: null,
+		cookingTimeMinutes: null,
 		difficulty: null,
 		cookedCount: 0,
 		lastCookedAt: null,
 		rating: null,
+		memo: null,
 		createdAt: new Date(),
+		updatedAt: new Date(),
 		...overrides
 	};
 }

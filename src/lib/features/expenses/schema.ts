@@ -38,8 +38,6 @@ export const expenseQuerySchema = z.object({
 	limit: z.coerce.number().int().min(1).max(100, 'limit は1〜100です').default(20)
 });
 
-export type ExpenseQuery = z.infer<typeof expenseQuerySchema>;
-
 // ---- 支出スキーマ ----
 
 export const expenseCreateSchema = z.object({
