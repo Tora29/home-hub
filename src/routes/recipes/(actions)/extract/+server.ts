@@ -20,8 +20,9 @@
 import { json } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
-import { AppError } from '$lib/server/errors';
+import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { extractSchema } from '$recipes/schema';
+import { runRecipeAi } from '$recipes/server/ai';
 
 /**
  * テキストからレシピ情報を AI で抽出する。
@@ -30,29 +31,11 @@ import { extractSchema } from '$recipes/schema';
  * @throws VALIDATION_ERROR - 入力値が不正な場合
  */
 export const POST: RequestHandler = async ({ request, platform }) => {
-	let body: unknown;
-	try {
-		body = await request.json();
-	} catch {
-		return json(
-			{ code: 'VALIDATION_ERROR', message: 'リクエストボディが不正です', fields: [] },
-			{ status: 400 }
-		);
-	}
-	const result = extractSchema.safeParse(body);
-	if (!result.success) {
-		return json(
-			{
-				code: 'VALIDATION_ERROR',
-				message: '入力値が正しくありません',
-				fields: result.error.issues.map((i) => ({
-					field: i.path.join('.'),
-					message: i.message
-				}))
-			},
-			{ status: 400 }
-		);
-	}
+	const bodyResult = await parseJsonBody(request);
+	if (!bodyResult.ok) return bodyResult.response;
+
+	const result = extractSchema.safeParse(bodyResult.data);
+	if (!result.success) return validationErrorResponse(result.error.issues);
 
 	try {
 		const systemPrompt = `You are a recipe extraction assistant. Extract recipe information from the provided text and return ONLY a valid JSON object with no explanation or markdown.
@@ -94,16 +77,8 @@ Rules:
 					{ status: 500 }
 				);
 			}
-			type AiRunner = { run: (model: string, opts: unknown) => Promise<{ response?: string }> };
-			const ai = platform.env.AI as unknown as AiRunner;
-			const aiResponse = await ai.run('@cf/meta/llama-3.1-8b-instruct-fp8', {
-				messages: [
-					{ role: 'system', content: systemPrompt },
-					{ role: 'user', content: result.data.text }
-				]
-			});
-			console.log('[recipes/extract] AI raw response:', aiResponse.response?.slice(0, 200));
-			rawText = aiResponse.response ?? '{}';
+			const response = await runRecipeAi(platform.env.AI, systemPrompt, result.data.text);
+			rawText = response ?? '{}';
 		}
 		// LLM が JSON の前後に説明文を付加するケースに対応するため、
 		// コードブロックを除去した後、正規表現で JSON オブジェクト部分を抽出する
@@ -129,13 +104,6 @@ Rules:
 			steps: extracted.steps ?? null
 		});
 	} catch (e) {
-		if (e instanceof AppError) {
-			return json({ code: e.code, message: e.message, fields: e.fields }, { status: e.status });
-		}
-		console.error(e);
-		return json(
-			{ code: 'INTERNAL_SERVER_ERROR', message: 'サーバーエラーが発生しました' },
-			{ status: 500 }
-		);
+		return handleApiError(e);
 	}
 };

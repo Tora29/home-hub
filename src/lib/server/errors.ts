@@ -13,7 +13,6 @@ export type ErrorCode =
 	| 'FORBIDDEN'
 	| 'NOT_FOUND'
 	| 'CONFLICT'
-	| 'BAD_GATEWAY'
 	| 'INTERNAL_SERVER_ERROR';
 
 export class AppError extends Error {

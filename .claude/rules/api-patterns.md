@@ -39,6 +39,9 @@ export const GET: RequestHandler = async ({ platform }) => {
 };
 ```
 
+- `!` は非null断定。本番の Cloudflare Workers 実行環境では `platform` は常に注入されるため許容する
+- `@sveltejs/adapter-cloudflare` の公式サンプルは `platform?.env` を使うが、本プロジェクトはこの前提に基づき統一して `!` を使う（Node 環境等 `platform` が undefined になりうる箇所を新設する場合のみ `?.` に切り替える）
+
 ---
 
 ## 認証チェック

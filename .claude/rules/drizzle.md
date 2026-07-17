@@ -270,9 +270,4 @@ type RecipeInsert = typeof recipe.$inferInsert;
 
 ## なぜ必要か
 
-- scaffold-be スキルがテーブル定義・サービス層コードを生成する際の規約
 - D1 固有の制約（JSON格納・トランザクション非対応）を統一するため
-
-## 参照するスキル
-
-- scaffold-be, scaffold-test-unit

@@ -5,7 +5,7 @@
  *
  * @description
  * 自分の checked 支出を一括で pending にし、パートナーへ LINE 通知を送信するエンドポイント。
- * LINE API 失敗時は DB 更新をロールバックし 502 を返す。
+ * LINE 通知はベストエフォート。失敗してもロールバックせず console.error にログするのみ。
  * user.role 未設定・通知先未設定の場合は DB 更新を継続し LINE 通知をスキップ。
  *
  * @spec specs/expenses/spec.md
@@ -13,7 +13,7 @@
  *
  * @endpoints
  * - POST /expenses/request → 200 {count} - 承認依頼成功
- *   @errors 409(CONFLICT), 502(BAD_GATEWAY)
+ *   @errors 409(CONFLICT)
  *
  * @service $expenses/service.ts
  */
@@ -27,7 +27,6 @@ import { requestExpenses, getUserRole } from '$expenses/server/service';
  * 自分の checked 支出を一括で pending にし、LINE 通知を送信する。
  * @ac AC-008, AC-115, AC-118, AC-119, AC-125
  * @throws CONFLICT - checked 支出が 0 件の場合
- * @throws BAD_GATEWAY - LINE API 呼び出し失敗の場合
  */
 export const POST: RequestHandler = async ({ locals, platform }) => {
 	try {

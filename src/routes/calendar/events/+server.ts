@@ -22,6 +22,7 @@ import { createDb } from '$lib/server/db';
 import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { calendarQuerySchema, eventCreateSchema } from '$calendar/schema';
 import { createEvent, getEvents } from '$calendar/server/service';
+import { getCurrentMonth } from '$lib/utils/date';
 
 /**
  * 指定月のイベント一覧を取得する。month 未指定時は当月。
@@ -33,9 +34,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 	});
 	if (!queryResult.success) return validationErrorResponse(queryResult.error.issues);
 
-	const now = new Date();
-	const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-	const month = queryResult.data.month ?? currentMonth;
+	const month = queryResult.data.month ?? getCurrentMonth();
 
 	try {
 		const db = createDb(platform!.env.DB);

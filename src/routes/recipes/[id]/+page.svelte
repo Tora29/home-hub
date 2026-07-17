@@ -29,42 +29,17 @@
 		UtensilsCrossed,
 		Users
 	} from '@lucide/svelte';
-	import RecipeForm from '$recipes/components/RecipeForm.svelte';
+	import RecipeFormDialog from '$recipes/components/RecipeFormDialog.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import { DIFFICULTY_LABEL, RATING_LABEL, formatDate } from '$recipes/labels';
 
 	let { data } = $props();
 
 	let showEditDialog = $state(false);
 	let showDeleteDialog = $state(false);
 	let isDeleting = $state(false);
-	let deleteDialogEl = $state<HTMLDialogElement | undefined>();
-
-	$effect(() => {
-		if (showDeleteDialog && deleteDialogEl) {
-			deleteDialogEl.showModal();
-		}
-	});
-
-	const DIFFICULTY_LABEL: Record<string, string> = {
-		easy: '簡単',
-		medium: '普通',
-		hard: '難しい'
-	};
-
-	const RATING_LABEL: Record<string, string> = {
-		excellent: '非常に美味しい',
-		good: '美味しい',
-		average: '普通',
-		poor: '微妙'
-	};
-
-	function formatDate(date: Date | null | string): string {
-		if (!date) return '未調理';
-		const d = new Date(date);
-		return isNaN(d.getTime())
-			? '未調理'
-			: d.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
-	}
+	let deleteError = $state('');
 
 	async function handleEditSuccess() {
 		showEditDialog = false;
@@ -73,18 +48,20 @@
 
 	async function handleDelete() {
 		isDeleting = true;
+		deleteError = '';
 		try {
 			const res = await fetch(`/recipes/${data.recipe.id}`, { method: 'DELETE' });
-			if (!res.ok) return;
-			deleteDialogEl?.close();
+			if (!res.ok) {
+				const err = (await res.json()) as { message?: string };
+				deleteError = err.message ?? '削除に失敗しました';
+				return;
+			}
 			await goto('/recipes');
+		} catch {
+			deleteError = '通信エラーが発生しました';
 		} finally {
 			isDeleting = false;
 		}
-	}
-
-	function openDeleteDialog() {
-		showDeleteDialog = true;
 	}
 </script>
 
@@ -122,7 +99,7 @@
 			</Button>
 			<Button
 				data-testid="recipes-delete-button"
-				onclick={openDeleteDialog}
+				onclick={() => (showDeleteDialog = true)}
 				aria-label="削除"
 				variant="ghost-destructive"
 				size="md"
@@ -234,61 +211,35 @@
 	<div class="flex gap-6 rounded-3xl bg-bg-secondary p-4 text-sm text-secondary">
 		<span>作った回数: <strong class="text-label">{data.recipe.cookedCount} 回</strong></span>
 		<span
-			>最終調理日: <strong class="text-label">{formatDate(data.recipe.lastCookedAt)}</strong></span
+			>最終調理日: <strong class="text-label">{formatDate(data.recipe.lastCookedAt, 'long')}</strong
+			></span
 		>
 	</div>
 </div>
 
 <!-- Edit dialog -->
-{#if showEditDialog}
-	<div
-		role="dialog"
-		aria-modal="true"
-		aria-label="レシピ編集"
-		tabindex={-1}
-		class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8"
-		onclick={(e) => e.target === e.currentTarget && (showEditDialog = false)}
-		onkeydown={(e) => e.key === 'Escape' && (showEditDialog = false)}
-	>
-		<div class="w-full max-w-2xl rounded-3xl bg-bg-card shadow-md">
-			<RecipeForm
-				mode="edit"
-				recipe={data.recipe}
-				onSuccess={handleEditSuccess}
-				onCancel={() => (showEditDialog = false)}
-			/>
-		</div>
-	</div>
-{/if}
+<RecipeFormDialog
+	open={showEditDialog}
+	mode="edit"
+	recipe={data.recipe}
+	onSuccess={handleEditSuccess}
+	onClose={() => (showEditDialog = false)}
+/>
 
 <!-- Delete confirmation dialog -->
-<dialog
-	bind:this={deleteDialogEl}
+<ConfirmDialog
+	open={showDeleteDialog}
+	title="レシピを削除"
+	description={`「${data.recipe.name}」を削除しますか？この操作は元に戻せません。`}
+	confirmLabel="削除する"
+	confirmVariant="destructive"
+	loading={isDeleting}
+	error={deleteError}
 	data-testid="recipes-delete-dialog"
-	role="alertdialog"
-	aria-modal="true"
-	aria-labelledby="delete-dialog-title"
-	aria-describedby="delete-dialog-desc"
-	onclose={() => (showDeleteDialog = false)}
-	class="w-full max-w-sm rounded-3xl bg-bg-card p-6 shadow-md backdrop:bg-black/40"
->
-	<h2 id="delete-dialog-title" class="mb-2 text-lg font-medium text-label">レシピを削除</h2>
-	<p id="delete-dialog-desc" class="mb-6 text-sm text-secondary">
-		「{data.recipe.name}」を削除しますか？この操作は元に戻せません。
-	</p>
-	<div class="flex justify-end gap-3">
-		<Button type="button" onclick={() => deleteDialogEl?.close()} variant="secondary" size="md">
-			キャンセル
-		</Button>
-		<Button
-			type="button"
-			data-testid="recipes-delete-confirm-button"
-			onclick={() => void handleDelete()}
-			disabled={isDeleting}
-			variant="destructive"
-			size="md"
-		>
-			{isDeleting ? '削除中...' : '削除する'}
-		</Button>
-	</div>
-</dialog>
+	confirmTestid="recipes-delete-confirm-button"
+	onConfirm={() => void handleDelete()}
+	onCancel={() => {
+		showDeleteDialog = false;
+		deleteError = '';
+	}}
+/>

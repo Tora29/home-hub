@@ -68,6 +68,51 @@ let { value = $bindable(''), ...rest }: Props = $props();
 
 ---
 
+## コンポーネント分割時の状態所有パターン
+
+ページコンポーネントが肥大化した場合にサブコンポーネントへ分割する際、状態をどちらが持つかは
+「親・兄弟コンポーネントが入力途中の値を参照する必要があるか」で判断する。
+
+### パターン A: 親がすべての状態を所有（迷ったらこちらを優先）
+
+親（コンテナ）が `$state` とハンドラを持ち、子は `$bindable`（フォームフィールド）・素の `props`（読み取り専用データ）・
+`onXxx` コールバック props（アクション通知）で受け取る。兄弟コンポーネント間で状態を共有する必要がある場合
+（例: 選択中の種目 ID をフォームとグラフの両方が参照する）に使う。
+
+```svelte
+<!-- 親: WorkoutPage.svelte -->
+<RecordForm bind:exerciseId={formExerciseId} {bestRecord} onSubmit={() => void handleAddRecord()} />
+<WeightChartSection bind:exerciseId={chartExerciseId} data={chartData} />
+```
+
+複数の子で共有する描画フラグメントは `Snippet` として親から渡す。
+
+```svelte
+{#snippet exerciseOptions()}
+	...
+{/snippet}
+<RecordForm {exerciseOptions} />
+<RecordList {exerciseOptions} />
+```
+
+### パターン B: 子が状態を自己完結
+
+子（フォーム・モーダル本体）が入力途中の状態を自身の `$state` で持ち、親には成功・削除などの最終結果のみ
+`onSuccess` / `onDelete` コールバックで通知する。親・兄弟が入力途中の値を参照する必要がないモーダルフォーム等に使う。
+
+```svelte
+<!-- 親: EventModal.svelte -->
+{#if open}
+	<EventForm {mode} {event} onSuccess={(event) => handleSuccess(event)} {onClose} />
+{/if}
+```
+
+- `{#if open}` の中でマウントする: `open` が `false` になるとコンポーネントが破棄され、再度 `true` になると
+  新しいインスタンスとしてマウントされる（前回の内部状態は引き継がれない）ため、入力値の残留を防げる
+  （`key` ブロックによる強制再マウントハックは不要）
+
+---
+
 ## $derived / $effect
 
 - `$derived`: 他の state から計算できる値（getter の代替）
@@ -115,10 +160,5 @@ Svelte の linter は `dialog` / `alertdialog` ロールを non-interactive と�
 
 ## なぜ必要か
 
-- scaffold-fe スキルがコンポーネントを生成する際の規約
 - `$state` / `SvelteSet` の誤用による reactivity バグを防ぐ
 - ESLint ルール（`svelte/no-unnecessary-state-wrap`）との整合性を保つ
-
-## 参照するスキル
-
-- scaffold-fe, scaffold-test-unit, scaffold-test-e2e

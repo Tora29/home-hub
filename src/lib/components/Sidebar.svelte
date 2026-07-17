@@ -77,7 +77,9 @@
 
 	let sidebarOpen = $state(true);
 	let isMobile = $state(false);
-	let openMap = $state<Record<string, boolean>>({ meal: true, expense: true, workout: true });
+	let openMap = $state<Record<string, boolean>>(
+		Object.fromEntries(NAV_CATEGORIES.map((c) => [c.id, true]))
+	);
 	let mounted = $state(false);
 	onMount(async () => {
 		sidebarOpen = localStorage.getItem(STORAGE_KEY) !== 'false';
@@ -116,10 +118,7 @@
 	const isOpen = $derived(isMobile ? $mobileOpen : sidebarOpen);
 
 	const visibleCategories = $derived(
-		NAV_CATEGORIES.filter(
-			(c) =>
-				!c.requiredRole || (page.data as { userRole?: string | null }).userRole === c.requiredRole
-		)
+		NAV_CATEGORIES.filter((c) => !c.requiredRole || page.data.userRole === c.requiredRole)
 	);
 
 	function isActive(href: string): boolean {

@@ -10,9 +10,6 @@
  *
  * @schemas
  * - dashboardSummaryQuerySchema - 集計サマリー取得クエリパラメータ
- *
- * @types
- * - DashboardSummaryQuery - 集計サマリークエリパラメータ型
  */
 import { z } from 'zod';
 
@@ -27,5 +24,3 @@ export const dashboardSummaryQuerySchema = z.object({
 		}, '月は01〜12で入力してください')
 		.optional()
 });
-
-export type DashboardSummaryQuery = z.infer<typeof dashboardSummaryQuerySchema>;

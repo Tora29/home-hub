@@ -6,24 +6,22 @@
   @description
   種目別重量推移と体重推移を重ね書きするSVGグラフコンポーネント。
   実線（accent色）が種目の日別最大重量、破線（success色）が体重を表す。
+  Y軸グリッド・X軸ラベルの描画は `ChartAxes.svelte` に委譲する。
 
   @props
   - exercisePoints: ChartPoint[] - 種目の日別最大重量データ
   - bodyWeightPoints: BodyWeightPoint[] - 体重データ
-  - exerciseName: string - 種目名（凡例表示用）
 -->
 <script lang="ts">
-	type ChartPoint = { date: string; maxWeight: number };
-	type BodyWeightPoint = { date: string; weight: number };
+	import ChartAxes from './ChartAxes.svelte';
+	import type { ChartPoint, BodyWeightPoint } from '../types';
 
 	let {
 		exercisePoints = [],
-		bodyWeightPoints = [],
-		exerciseName: _exerciseName = ''
+		bodyWeightPoints = []
 	}: {
 		exercisePoints: ChartPoint[];
 		bodyWeightPoints: BodyWeightPoint[];
-		exerciseName: string;
 	} = $props();
 
 	const WIDTH = 600;
@@ -92,11 +90,11 @@
 	const xLabels = $derived.by(() => {
 		if (allDates.length === 0) return [];
 		const maxLabels = 6;
-		const step = Math.max(1, Math.floor(allDates.length / maxLabels));
+		const labelStep = Math.max(1, Math.floor(allDates.length / maxLabels));
 		return allDates
-			.filter((_, i) => i % step === 0 || i === allDates.length - 1)
+			.filter((_, i) => i % labelStep === 0 || i === allDates.length - 1)
 			.map((d) => ({
-				date: d,
+				key: d,
 				x: toX(d),
 				label: d.slice(5) // MM-DD
 			}));
@@ -105,7 +103,7 @@
 	const yTicks = $derived.by(() => {
 		const ticks = [];
 		for (let v = yMin; v <= yMax; v += step) {
-			ticks.push({ v, y: toY(v) });
+			ticks.push({ value: v, y: toY(v) });
 		}
 		return ticks;
 	});
@@ -124,33 +122,7 @@
 		class="overflow-visible"
 	>
 		<g transform="translate({PADDING.left},{PADDING.top})">
-			<!-- Y軸グリッドとラベル -->
-			{#each yTicks as tick (tick.v)}
-				<line
-					x1="0"
-					y1={tick.y}
-					x2={chartWidth}
-					y2={tick.y}
-					stroke="var(--color-separator)"
-					stroke-width="1"
-				/>
-				<text x="-6" y={tick.y + 4} text-anchor="end" class="fill-secondary text-xs" font-size="11">
-					{tick.v}
-				</text>
-			{/each}
-
-			<!-- X軸ラベル -->
-			{#each xLabels as label (label.date)}
-				<text
-					x={label.x}
-					y={chartHeight + 20}
-					text-anchor="middle"
-					class="fill-secondary text-xs"
-					font-size="11"
-				>
-					{label.label}
-				</text>
-			{/each}
+			<ChartAxes {chartWidth} {chartHeight} {yTicks} {xLabels} />
 
 			<!-- 種目重量ライン（実線・accent色） -->
 			{#if exercisePath}

@@ -135,17 +135,6 @@ if (!result.success) {
 
 ---
 
-## なぜ必要か
-
-- scaffold-be / scaffold-fe スキルがスキーマコードを生成する際の規約
-- FE/BE 間で同じ `schema.ts` を参照することでバリデーション重複を防ぐ
-
-## 参照するスキル
-
-- scaffold-be, scaffold-fe, scaffold-test-unit
-
----
-
 ## Database Constraints 設計指針
 
 DB レベルの制約（UNIQUE, INDEX, FOREIGN KEY）の設計方針。
@@ -181,8 +170,9 @@ DB レベルの制約（UNIQUE, INDEX, FOREIGN KEY）の設計方針。
   - `RESTRICT`: 親削除時にエラー（使用中）
   - `SET NULL`: 親削除時に子を null に
 
-### spec.md との連携
+---
 
-- spec.md の `Database Constraints（サマリ）` セクションに概要を記載
-- 詳細は `src/lib/server/tables.ts` で定義
-- spec-generator は spec.md のサマリを生成し、scaffold-contract が詳細を tables.ts に反映
+## なぜ必要か
+
+- FE/BE 間で同じ `schema.ts` を参照することでバリデーション重複を防ぐ
+- DB レベルの制約設計を明文化し、UNIQUE/INDEX/FOREIGN KEY の判断基準をぶれさせないため
