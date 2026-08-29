@@ -7,11 +7,17 @@
  */
 
 /**
+ * 日付を YYYY-MM 形式に整形する。
+ */
+export function formatYearMonth(d: Date): string {
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
  * ローカル時刻の当月を YYYY-MM 形式で返す。
  */
 export function getCurrentMonth(): string {
-	const now = new Date();
-	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+	return formatYearMonth(new Date());
 }
 
 /**
@@ -38,9 +44,8 @@ export function generateMonthOptions(
 	}
 	for (let i = 0; i < count; i++) {
 		const d = new Date(baseYear, baseMonthNum - i, 1);
-		const year = d.getFullYear();
 		const month = String(d.getMonth() + 1).padStart(2, '0');
-		options.push({ value: `${year}-${month}`, label: `${year}年${month}月` });
+		options.push({ value: formatYearMonth(d), label: `${d.getFullYear()}年${month}月` });
 	}
 	return options;
 }

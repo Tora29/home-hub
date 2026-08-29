@@ -25,6 +25,7 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { AppError } from '$lib/server/errors';
 import { bodyWeightRecord, workoutExercise, workoutRecord } from '$lib/server/tables';
 import type * as schema from '$lib/server/tables';
+import { formatYearMonth } from '$lib/utils/date';
 import type { BodyWeightCreate, ChartQuery, RecordCreate, VolumeQuery } from '../schema';
 import type { ChartData, WeeklyVolumeBreakdownItem, WeeklyVolumePoint } from '../types';
 
@@ -73,7 +74,7 @@ function periodToRange(
 ): { start: string | null; end: string | null } {
 	const d = new Date();
 	if (period === '1m') {
-		const m = month ?? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+		const m = month ?? formatYearMonth(d);
 		const [y, mo] = m.split('-').map(Number);
 		const end = new Date(y, mo, 1); // 翌月1日（exclusive）
 		return { start: `${m}-01`, end: end.toISOString().slice(0, 10) };
