@@ -18,16 +18,7 @@
 	import { Dumbbell, ArrowLeft } from '@lucide/svelte';
 	import CategoryManagementCard from './CategoryManagementCard.svelte';
 	import ExerciseListCard from './ExerciseListCard.svelte';
-
-	type Category = { id: string; name: string; createdAt: Date };
-	type ExerciseWithCategory = {
-		id: string;
-		name: string;
-		userId: string;
-		categoryId: string | null;
-		category: { id: string; name: string } | null;
-		createdAt: Date;
-	};
+	import type { Category, ExerciseWithCategory } from '../types';
 
 	let {
 		exercises,

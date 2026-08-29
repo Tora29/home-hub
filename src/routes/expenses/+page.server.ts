@@ -16,6 +16,7 @@ import { createDb } from '$lib/server/db';
 import { getExpenses, getUsers, getUnapprovedCount } from '$expenses/server/service';
 import { getCategories } from '$expenses/categories/server/service';
 import { expenseQuerySchema } from '$expenses/schema';
+import { formatYearMonth } from '$lib/utils/date';
 
 export const load: PageServerLoad = async ({ platform, locals, url }) => {
 	const db = createDb(platform!.env.DB);
@@ -40,7 +41,7 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
 
 	// currentMonth は常に今日の月。月ドロップダウンの選択肢は今月を起点に固定する（AC-002b）
 	const now = new Date();
-	const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+	const currentMonth = formatYearMonth(now);
 	const selectedMonth = month ?? currentMonth;
 
 	const [expenseData, categories, users, partnerPendingCount] = await Promise.all([

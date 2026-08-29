@@ -35,24 +35,17 @@
 		...bodyWeightPoints.map((p) => p.weight)
 	]);
 
-	const yMin = $derived.by(() => {
-		if (allValues.length === 0) return 0;
-		const range = Math.max(...allValues) - Math.min(...allValues);
+	const yScale = $derived.by(() => {
+		if (allValues.length === 0) return { min: 0, max: 100, step: 25 };
+		const rawMin = Math.min(...allValues);
+		const rawMax = Math.max(...allValues);
+		const range = rawMax - rawMin;
 		const step = range <= 30 ? 5 : range <= 60 ? 10 : range <= 120 ? 20 : 25;
-		return Math.floor(Math.min(...allValues) / step) * step;
+		return { min: Math.floor(rawMin / step) * step, max: Math.ceil(rawMax / step) * step, step };
 	});
-
-	const yMax = $derived.by(() => {
-		if (allValues.length === 0) return 100;
-		const range = Math.max(...allValues) - Math.min(...allValues);
-		const step = range <= 30 ? 5 : range <= 60 ? 10 : range <= 120 ? 20 : 25;
-		return Math.ceil(Math.max(...allValues) / step) * step;
-	});
-
-	const step = $derived.by(() => {
-		const range = yMax - yMin;
-		return range <= 30 ? 5 : range <= 60 ? 10 : range <= 120 ? 20 : 25;
-	});
+	const yMin = $derived(yScale.min);
+	const yMax = $derived(yScale.max);
+	const step = $derived(yScale.step);
 
 	function toY(v: number): number {
 		if (yMax === yMin) return chartHeight / 2;

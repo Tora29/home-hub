@@ -24,6 +24,7 @@ import { calendarEvent, user as userTable } from '$lib/server/tables';
 import type * as schema from '$lib/server/tables';
 import type { EventCreate, EventUpdate } from '../schema';
 import type { CalendarEvent } from '../types';
+import { formatYearMonth } from '$lib/utils/date';
 
 type Db = DrizzleD1Database<typeof schema>;
 
@@ -41,7 +42,7 @@ const eventSelectFields = {
 function nextMonth(month: string): string {
 	const [year, mon] = month.split('-').map(Number);
 	const next = new Date(year, mon, 1); // mon は 1-indexed のため、そのまま渡すと翌月1日になる
-	return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-01`;
+	return `${formatYearMonth(next)}-01`;
 }
 
 async function fetchEvent(db: Db, id: string): Promise<CalendarEvent> {

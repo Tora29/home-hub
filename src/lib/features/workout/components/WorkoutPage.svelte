@@ -284,15 +284,11 @@
 
 	onMount(() => void fetchVolumeData());
 
-	function yearOptions(): { value: string; label: string }[] {
-		const cur = new Date().getFullYear();
-		return Array.from({ length: 5 }, (_, i) => {
-			const y = String(cur - i);
-			return { value: y, label: `${y}年` };
-		});
-	}
-
-	const YEAR_OPTIONS = yearOptions();
+	const currentYear = new Date().getFullYear();
+	const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => {
+		const y = String(currentYear - i);
+		return { value: y, label: `${y}年` };
+	});
 	const MONTHS = Array.from({ length: 12 }, (_, i) => ({
 		value: String(i + 1).padStart(2, '0'),
 		label: `${i + 1}月`

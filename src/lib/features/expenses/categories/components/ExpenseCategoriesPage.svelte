@@ -5,6 +5,7 @@
 
   @description
   支出カテゴリの一覧表示・追加・編集・削除を行う管理画面コンポーネント。
+  追加/編集/削除ハンドラの共通処理は `form-helpers.ts` に委譲する。
 
   @props
   - categories: { items: Category[] } - カテゴリ一覧
@@ -15,6 +16,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Input from '$lib/components/Input.svelte';
+	import { submitNamedForm, submitDelete } from './form-helpers';
 	import type { Category } from '../../types';
 
 	let {
@@ -22,6 +24,8 @@
 	}: {
 		categories: { items: Category[] };
 	} = $props();
+
+	const MAX_NAME_LENGTH = 50;
 
 	let newName = $state('');
 	let newNameError = $state('');
@@ -36,39 +40,25 @@
 	let isDeleting = $state(false);
 	let deleteError = $state('');
 
-	function validateCategoryName(name: string): string | null {
-		if (!name.trim()) return 'カテゴリ名は必須です';
-		if (name.length > 50) return '50文字以内で入力してください';
-		return null;
-	}
-
 	async function handleAdd() {
-		newNameError = '';
-		const error = validateCategoryName(newName);
-		if (error) {
-			newNameError = error;
-			return;
-		}
-
-		isAdding = true;
-		try {
-			const res = await fetch('/expenses/categories', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: newName.trim() })
-			});
-
-			if (!res.ok) {
-				const err = (await res.json()) as { message?: string };
-				newNameError = err.message ?? 'エラーが発生しました';
-				return;
+		await submitNamedForm({
+			name: newName,
+			maxLength: MAX_NAME_LENGTH,
+			requiredMessage: 'カテゴリ名は必須です',
+			maxLengthMessage: `${MAX_NAME_LENGTH}文字以内で入力してください`,
+			setError: (msg) => (newNameError = msg),
+			setLoading: (loading) => (isAdding = loading),
+			request: () =>
+				fetch('/expenses/categories', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ name: newName.trim() })
+				}),
+			onSuccess: async () => {
+				newName = '';
+				await invalidateAll();
 			}
-
-			newName = '';
-			await invalidateAll();
-		} finally {
-			isAdding = false;
-		}
+		});
 	}
 
 	function startEdit(cat: Category) {
@@ -84,54 +74,38 @@
 	}
 
 	async function handleEditSave(id: string) {
-		editingNameError = '';
-		const error = validateCategoryName(editingName);
-		if (error) {
-			editingNameError = error;
-			return;
-		}
-
-		isSavingEdit = true;
-		try {
-			const res = await fetch(`/expenses/categories/${id}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: editingName.trim() })
-			});
-
-			if (!res.ok) {
-				const err = (await res.json()) as { message?: string };
-				editingNameError = err.message ?? 'エラーが発生しました';
-				return;
+		await submitNamedForm({
+			name: editingName,
+			maxLength: MAX_NAME_LENGTH,
+			requiredMessage: 'カテゴリ名は必須です',
+			maxLengthMessage: `${MAX_NAME_LENGTH}文字以内で入力してください`,
+			setError: (msg) => (editingNameError = msg),
+			setLoading: (loading) => (isSavingEdit = loading),
+			request: () =>
+				fetch(`/expenses/categories/${id}`, {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ name: editingName.trim() })
+				}),
+			onSuccess: async () => {
+				editingId = null;
+				await invalidateAll();
 			}
-
-			editingId = null;
-			await invalidateAll();
-		} finally {
-			isSavingEdit = false;
-		}
+		});
 	}
 
 	async function handleDeleteConfirm() {
 		if (!deletingCategory) return;
-		isDeleting = true;
-		deleteError = '';
-		try {
-			const res = await fetch(`/expenses/categories/${deletingCategory.id}`, {
-				method: 'DELETE'
-			});
-
-			if (!res.ok) {
-				const err = (await res.json()) as { message?: string };
-				deleteError = err.message ?? 'エラーが発生しました';
-				return;
+		const target = deletingCategory;
+		await submitDelete({
+			setError: (msg) => (deleteError = msg),
+			setLoading: (loading) => (isDeleting = loading),
+			request: () => fetch(`/expenses/categories/${target.id}`, { method: 'DELETE' }),
+			onSuccess: async () => {
+				deletingCategory = null;
+				await invalidateAll();
 			}
-
-			deletingCategory = null;
-			await invalidateAll();
-		} finally {
-			isDeleting = false;
-		}
+		});
 	}
 </script>
 
