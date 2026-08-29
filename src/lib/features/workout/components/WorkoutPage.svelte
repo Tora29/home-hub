@@ -11,6 +11,7 @@
   VolumeChartSection）に分割し、このコンポーネントは状態の所有権とデータ取得を担う。
   種目セレクトの中身（カテゴリ optgroup）は Snippet（exerciseOptions）として各サブ
   コンポーネントに渡す。
+  画面右下には RestTimer（90秒インターバルタイマー、状態自己完結）を常時表示する。
 
   @props
   - records: WorkoutRecord[] - 記録一覧
@@ -28,6 +29,7 @@
 	import RecordList from './RecordList.svelte';
 	import WeightChartSection from './WeightChartSection.svelte';
 	import VolumeChartSection from './VolumeChartSection.svelte';
+	import RestTimer from './RestTimer.svelte';
 	import type { ChartData, Exercise, WeeklyVolumePoint, WorkoutRecord } from '../types';
 
 	let {
@@ -95,6 +97,7 @@
 				return;
 			}
 			bodyWeightInput = '';
+			await invalidateAll();
 			await fetchChartData();
 		} catch {
 			bodyWeightError = '通信エラーが発生しました';
@@ -411,3 +414,5 @@
 		deleteError = '';
 	}}
 />
+
+<RestTimer />
