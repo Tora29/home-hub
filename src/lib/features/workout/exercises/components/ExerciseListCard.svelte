@@ -19,16 +19,7 @@
 	import Input from '$lib/components/Input.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import { submitNamedForm, submitDelete } from './form-helpers';
-
-	type Category = { id: string; name: string; createdAt: Date };
-	type ExerciseWithCategory = {
-		id: string;
-		name: string;
-		userId: string;
-		categoryId: string | null;
-		category: { id: string; name: string } | null;
-		createdAt: Date;
-	};
+	import type { Category, ExerciseWithCategory } from '../types';
 
 	let {
 		exercises,

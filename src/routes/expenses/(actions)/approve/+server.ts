@@ -22,7 +22,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
-import { approveExpenses, getUserRole } from '$expenses/server/service';
+import { approveExpenses, buildLineEnv, getUserRole } from '$expenses/server/service';
 
 /**
  * 相手の pending 支出を一括で approved にし、LINE 通知を送信する。
@@ -34,12 +34,7 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 		const db = createDb(platform!.env.DB);
 		const userId = locals.user!.id;
 		const role = await getUserRole(db, userId);
-		const result = await approveExpenses(db, userId, role, {
-			lineChannelAccessToken: platform!.env.LINE_CHANNEL_ACCESS_TOKEN,
-			lineUserIdPrimary: platform!.env.LINE_USER_ID_PRIMARY,
-			lineUserIdSpouse: platform!.env.LINE_USER_ID_SPOUSE,
-			lineMock: platform!.env.LINE_MOCK
-		});
+		const result = await approveExpenses(db, userId, role, buildLineEnv(platform!.env));
 		return json(result);
 	} catch (e) {
 		return handleApiError(e);

@@ -17,6 +17,7 @@
 	import CalendarGrid from './CalendarGrid.svelte';
 	import EventModal from './EventModal.svelte';
 	import type { CalendarEvent } from '../types';
+	import { formatYearMonth } from '$lib/utils/date';
 
 	let {
 		data
@@ -65,8 +66,7 @@
 	async function navigateMonth(delta: number) {
 		const [y, m] = data.selectedMonth.split('-').map(Number);
 		const d = new Date(y, m - 1 + delta, 1);
-		const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-		await goto(`/calendar?month=${next}`, { keepFocus: true, replaceState: true });
+		await goto(`/calendar?month=${formatYearMonth(d)}`, { keepFocus: true, replaceState: true });
 	}
 
 	async function goToday() {

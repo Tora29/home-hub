@@ -14,6 +14,7 @@
  * @entity Expense
  *
  * @functions
+ * - buildLineEnv         - platform.env から LineEnv を組み立て
  * - getExpenses          - 一覧取得（月フィルタ・ページネーション付き・全ユーザー）
  * - getUsers             - 全ユーザー取得（支払者選択用）
  * - getUserRole          - ユーザーの role 取得
@@ -34,6 +35,7 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { AppError } from '$lib/server/errors';
 import { expense, expenseCategory, user as userTable } from '$lib/server/tables';
 import type * as schema from '$lib/server/tables';
+import { formatYearMonth } from '$lib/utils/date';
 import type { ExpenseCreate, ExpenseUpdate } from '../schema';
 import type { ExpenseWithRelations, User } from '../types';
 
@@ -51,6 +53,21 @@ export type LineEnv = {
 	lineUserIdSpouse?: string;
 	lineMock?: string;
 };
+
+/** Cloudflare の platform.env から LineEnv を組み立てる。 */
+export function buildLineEnv(env: {
+	LINE_CHANNEL_ACCESS_TOKEN?: string;
+	LINE_USER_ID_PRIMARY?: string;
+	LINE_USER_ID_SPOUSE?: string;
+	LINE_MOCK?: string;
+}): LineEnv {
+	return {
+		lineChannelAccessToken: env.LINE_CHANNEL_ACCESS_TOKEN,
+		lineUserIdPrimary: env.LINE_USER_ID_PRIMARY,
+		lineUserIdSpouse: env.LINE_USER_ID_SPOUSE,
+		lineMock: env.LINE_MOCK
+	};
+}
 
 const expenseSelectFields = {
 	id: expense.id,
@@ -171,8 +188,7 @@ export async function getExpenses(
 	const page = options.page ?? 1;
 	const limit = Math.min(options.limit ?? 20, 100);
 	const now = new Date();
-	const month =
-		options.month ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+	const month = options.month ?? formatYearMonth(now);
 	const offset = (page - 1) * limit;
 
 	const [year, mon] = month.split('-').map(Number);

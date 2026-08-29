@@ -17,8 +17,7 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Input from '$lib/components/Input.svelte';
 	import { submitNamedForm, submitDelete } from './form-helpers';
-
-	type Category = { id: string; name: string; createdAt: Date };
+	import type { Category } from '../types';
 
 	let { categories }: { categories: Category[] } = $props();
 

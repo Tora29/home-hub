@@ -25,6 +25,7 @@ import { createDb } from '$lib/server/db';
 import { parseJsonBody, validationErrorResponse, handleApiError } from '$lib/server/api-helpers';
 import { recipeUpdateSchema } from '$recipes/schema';
 import { deleteRecipe, getRecipeById, updateRecipe } from '$recipes/server/service';
+import { deleteR2ImageBestEffort } from '$recipes/server/r2';
 
 /**
  * レシピを更新する。recipeUpdateSchema で入力値を検証後、service に委譲する。
@@ -48,13 +49,8 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
 
 		// imageUrl が変更された場合、旧 r2ImageKey（信頼済み）で R2 オブジェクトを削除する
 		// r2ImageKey はユーザー入力 URL ではなくアップロード時に DB へ保存した値を使用する
-		// R2 削除失敗は DB 更新済みのため、ログだけ出して成功扱いにする
 		if (existing.r2ImageKey && existing.imageUrl !== updated.imageUrl) {
-			try {
-				await platform!.env.RECIPE_IMAGES.delete(existing.r2ImageKey);
-			} catch (r2Err) {
-				console.error('R2 旧画像の削除に失敗しました（DB 更新は完了済み）', r2Err);
-			}
+			await deleteR2ImageBestEffort(platform!.env.RECIPE_IMAGES, existing.r2ImageKey, '旧画像');
 		}
 
 		return json(updated);
@@ -74,13 +70,8 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 		const { r2ImageKey } = await deleteRecipe(db, locals.user!.id, params.id);
 
 		// r2ImageKey（信頼済み）で R2 オブジェクトを削除する
-		// R2 削除失敗は DB 削除済みのため、ログだけ出して成功扱いにする
 		if (r2ImageKey) {
-			try {
-				await platform!.env.RECIPE_IMAGES.delete(r2ImageKey);
-			} catch (r2Err) {
-				console.error('R2 画像の削除に失敗しました（DB 削除は完了済み）', r2Err);
-			}
+			await deleteR2ImageBestEffort(platform!.env.RECIPE_IMAGES, r2ImageKey, '画像');
 		}
 
 		return new Response(null, { status: 204 });
