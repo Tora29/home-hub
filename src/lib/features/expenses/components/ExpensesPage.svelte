@@ -397,9 +397,6 @@
 />
 
 <!-- 申請取り消し確認ダイアログ -->
-{#if cancelError}
-	<p role="alert" class="text-sm text-destructive">{cancelError}</p>
-{/if}
 <ConfirmDialog
 	open={cancelDialogOpen}
 	title="申請を取り消しますか？"
@@ -407,10 +404,14 @@
 	confirmLabel="取り消す"
 	confirmVariant="destructive"
 	loading={cancelLoading}
+	error={cancelError}
 	data-testid="expense-cancel-dialog"
 	confirmTestid="expense-cancel-confirm-button"
 	onConfirm={() => void handleCancel()}
-	onCancel={() => (cancelDialogOpen = false)}
+	onCancel={() => {
+		cancelDialogOpen = false;
+		cancelError = '';
+	}}
 />
 
 <!-- 全件承認確認ダイアログ -->

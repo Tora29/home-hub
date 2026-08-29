@@ -1,7 +1,7 @@
 <!--
   @file 画面: カテゴリ管理
   @module src/routes/expenses/categories/+page.svelte
-  @feature expense-categories
+  @feature expenses/categories
 
   @description
   支出カテゴリ管理画面。

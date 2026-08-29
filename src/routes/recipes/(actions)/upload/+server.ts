@@ -19,6 +19,7 @@
 import { json } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
+import { validationErrorResponse } from '$lib/server/api-helpers';
 import { RECIPE_IMAGE_ALLOWED_TYPES, RECIPE_IMAGE_MAX_SIZE } from '$recipes/schema';
 
 const EXT_MAP: Record<string, string> = {
@@ -46,36 +47,19 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	const file = formData.get('file');
 
 	if (!file || !(file instanceof File)) {
-		return json(
-			{
-				code: 'VALIDATION_ERROR',
-				message: '入力値が正しくありません',
-				fields: [{ field: 'file', message: 'ファイルは必須です' }]
-			},
-			{ status: 400 }
-		);
+		return validationErrorResponse([{ path: ['file'], message: 'ファイルは必須です' }]);
 	}
 
 	if (!RECIPE_IMAGE_ALLOWED_TYPES.includes(file.type)) {
-		return json(
-			{
-				code: 'VALIDATION_ERROR',
-				message: '入力値が正しくありません',
-				fields: [{ field: 'file', message: 'JPEG / PNG / WebP 形式のファイルを選択してください' }]
-			},
-			{ status: 400 }
-		);
+		return validationErrorResponse([
+			{ path: ['file'], message: 'JPEG / PNG / WebP 形式のファイルを選択してください' }
+		]);
 	}
 
 	if (file.size > RECIPE_IMAGE_MAX_SIZE) {
-		return json(
-			{
-				code: 'VALIDATION_ERROR',
-				message: '入力値が正しくありません',
-				fields: [{ field: 'file', message: 'ファイルサイズは 5 MB 以下にしてください' }]
-			},
-			{ status: 400 }
-		);
+		return validationErrorResponse([
+			{ path: ['file'], message: 'ファイルサイズは 5 MB 以下にしてください' }
+		]);
 	}
 
 	if (dev) {
