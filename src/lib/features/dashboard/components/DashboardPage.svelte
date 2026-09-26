@@ -38,22 +38,30 @@
 	let summary = $state<DashboardSummary>(untrack(() => initialSummary));
 	let fetchSeq = 0;
 
-	async function fetchSummary(): Promise<boolean> {
+	// 'stale' = より新しいリクエストが発行済み（ロールバック不要）
+	async function fetchSummary(): Promise<'ok' | 'stale' | 'error'> {
 		const seq = ++fetchSeq;
-		const params = period === 'all' ? 'period=all' : `period=month&month=${selectedMonth}`;
-		const res = await fetch(`/dashboard/summary?${params}`);
-		if (res.ok && seq === fetchSeq) {
-			summary = await res.json();
-			return true;
+		const params = new URLSearchParams(
+			period === 'all' ? { period: 'all' } : { period: 'month', month: selectedMonth }
+		);
+		try {
+			const res = await fetch(`/dashboard/summary?${params}`);
+			if (seq !== fetchSeq) return 'stale';
+			if (!res.ok) return 'error';
+			const data = (await res.json()) as DashboardSummary;
+			if (seq !== fetchSeq) return 'stale';
+			summary = data;
+			return 'ok';
+		} catch {
+			return seq === fetchSeq ? 'error' : 'stale';
 		}
-		return false;
 	}
 
 	async function switchPeriod(next: 'month' | 'all') {
 		const prev = period;
 		period = next;
-		const ok = await fetchSummary();
-		if (!ok) period = prev;
+		const result = await fetchSummary();
+		if (result === 'error') period = prev;
 	}
 
 	async function handleMonthChange() {

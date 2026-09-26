@@ -22,9 +22,11 @@ export function createAuth(config: {
 	allowedEmails?: string;
 }) {
 	const db = createDb(config.d1);
-	const allowedList = config.allowedEmails
-		? config.allowedEmails.split(',').map((e) => e.trim())
-		: [];
+	// 未設定・空の場合は全員拒否（fail-closed）
+	const allowedList = (config.allowedEmails ?? '')
+		.split(',')
+		.map((e) => e.trim().toLowerCase())
+		.filter(Boolean);
 
 	return betterAuth({
 		secret: config.secret,
@@ -43,7 +45,7 @@ export function createAuth(config: {
 			user: {
 				create: {
 					before: async (newUser) => {
-						if (allowedList.length > 0 && !allowedList.includes(newUser.email)) {
+						if (!allowedList.includes(newUser.email.toLowerCase())) {
 							throw new Error('unauthorized');
 						}
 					}

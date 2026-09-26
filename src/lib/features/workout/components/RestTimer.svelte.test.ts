@@ -7,7 +7,7 @@
  */
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import { page } from '@vitest/browser/context';
+import { page } from 'vitest/browser';
 import { flushSync } from 'svelte';
 import RestTimer from './RestTimer.svelte';
 

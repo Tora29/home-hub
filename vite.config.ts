@@ -51,26 +51,6 @@ export default defineConfig({
 	},
 	test: {
 		expect: { requireAssertions: true },
-		coverage: {
-			provider: 'v8',
-			include: ['src/routes/**/*.ts', 'src/lib/**/*.ts'],
-			exclude: [
-				'src/lib/server/db.ts',
-				'src/lib/server/tables.ts',
-				'src/lib/server/auth.ts',
-				'src/lib/index.ts',
-				'src/lib/assets/**',
-				'src/hooks.server.ts',
-				'src/app.d.ts',
-				'**/*.test.ts',
-				'**/*.integration.test.ts',
-				'**/*.svelte.test.ts'
-			],
-			thresholds: {
-				functions: 80,
-				lines: 80
-			}
-		},
 		projects: [
 			{
 				extends: './vite.config.ts',

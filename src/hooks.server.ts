@@ -4,24 +4,44 @@
  *
  * @description
  * Better Auth ハンドラの登録、セッション情報の locals への注入、
- * および全ルートへの認証ガード適用。
+ * 全ルートへの認証ガード適用、およびセキュリティヘッダーの付与。
  */
 import { createAuth } from '$lib/server/auth';
 import { building } from '$app/environment';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import { json, redirect } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { Handle } from '@sveltejs/kit';
 
-// ログインなしでアクセスできるパス
-const PUBLIC_PATHS = [
-	'/api/auth',
+// ログインなしでアクセスできるパス（完全一致）
+const PUBLIC_PATHS = new Set([
 	'/login',
 	'/manifest.webmanifest',
 	'/apple-touch-icon.png',
-	'/favicon'
-];
+	'/favicon.ico',
+	'/robots.txt'
+]);
 
-export const handle: Handle = async ({ event, resolve }) => {
+// _headers は SSR レスポンス（Worker 生成）に適用されないため、ここで付与する
+const SECURITY_HEADERS: Record<string, string> = {
+	'X-Frame-Options': 'DENY',
+	'X-Content-Type-Options': 'nosniff',
+	'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+	'Referrer-Policy': 'strict-origin-when-cross-origin'
+};
+
+function withSecurityHeaders(response: Response): Response {
+	let res = response;
+	try {
+		for (const [key, value] of Object.entries(SECURITY_HEADERS)) res.headers.set(key, value);
+	} catch {
+		// headers が immutable なレスポンスはコピーしてから付与する
+		res = new Response(response.body, response);
+		for (const [key, value] of Object.entries(SECURITY_HEADERS)) res.headers.set(key, value);
+	}
+	return res;
+}
+
+const authGuard: Handle = async ({ event, resolve }) => {
 	const { DB, BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_EMAILS } =
 		event.platform!.env;
 	const baseURL = `${event.url.protocol}//${event.url.host}`;
@@ -35,7 +55,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	});
 
 	// Better Auth が /api/auth/* を自前で処理するので先に渡す
-	if (event.url.pathname.startsWith('/api/auth')) {
+	if (event.url.pathname.startsWith('/api/auth/')) {
 		return svelteKitHandler({ event, resolve, auth, building });
 	}
 
@@ -45,7 +65,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.session = session?.session ?? null;
 
 	// 公開パスはそのまま通す
-	if (PUBLIC_PATHS.some((p) => event.url.pathname.startsWith(p))) {
+	if (PUBLIC_PATHS.has(event.url.pathname)) {
 		return resolve(event);
 	}
 
@@ -54,10 +74,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 		// ブラウザの画面遷移（Accept に text/html が含まれる）→ ログインページへ
 		// fetch() による API 呼び出し（application/json のみ）→ JSON 401
 		if (event.request.headers.get('accept')?.includes('text/html')) {
-			redirect(302, '/login');
+			return new Response(null, { status: 302, headers: { location: '/login' } });
 		}
 		return json({ code: 'UNAUTHORIZED', message: '認証が必要です' }, { status: 401 });
 	}
 
 	return resolve(event);
 };
+
+export const handle: Handle = async (input) => withSecurityHeaders(await authGuard(input));

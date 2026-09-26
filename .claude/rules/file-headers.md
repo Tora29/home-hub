@@ -3,7 +3,7 @@
 ソースコードから設計書をリバースエンジニアリングするインデックスとして、
 各ファイル先頭に構造化されたコメントを付与する規約。
 
-scaffold-test-unit / scaffold-test-e2e スキルによるテスト生成を含め、
+テスト生成を含め、
 コードを生成・実装する際は**全ファイルにヘッダーコメントを付与すること**。
 
 ---
@@ -22,7 +22,7 @@ scaffold-test-unit / scaffold-test-e2e スキルによるテスト生成を含�
 | タグ           | 必須 | 説明                                                                         |
 | -------------- | ---- | ---------------------------------------------------------------------------- |
 | `@file`        | ◯    | 種別と名称（例: `画面: タスク一覧`、`API: タスク`）                          |
-| `@module`      | ◯    | `infra-spec.md` で定義されたディレクトリ構成に基づくフルパス                 |
+| `@module`      | ◯    | リポジトリルートからのフルパス（`directory-structure.md` の構成に従う）      |
 | `@feature`     | ◯    | 機能名（feature ディレクトリ名、ネストしない）。共通ライブラリ配下では省略可 |
 | `@description` | ◯    | 1〜3行の概要説明                                                             |
 
@@ -87,8 +87,8 @@ scaffold-test-unit / scaffold-test-e2e スキルによるテスト生成を含�
  *   @body {entity}CreateSchema
  *   @errors 400(VALIDATION_ERROR)
  *
- * @service ./service.ts
- * @schema ./schema.ts
+ * @service $lib/features/{feature}/server/service.ts
+ * @schema $lib/features/{feature}/schema.ts
  */
 ```
 
@@ -108,7 +108,7 @@ scaffold-test-unit / scaffold-test-e2e スキルによるテスト生成を含�
 ```
 /**
  * @file サービス: {Entity}
- * @module src/routes/{feature}/service.ts
+ * @module src/lib/features/{feature}/server/service.ts
  * @feature {feature}
  *
  * @description
@@ -134,7 +134,7 @@ scaffold-test-unit / scaffold-test-e2e スキルによるテスト生成を含�
 ```
 /**
  * @file スキーマ: {Entity}
- * @module src/routes/{feature}/schema.ts
+ * @module src/lib/features/{feature}/schema.ts
  * @feature {feature}
  *
  * @description
@@ -157,7 +157,7 @@ scaffold-test-unit / scaffold-test-e2e スキルによるテスト生成を含�
 ```
 <!--
   @file コンポーネント: {ComponentName}
-  @module src/routes/{feature}/components/{ComponentName}.svelte
+  @module src/lib/features/{feature}/components/{ComponentName}.svelte
   @feature {feature}
 
   @description
@@ -191,7 +191,7 @@ scaffold-test-unit / scaffold-test-e2e スキルによるテスト生成を含�
 ```
 /**
  * @file テスト: {対象}
- * @module src/routes/{feature}/{ファイル名}.test.ts
+ * @module src/lib/features/{feature}/{ファイル名}.test.ts
  * @testType unit
  *
  * @target ./{ファイル名}.ts
@@ -205,7 +205,7 @@ scaffold-test-unit / scaffold-test-e2e スキルによるテスト生成を含�
 ```
 /**
  * @file テスト: {対象}
- * @module src/routes/{feature}/{ファイル名}.integration.test.ts
+ * @module src/lib/features/{feature}/server/{ファイル名}.integration.test.ts
  * @testType integration
  *
  * @target ./{ファイル名}.ts
@@ -233,6 +233,14 @@ scaffold-test-unit / scaffold-test-e2e スキルによるテスト生成を含�
 
 ---
 
+## 旧タグ（新規では付与しない）
+
+| タグ                            | 扱い                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `@spec` / `@acceptance` / `@ac` | 参照先の `specs/` ディレクトリは存在しない。新規ファイルには付けない。既存は改修時に削除してよい |
+
+---
+
 ## 関数コメント
 
 ファイルヘッダーに加え、**`service.ts` と `+server.ts` の公開関数・ハンドラーには関数コメントを付与する**。
@@ -244,7 +252,7 @@ scaffold-test-unit / scaffold-test-e2e スキルによるテスト生成を含�
  * {処理の概要}。
  * @throws {ErrorCode} - {条件}
  */
-export async function get{Entities}(db: DrizzleD1Database, userId: string): Promise<{Entity}[]>
+export async function get{Entities}(db: Db, userId: string): Promise<{Entity}[]>  // Db = DrizzleD1Database<typeof schema>
 ```
 
 - `@throws` はエラーを投げる可能性がある場合のみ記述する
