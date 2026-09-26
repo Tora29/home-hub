@@ -17,7 +17,8 @@ async function handleSomeAction() {
 			body: JSON.stringify(payload)
 		});
 		if (!res.ok) {
-			const err = (await res.json()) as { message?: string };
+			// JSON 以外（Cloudflare の 5xx HTML 等）が返った場合は汎用メッセージにフォールバック
+			const err = (await res.json().catch(() => ({}))) as { message?: string };
 			errorMessage = err.message ?? '操作に失敗しました';
 			return;
 		}
@@ -107,31 +108,38 @@ await invalidateAll();
 ## 競合回避（fetchSeq）
 
 フィルタ変更等で連続リクエストが発生する場合、古いレスポンスで画面が上書きされないよう `fetchSeq` で最新リクエストのみを反映する。
+結果は **成功 / 古い（より新しいリクエストあり）/ 失敗** の 3 値で返し、ロールバックは「失敗」のときだけ行う。
 
 ```typescript
 let fetchSeq = 0;
 
-async function fetchData(): Promise<boolean> {
+// 'stale' = より新しいリクエストが発行済み（ロールバック不要）
+async function fetchData(): Promise<'ok' | 'stale' | 'error'> {
 	const seq = ++fetchSeq;
-	const res = await fetch(`/endpoint?${params}`);
-	if (res.ok && seq === fetchSeq) {
-		// 最新リクエストのみ適用
-		data = await res.json();
-		return true;
+	try {
+		const res = await fetch(`/endpoint?${params}`);
+		if (seq !== fetchSeq) return 'stale';
+		if (!res.ok) return 'error';
+		const json = (await res.json()) as Data;
+		if (seq !== fetchSeq) return 'stale'; // json() 待ちの間に追い越された場合
+		data = json;
+		return 'ok';
+	} catch {
+		return seq === fetchSeq ? 'error' : 'stale';
 	}
-	return false;
 }
 ```
 
 - `fetchSeq` は `$state` にしない（リアクティブ更新が不要なため）
-- 失敗時に前の状態に戻す場合は、呼び出し元でロールバックする
+- boolean で返すと「古いレスポンス」も失敗扱いになり、ロールバックが**新しい選択を上書き**する（例: month→all→month→all の連打で表示と選択がずれる）
+- 通信自体を止めたい場合は `AbortController` で前のリクエストを `abort()` してもよい（`AbortError` は `'stale'` 扱い）
 
 ```typescript
 async function switchPeriod(next: 'month' | 'all') {
 	const prev = period;
 	period = next;
-	const ok = await fetchData();
-	if (!ok) period = prev; // 失敗時はロールバック
+	const result = await fetchData();
+	if (result === 'error') period = prev; // 失敗時のみロールバック
 }
 ```
 
@@ -160,26 +168,42 @@ async function switchPeriod(next: 'month' | 'all') {
 ```typescript
 async function handleMonthChange(e: Event) {
 	const select = e.target as HTMLSelectElement;
-	await goto(`/expenses?month=${select.value}`, { keepFocus: true, replaceState: true });
+	const params = new URLSearchParams({ month: select.value });
+	await goto(`/expenses?${params}`, { keepFocus: true, replaceState: true, noScroll: true });
 }
 ```
 
 - `replaceState: true` でブラウザ履歴を汚さない
 - `keepFocus: true` で選択中の要素のフォーカスを維持する
+- `noScroll: true` でスクロール位置を維持する
+- クエリ文字列は `URLSearchParams` で組み立てる（文字列連結だとエンコード漏れが起きる）
 
 ---
 
 ## SSR 初期値との整合
 
-SSR で取得したデータを CSR で更新する場合、初期値は `untrack()` で取得する。
+props（SSR の `data` 等）を初期値にするローカル状態は、**props 変化時にどうしたいか**で書き分ける。
+
+| 目的                                                                | 書き方                                            |
+| ------------------------------------------------------------------- | ------------------------------------------------- |
+| props 変化（`invalidateAll()` 等）に追従しつつ CSR でも上書き       | `$derived(data.summary)`（Svelte 5.25+ で代入可） |
+| マウント時の値だけ使い、以後は props と切り離す（フォーム初期値等） | `$state(untrack(() => expense.amount))`           |
 
 ```typescript
-import { untrack } from 'svelte';
+// サーバーデータのミラー: invalidateAll() 後は新しい data に戻り、CSR fetch で上書きもできる
+let summary = $derived<Summary>(data.summary);
+async function refetch() {
+	summary = await (await fetch('/dashboard/summary')).json();
+}
 
-let summary = $state<Summary>(untrack(() => data.summary));
+// フォーム初期値: 入力中に親の props が変わっても値を保持する
+import { untrack } from 'svelte';
+let amountRaw = $state(untrack(() => (expense ? String(expense.amount) : '')));
 ```
 
-`untrack()` なしだと `data` の変化のたびに `summary` がリセットされる。
+- `$state(x)` の初期値は**マウント時に 1 回だけ評価**される。`untrack()` の有無で「`data` 変化のたびにリセット」されることはない
+- `untrack()` の役割は「props を初期値にしか使わない」意図の明示と `state_referenced_locally` 警告の抑制
+- `$state(untrack(...))` でサーバーデータを持つと `invalidateAll()` 後も**古い値のまま**になる点に注意
 
 ---
 

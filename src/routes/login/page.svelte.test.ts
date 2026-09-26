@@ -7,7 +7,7 @@
  */
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import { page } from '@vitest/browser/context';
+import { page } from 'vitest/browser';
 import LoginPage from './+page.svelte';
 
 // vi.hoisted で宣言することでモックファクトリ内から参照できる

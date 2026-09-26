@@ -9,18 +9,23 @@ Workers AI・LINE API の実装規約。
 
 `src/app.d.ts` の `App.Platform.env` が型定義の唯一の参照先。
 
-| 変数名                      | 型           | 用途                                |
-| --------------------------- | ------------ | ----------------------------------- |
-| `DB`                        | `D1Database` | Cloudflare D1                       |
-| `AI`                        | `Ai`         | Workers AI（llama-3.1 等）          |
-| `BETTER_AUTH_SECRET`        | `string`     | Better Auth 署名キー                |
-| `USE_REAL_AI`               | `string?`    | `'true'` のとき本物の AI を使用     |
-| `LINE_CHANNEL_ACCESS_TOKEN` | `string?`    | LINE push 送信トークン              |
-| `LINE_USER_ID_PRIMARY`      | `string?`    | LINE User ID（main ユーザー）       |
-| `LINE_USER_ID_SPOUSE`       | `string?`    | LINE User ID（partner ユーザー）    |
-| `LINE_MOCK`                 | `string?`    | `'true'` のとき LINE 送信をスキップ |
+| 変数名                      | 型           | 用途                                                      |
+| --------------------------- | ------------ | --------------------------------------------------------- |
+| `DB`                        | `D1Database` | Cloudflare D1                                             |
+| `GOOGLE_CLIENT_ID`          | `string`     | Google OAuth クライアント ID                              |
+| `GOOGLE_CLIENT_SECRET`      | `string`     | Google OAuth クライアントシークレット                     |
+| `ALLOWED_EMAILS`            | `string?`    | サインアップ許可メール（カンマ区切り。未設定 = 全員拒否） |
+| `AI`                        | `Ai`         | Workers AI（llama-3.1 等）                                |
+| `BETTER_AUTH_SECRET`        | `string`     | Better Auth 署名キー                                      |
+| `USE_REAL_AI`               | `string?`    | `'true'` のとき本物の AI を使用                           |
+| `LINE_CHANNEL_ACCESS_TOKEN` | `string?`    | LINE push 送信トークン                                    |
+| `LINE_USER_ID_PRIMARY`      | `string?`    | LINE User ID（main ユーザー）                             |
+| `LINE_USER_ID_SPOUSE`       | `string?`    | LINE User ID（partner ユーザー）                          |
+| `LINE_MOCK`                 | `string?`    | `'true'` のとき LINE 送信をスキップ                       |
 
 ローカル開発値は `.dev.vars`（`.gitignore` 済み）に記述する。
+本番の値は Terraform（`terraform/modules/pages` の `secrets`）で設定する（→ `security.md`）。
+`AI` バインディングは `wrangler.toml` の `[ai]` で宣言済みだが、Terraform の `deployment_configs` には未定義のため、本番利用時は追加が必要。
 
 ---
 
@@ -30,8 +35,8 @@ Workers AI・LINE API の実装規約。
 
 ### 呼び出しパターン
 
-`AI` バインディングの型は `@cloudflare/workers-types` の `Ai` だが、
-`ai.run()` の返り値型が実際の API と合わないため `as unknown as AiRunner` でキャストする。
+`AI` バインディングの型は `@cloudflare/workers-types` の `Ai`。モデル名がリテラルで型定義に含まれていれば `ai.run()` の
+入出力は型推論される。型定義と合わない場合のみ、以下の最小型 `AiRunner` にキャストする（キャスト範囲は呼び出し箇所 1 つに限定）。
 
 ```typescript
 type AiRunner = { run: (model: string, opts: unknown) => Promise<{ response?: string }> };
@@ -86,17 +91,22 @@ ${context || 'データが登録されていません。'}`;
 
 ### dev 環境でのモック
 
-`dev` フラグまたは `USE_REAL_AI !== 'true'` でダミー回答を返す。
+「Vite 開発サーバー（`dev === true`）」かつ「`USE_REAL_AI !== 'true'`」のときだけダミー回答を返す。
+本番は `dev === false` のため常に実 AI を使う（`USE_REAL_AI` の設定不要）。
 
 ```typescript
-if (dev) {
+import { dev } from '$app/environment';
+
+const useDummy = dev && platform!.env.USE_REAL_AI !== 'true';
+if (useDummy) {
 	answer = `【ローカル開発用ダミー回答】\n...`;
 } else {
 	// Workers AI 呼び出し
 }
 ```
 
-`.dev.vars` の `USE_REAL_AI=true` を設定すると、`dev:cf`（`make tf-dev`）で実際の AI を使用できる。
+- `make dev-cf`（`npm run dev:cf` = build 後に `wrangler pages dev`）は本番ビルドのため `dev === false` → 常に実 AI（課金対象）
+- `npm run dev` で実 AI を試す場合は `.dev.vars` に `USE_REAL_AI=true` を設定する
 
 ---
 
@@ -107,7 +117,7 @@ if (dev) {
 ```typescript
 async function sendLineMessage(
 	lineUserId: string,
-	message: string,
+	messages: object[], // 1 リクエスト最大 5 件
 	lineChannelAccessToken: string
 ): Promise<void> {
 	const res = await fetch('https://api.line.me/v2/bot/message/push', {
@@ -116,10 +126,7 @@ async function sendLineMessage(
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${lineChannelAccessToken}`
 		},
-		body: JSON.stringify({
-			to: lineUserId,
-			messages: [{ type: 'text', text: message }]
-		})
+		body: JSON.stringify({ to: lineUserId, messages })
 	});
 	if (!res.ok) {
 		throw new Error(`LINE API error: ${res.status}`);
@@ -157,6 +164,7 @@ if (shouldNotify) {
 ### D1 トランザクション非対応との関係
 
 LINE 送信は DB 更新の後続に置き、失敗してもロールバックしない（→ `drizzle.md` 参照）。
+送信処理は `notifyPartnerBestEffort` のように「解決 → スキップ判定 → try/catch」を 1 関数にまとめ、呼び出し側に catch を書かせない。
 
 ```typescript
 // DB 更新を先行
@@ -166,20 +174,34 @@ await db.update(expense).set({ status: 'pending' }).where(...);
 try {
   await sendLineMessage(...);
 } catch (e) {
-  console.error('[LINE] 送信失敗:', e);
+  console.error('[LINE] 送信失敗:', e); // e にトークンを含めない
   // throw しない
 }
 ```
+
+### レスポンスを待たせない（推奨）
+
+通知の完了をレスポンスで返す必要がない場合、`platform!.context.waitUntil()` に渡してレスポンス返却後に実行させる
+（Workers はレスポンス返却後も `waitUntil` の Promise 完了まで実行を継続する）。
+
+```typescript
+// +server.ts
+platform!.context.waitUntil(notifyPartnerBestEffort(lineEnv, role, message));
+return json(updated);
+```
+
+- `waitUntil` を使わずに `await` しない Promise を放置すると、レスポンス返却後に処理が打ち切られる可能性がある
+- 現状の expenses は service 内で `await` している（通知完了までレスポンスが遅れる）。改修時に `waitUntil` へ寄せる
 
 ---
 
 ## 環境別の外部サービス動作まとめ
 
-| サービス   | `npm run dev`（Vite）       | `make tf-dev`（Workers）      | 本番                  |
-| ---------- | --------------------------- | ----------------------------- | --------------------- |
-| D1         | モック D1                   | ローカル D1（wrangler）       | Cloudflare D1         |
-| Workers AI | `dev=true` でダミー回答     | `USE_REAL_AI=true` で実 AI 可 | Cloudflare Workers AI |
-| LINE       | `LINE_MOCK=true` でスキップ | `LINE_MOCK=true` でスキップ   | 実 LINE API           |
+| サービス   | `npm run dev`（Vite）                    | `make dev-cf`（wrangler pages dev） | 本番                  |
+| ---------- | ---------------------------------------- | ----------------------------------- | --------------------- |
+| D1         | ローカル D1（`platformProxy`）           | ローカル D1（wrangler）             | Cloudflare D1         |
+| Workers AI | ダミー回答（`USE_REAL_AI=true` で実 AI） | 実 AI（`dev=false`）                | Cloudflare Workers AI |
+| LINE       | `LINE_MOCK=true` でスキップ              | `LINE_MOCK=true` でスキップ         | 実 LINE API           |
 
 ---
 

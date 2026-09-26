@@ -11,17 +11,22 @@ Cloudflare D1（SQLite）+ Drizzle ORM の実装規約。
 全テーブルは `src/lib/server/tables.ts` に集約する。機能ごとにファイルを分けない。
 
 ```typescript
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 ```
 
 ### カラム型
 
-| D1 型          | Drizzle 記法                            | 用途                        |
-| -------------- | --------------------------------------- | --------------------------- |
-| TEXT           | `text('col')`                           | 文字列・ID・UUID・JSON格納  |
-| INTEGER        | `integer('col')`                        | 整数                        |
-| INTEGER (bool) | `integer('col', { mode: 'boolean' })`   | boolean（0/1 ↔ true/false） |
-| INTEGER (date) | `integer('col', { mode: 'timestamp' })` | 日時（Unix秒 ↔ Date）       |
+| D1 型          | Drizzle 記法                               | 用途                                  |
+| -------------- | ------------------------------------------ | ------------------------------------- |
+| TEXT           | `text('col')`                              | 文字列・ID・UUID・JSON格納            |
+| INTEGER        | `integer('col')`                           | 整数（金額は円単位の整数で持つ）      |
+| REAL           | `real('col')`                              | 小数（重量・体重等）                  |
+| INTEGER (bool) | `integer('col', { mode: 'boolean' })`      | boolean（0/1 ↔ true/false）           |
+| INTEGER (date) | `integer('col', { mode: 'timestamp' })`    | 日時（Unix **秒** ↔ Date）            |
+| INTEGER (date) | `integer('col', { mode: 'timestamp_ms' })` | 日時（Unix ミリ秒 ↔ Date）※現状未使用 |
+
+- 既存テーブルは `timestamp`（秒精度）で統一済み。新規テーブルも合わせる（秒未満の順序は `rowid` で担保 → 後述）
+- 日付のみ（`YYYY-MM-DD`）で扱う値は `text` で持つ（タイムゾーン変換を避けるため）
 
 ### ID 生成
 
@@ -34,16 +39,16 @@ const id = crypto.randomUUID();
 
 ### JSON 格納
 
-D1 は JSON 型を持たないため `text` カラムに JSON 文字列で格納する。
-カラム定義のコメントに型を明記する。
+D1 は JSON 型を持たないため `text` カラムに JSON 文字列で格納する（現状 JSON カラムはなし）。
+追加する場合は `text('col', { mode: 'json' }).$type<T>()` を使い、Drizzle に parse / stringify を任せる。
 
 ```typescript
 // tables.ts
-ingredients: text('ingredients'),  // JSON: { name: string; amount?: string }[]
-steps: text('steps'),              // JSON: string[]
+tags: text('tags', { mode: 'json' }).$type<string[]>(),
 ```
 
-取得後は `parseRow` 関数で `JSON.parse` する（→ 後述）。
+- 手動 `JSON.parse` / `JSON.stringify` はしない（型と実データの乖離を防ぐ）
+- 外部入力由来の JSON は保存前に Zod で検証する
 
 ### 外部キー
 
@@ -53,6 +58,26 @@ steps: text('steps'),              // JSON: string[]
 categoryId: text('categoryId')
   .notNull()
   .references(() => expenseCategory.id, { onDelete: 'restrict' }),
+```
+
+`restrict` の親を削除する service では、事前に参照件数を数えて `AppError('CONFLICT', 409, ...)` を throw する
+（DB の FK エラーをそのまま 500 にしない）。
+
+### INDEX
+
+`schemas.md` の「INDEX の設計」に従い、テーブル定義の第 3 引数で宣言する。
+
+> 既存の INDEX / UNIQUE（`idx_workout_record_*`・`uq_body_weight_user_date` 等）はマイグレーション SQL に手書きで作成されており、
+> `tables.ts` には未宣言。新規は `tables.ts` で宣言して `npm run db:generate` で生成する（手書き SQL を増やさない）。
+
+```typescript
+export const expense = sqliteTable(
+	'Expense',
+	{
+		/* ... */
+	},
+	(t) => [index('Expense_createdAt_idx').on(t.createdAt)]
+);
 ```
 
 ---
@@ -66,30 +91,6 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import type * as schema from '$lib/server/tables';
 
 type Db = DrizzleD1Database<typeof schema>;
-```
-
-### parseRow（JSON カラムの変換）
-
-JSON カラムを含むテーブルは `parseRow` 関数を用意し、取得行を必ず通す。
-
-```typescript
-function parseRow(row: typeof recipe.$inferSelect): Recipe {
-	return {
-		...row,
-		ingredients: row.ingredients ? (JSON.parse(row.ingredients) as Ingredient[]) : null,
-		steps: row.steps ? (JSON.parse(row.steps) as string[]) : null
-	};
-}
-
-// 使用例
-const rows = await db.select().from(recipe).where(where);
-return rows.map(parseRow);
-```
-
-保存時は `JSON.stringify` する。
-
-```typescript
-ingredients: data.ingredients ? JSON.stringify(data.ingredients) : null,
 ```
 
 ### SELECT フィールド抽出（JOIN 時）
@@ -124,105 +125,128 @@ const expenseSelectFields = {
 LEFT JOIN の結果は null チェックが必要。
 
 ```typescript
-payer: row.payer?.id ? (row.payer as User) : null;
+payer: row.payer?.id ? row.payer : null;
 ```
 
 ### COUNT / SUM
 
-```typescript
-const [{ total }] = await db
-	.select({ total: sql<number>`count(*)` })
-	.from(recipe)
-	.where(where);
-// Number() で明示的に変換（D1 は string で返す場合がある）
-return Number(total);
+件数は Drizzle の `count()` ヘルパーを使う（戻り値型が `number` に確定する）。
 
-// 複数集計の同時取得
+```typescript
+import { count, sql } from 'drizzle-orm';
+
+const [{ total }] = await db.select({ total: count() }).from(expense).where(where);
+
+// 件数のみなら $count も可
+const total = await db.$count(expense, where);
+
+// SUM 等の生 SQL 集計は .mapWith(Number) で実行時にも数値化する
 const [stats] = await db
 	.select({
-		total: sql<number>`count(*)`,
-		monthTotal: sql<number>`coalesce(sum(${expense.amount}), 0)`
+		total: count(),
+		monthTotal: sql<number>`coalesce(sum(${expense.amount}), 0)`.mapWith(Number)
 	})
 	.from(expense)
 	.where(monthFilter);
 ```
+
+- `sql<number>` の型引数は**型注釈のみ**で実行時変換はしない。変換が必要な場合は `.mapWith(Number)` を付ける
 
 ### ORDER BY
 
 ソート条件が複数パターンある場合は `switch` で `SQL[]` を組み立てる。
 
 ```typescript
-let orderBy: SQL<unknown>[];
+let orderBy: SQL[];
 switch (sort) {
-	case 'lastCookedAt_asc':
-		orderBy = [
-			sql`CASE WHEN ${recipe.lastCookedAt} IS NULL THEN 0 ELSE 1 END`,
-			asc(recipe.lastCookedAt)
-		];
-		break;
-	case 'cookedCount_desc':
-		orderBy = [desc(recipe.cookedCount)];
+	case 'amount_desc':
+		orderBy = [desc(expense.amount)];
 		break;
 	default: // createdAt_desc
-		orderBy = [desc(recipe.createdAt), desc(sql`rowid`)];
+		orderBy = [desc(expense.createdAt), desc(sql`"Expense".rowid`)];
 }
 
 const rows = await db
 	.select()
-	.from(recipe)
+	.from(expense)
 	.orderBy(...orderBy);
 ```
 
-同一 `createdAt` の安定ソートに `desc(sql\`rowid\`)` を末尾に加える。
+- 同一 `createdAt`（秒精度）の安定ソートに `rowid` を末尾に加える
+- JOIN 時は `rowid` が曖昧になるため `"テーブル名".rowid` と修飾する
+- NULL を末尾にしたい場合は `sql\`${col} IS NULL\``を先頭キーに置く（SQLite の`ASC` は NULL が先頭）
 
 ### 単一行取得
 
 `.get()` を使い、null のときは `AppError('NOT_FOUND')` を throw する。
 
 ```typescript
-const row = await db.select().from(recipe).where(and(...)).get();
+const row = await db.select().from(expense).where(eq(expense.id, id)).get();
 if (!row) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 ```
 
 ### ページネーション
 
 ```typescript
-const offset = (page - 1) * limit;
+const page = options.page ?? 1;
 const limit = Math.min(options.limit ?? 20, 100); // 最大 100 上限
+const offset = (page - 1) * limit;
 
-await db.select().from(recipe).where(where).limit(limit).offset(offset);
+await db
+	.select()
+	.from(expense)
+	.where(where)
+	.orderBy(...orderBy)
+	.limit(limit)
+	.offset(offset);
 ```
 
-### 更新（undefined フィールドを保持する）
+- `orderBy` なしの `limit/offset` は順序不定のため必ず `orderBy` を付ける
 
-PUT（全フィールド必須）でも optional フィールドは `undefined` のとき既存値を維持する。
+### 更新（PUT = 完全置換）
+
+PUT は完全置換のため、Update スキーマの全フィールドをそのまま `set` する（→ `schemas.md`）。
 
 ```typescript
 await db
-	.update(recipe)
+	.update(expense)
 	.set({
-		name: data.name,
-		description: data.description !== undefined ? data.description : existing.description
-		// data.description が undefined → existing.description を保持
-		// data.description が null → DB を null に更新
+		amount: data.amount,
+		categoryId: data.categoryId,
+		payerUserId: data.payerUserId
 	})
-	.where(eq(recipe.id, id));
+	.where(eq(expense.id, id));
 ```
+
+- 所有者チェック（`userId` 一致）は更新前に service で行い、不一致は `AppError('FORBIDDEN')`
 
 ---
 
-## トランザクション非対応（D1 制約）
+## トランザクション（D1 制約）
 
-Cloudflare D1 は `BEGIN` トランザクションを未サポート。
+Cloudflare D1 は `BEGIN` / `db.transaction()` を未サポート。代わりに以下を使い分ける。
 
-**対策**: DB 更新を先行し、外部 API 呼び出し（LINE等）は後続でベストエフォート実行する。
-失敗しても DB の状態は正しいため、通知失敗はログのみで飲み込む。
+| ケース                               | 方法                                                           |
+| ------------------------------------ | -------------------------------------------------------------- |
+| 複数の DB 書き込みを原子的に行いたい | `db.batch([...])`（D1 の batch はまとめて 1 トランザクション） |
+| DB 更新 + 外部 API（LINE 等）        | DB 更新を先行し、外部 API はベストエフォート                   |
+
+```typescript
+// 複数書き込み: batch（途中で失敗すると全体がロールバック）
+// ※ approvalLog は説明用の仮テーブル
+await db.batch([
+	db.update(expense).set({ status: 'approved' }).where(inArray(expense.id, ids)),
+	db.insert(approvalLog).values(logs)
+]);
+```
+
+- `batch` 内のクエリは前のクエリ結果を参照できない。読み取り結果に依存する分岐は batch の前に済ませる
 
 ```typescript
 // DB 更新を先行（状態の正確性を優先）
 await db.update(expense).set({ status: 'pending' }).where(...);
 
-// 外部 API はベストエフォート
+// 外部 API はベストエフォート（→ external-integrations.md）
 try {
   await sendLineMessage(...);
 } catch (e) {
@@ -237,20 +261,23 @@ try {
 
 ```bash
 # スキーマ変更後: マイグレーションファイル生成
-npx drizzle-kit generate
+npm run db:generate
 
 # ローカル D1 への適用
 make db-migrate
 
-# 本番 D1 への適用
+# 本番 D1 への適用（通常は deploy ワークフローが自動実行）
 make db-migrate-remote
 
 # 両方まとめて適用
 make db-migrate-all
 ```
 
-- マイグレーションファイルは `drizzle/migrations/` に出力される（Git 管理対象）
+- マイグレーションファイルは `drizzle/migrations/` に出力される（Git 管理対象）。生成後の SQL は必ず目視確認する
 - `drizzle.config.ts` のスキーマパスは `./src/lib/server/tables.ts`
+- 本番は `.github/workflows/deploy.yml` がデプロイ前に `wrangler d1 migrations apply --remote` を実行する。
+  カラム削除・リネーム等の破壊的変更は「新カラム追加 → コード移行 → 旧カラム削除」の複数リリースに分ける
+- Integration テストは `vitest.integration.config.ts` が同じマイグレーションを Miniflare の D1 に適用する
 
 ---
 
@@ -258,16 +285,16 @@ make db-migrate-all
 
 ```typescript
 // テーブル行の型（DB から取得した生の型）
-type RecipeRow = typeof recipe.$inferSelect;
+type ExpenseRow = typeof expense.$inferSelect;
 
 // insert 用の型
-type RecipeInsert = typeof recipe.$inferInsert;
+type ExpenseInsert = typeof expense.$inferInsert;
 ```
 
-ビジネスロジック層で使うアプリ型（JSON カラムを parse 済み）は `type Recipe = { ... }` として別定義する。
+JOIN 結果等、テーブル行と形が異なるアプリ型は `types.ts` に別定義する。
 
 ---
 
 ## なぜ必要か
 
-- D1 固有の制約（JSON格納・トランザクション非対応）を統一するため
+- D1 固有の制約（トランザクション非対応・batch・JSON格納）を統一するため

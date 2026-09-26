@@ -44,4 +44,7 @@ module "pages" {
   line_channel_access_token = var.line_channel_access_token
   line_user_id_primary      = var.line_user_id_primary
   line_user_id_spouse       = var.line_user_id_spouse
+  google_client_id          = var.google_client_id
+  google_client_secret      = var.google_client_secret
+  allowed_emails            = var.allowed_emails
 }

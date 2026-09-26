@@ -1,23 +1,17 @@
-ACCOUNT_ID  ?= $(shell grep cloudflare_account_id terraform/terraform.tfvars | cut -d'"' -f2)
-R2_ENDPOINT  = https://$(ACCOUNT_ID).r2.cloudflarestorage.com
-TF           = terraform -chdir=terraform
-TF_VARS      = -var-file=terraform.tfvars
-TF_BACKEND   = -backend-config="endpoints={s3=\"$(R2_ENDPOINT)\"}" \
-               -backend-config="access_key=$(CLOUDFLARE_R2_ACCESS_KEY_ID)" \
-               -backend-config="secret_key=$(CLOUDFLARE_R2_SECRET_ACCESS_KEY)"
+TF = terraform -chdir=terraform
 
 .DEFAULT_GOAL := help
 .PHONY: help \
-        dev tf-dev \
+        dev dev-cf \
         db-migrate db-migrate-remote db-migrate-all \
-        tf-init tf-plan tf-apply tf-validate
+        tf-check
 
 help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "[Dev]"
 	@echo "  dev                開発サーバー起動（Vite・高速）"
-	@echo "  tf-dev             開発サーバー起動（Cloudflare Workers 環境・D1/AI 使用可）"
+	@echo "  dev-cf             開発サーバー起動（build + wrangler pages dev・本番同等ランタイム）"
 	@echo ""
 	@echo "[DB]"
 	@echo "  db-migrate         マイグレーション適用（ローカル）"
@@ -25,17 +19,17 @@ help:
 	@echo "  db-migrate-all     マイグレーション適用（ローカル + 本番）"
 	@echo ""
 	@echo "[Terraform]"
-	@echo "  tf-plan            terraform plan（差分確認）"
-	@echo "  tf-apply           terraform apply（インフラ反映）"
-	@echo "  tf-validate        terraform validate（構文チェック）"
-	@echo "  tf-init            terraform init（初回・backend 変更時のみ）"
+	@echo "  tf-check           terraform fmt / validate（構文チェックのみ・本番の値は不要）"
+	@echo ""
+	@echo "  plan / apply は GitHub Actions（.github/workflows/terraform.yml）でのみ実行する"
+	@echo "  本番の値は GitHub Secrets の TF_VAR_* だけに置く（ローカルに terraform.tfvars を作らない）"
 
 # ---  Dev  -------------------------------------------------------------------
 
 dev:
 	npm run dev
 
-tf-dev:
+dev-cf:
 	npm run dev:cf
 
 # ---  DB  --------------------------------------------------------------------
@@ -50,14 +44,7 @@ db-migrate-all: db-migrate db-migrate-remote
 
 # ---  Terraform  -------------------------------------------------------------
 
-tf-init:
-	$(TF) init -migrate-state $(TF_BACKEND)
-
-tf-plan:
-	$(TF) plan $(TF_VARS)
-
-tf-apply:
-	$(TF) apply $(TF_VARS)
-
-tf-validate:
+tf-check:
+	$(TF) fmt -check -recursive
+	$(TF) init -backend=false -input=false > /dev/null
 	$(TF) validate

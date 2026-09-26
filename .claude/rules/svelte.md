@@ -101,10 +101,12 @@ let { value = $bindable(''), ...rest }: Props = $props();
 `onSuccess` / `onDelete` コールバックで通知する。親・兄弟が入力途中の値を参照する必要がないモーダルフォーム等に使う。
 
 ```svelte
-<!-- 親: EventModal.svelte -->
-{#if open}
-	<EventForm {mode} {event} onSuccess={(event) => handleSuccess(event)} {onClose} />
-{/if}
+<!-- 親: ExpenseFormDialog.svelte -->
+<Dialog {open} {onClose} aria-label="支出を登録">
+	{#if open}
+		<ExpenseForm {mode} {expense} {onSuccess} onCancel={onClose} />
+	{/if}
+</Dialog>
 ```
 
 - `{#if open}` の中でマウントする: `open` が `false` になるとコンポーネントが破棄され、再度 `true` になると
@@ -115,11 +117,18 @@ let { value = $bindable(''), ...rest }: Props = $props();
 
 ## $derived / $effect
 
-- `$derived`: 他の state から計算できる値（getter の代替）
-- `$effect`: 副作用（DOM 操作・外部 API 呼び出し等）。**乱用しない**
+- `$derived`: 他の state / props から計算できる値（getter の代替）。複数行の計算は `$derived.by(() => ...)`
+- 書き込み可能な `$derived`（Svelte 5.25+）: props 由来の値を CSR で一時的に上書きしたい場合に使う（→ `csr-patterns.md`「SSR 初期値との整合」）
+- `$effect`: 副作用（DOM 操作・外部 API 呼び出し・タイマー等）。**state の同期（A が変わったら B に代入）には使わない** → `$derived` で書く
+- `$effect` 内で登録したタイマー・リスナーはクリーンアップ関数を return して解除する
 
 ```typescript
 let total = $derived(items.reduce((sum, item) => sum + item.price, 0));
+
+$effect(() => {
+	const id = setInterval(tick, 1000);
+	return () => clearInterval(id);
+});
 ```
 
 ---
@@ -143,18 +152,25 @@ Svelte の linter は `dialog` / `alertdialog` ロールを non-interactive と�
 <div role="dialog" aria-modal="true" tabindex={-1}>
 ```
 
-### `role="menu"` を持つ `<div>` の `onclick`
+### ドロップダウンメニューの role
 
-`<div role="menu">` に `onclick` を付ける場合、対応する `onkeydown` と `tabindex={0}` が必要。
+`role="menu"` / `menuitem` は WAI-ARIA 上「矢印キーで項目移動・Escape で閉じる・開いたら先頭項目へフォーカス」の
+キーボード操作実装が前提。これを実装しない場合は `role="menu"` を付けず、ボタン + `aria-expanded` の
+**disclosure パターン**（中身は普通の `<button>` の並び）にする。
+
+外側クリック判定のために `onclick={(e) => e.stopPropagation()}` だけを付けたい場合、linter 回避目的で
+`tabindex={0}` を足さない（意味のないタブ停止点が増える）。`svelte-ignore` で抑制し意図を残す。
 
 ```svelte
-<div
-  role="menu"
-  tabindex={0}
-  onclick={(e) => e.stopPropagation()}
-  onkeydown={(e) => e.stopPropagation()}
->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+<!-- 外側クリックで閉じる判定から除外するためだけの stopPropagation（操作要素は内部の button） -->
+<div onclick={(e) => e.stopPropagation()}>
+	<button type="button" onclick={onEdit}>編集</button>
+	<button type="button" onclick={onDelete}>削除</button>
+</div>
 ```
+
+> 既存の `ExpenseItem.svelte` は `role="menu"` + `tabindex={0}` のまま（矢印キー操作未実装）。改修時に上記へ寄せる。
 
 ---
 

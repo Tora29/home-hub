@@ -15,7 +15,7 @@ src/
 │   └── {feature}/
 │       ├── +page.svelte        # $lib/features/{feature}/components から import して呼ぶだけ
 │       ├── +page.server.ts     # $lib/features/{feature}/server/* を呼ぶだけ
-│       └── +server.ts          # 外部 API として公開する場合のみ。基本は +page.server.ts で済ます
+│       └── +server.ts          # CSR fetch 用 JSON API（SSR 初期データは +page.server.ts）
 │
 └── lib/
     └── features/
@@ -41,7 +41,9 @@ src/
 
 ```typescript
 // +page.server.ts の例（これ以上のロジックを書かない）
-import { getRecords } from '$lib/features/workout/server/records';
+import type { PageServerLoad } from './$types';
+import { createDb } from '$lib/server/db';
+import { getRecords } from '$workout/server/service';
 
 export const load: PageServerLoad = async ({ platform, locals }) => {
 	const db = createDb(platform!.env.DB);
@@ -94,6 +96,9 @@ lib/features/{feature}/
 
 ### 責務が複数ある場合はファイル名で分割
 
+`service.ts` が肥大化した場合（目安: 400 行超、または独立した責務が 3 つ以上）は責務ごとにファイルを分ける。
+以下は分割後のイメージ（現状の workout は `server/service.ts` 1 ファイル）。
+
 ```
 lib/features/workout/
   schema.ts                        # 記録のスキーマ（メイン責務）
@@ -133,7 +138,7 @@ lib/features/
   expense-categories/
 ```
 
-このプロジェクトの例:
+このプロジェクトの例（`svelte.config.js` の `kit.alias` に `$expenses` / `$workout` / `$dashboard` を定義済み）:
 
 ```
 lib/features/
@@ -160,7 +165,15 @@ lib/features/
 
 ## server/ サブディレクトリの使い方
 
-`server/` はサーバー専用コードの境界を明示する。クライアントから import できない。
+`server/` はサーバー専用コードの境界を**命名規約として**明示する。
+
+> **注意**: SvelteKit がクライアントからの import をビルドエラーで防ぐのは `$lib/server/` 配下と `*.server.ts` ファイルのみ。
+> `src/lib/features/{feature}/server/` は保護対象外のため、`.svelte` / クライアント用 `.ts` から import すると
+> DB アクセスコード等がクライアントバンドルに混入しうる。
+>
+> - `components/` と feature 直下の `.ts` から `server/` を import しない（レビューで確認）
+> - 機械的に防ぐ場合は ESLint `no-restricted-imports` で `**/server/**` を `.svelte` に対して禁止するか、
+>   ファイル名を `service.server.ts` にする
 
 ```
 lib/features/{feature}/
@@ -176,7 +189,7 @@ lib/features/{feature}/
 
 | やりたいこと           | 触る場所                                        |
 | ---------------------- | ----------------------------------------------- |
-| URL を変えたい         | `src/routes/` のみ                              |
+| URL を変えたい         | `src/routes/` + fetch 先を持つ `components/`    |
 | ロジックを変えたい     | `src/lib/features/{feature}/server/` のみ       |
 | UI を変えたい          | `src/lib/features/{feature}/components/` のみ   |
 | 機能を丸ごと削除したい | `lib/features/{feature}/` + `routes/{feature}/` |
@@ -187,4 +200,4 @@ lib/features/{feature}/
 
 - `src/routes/` にルーティングと実装が混在すると、URL 変更・機能削除・AI によるコード生成いずれも影響範囲が読めなくなる
 - `lib/features/` に実装を集約することで feature 単位の独立性が保たれ、AI がコンテキストを最小化して正確なコードを生成できる
-- `server/` サブディレクトリにより、クライアントに漏れてはいけないコードの境界が明確になる
+- `server/` サブディレクトリにより、クライアントに漏れてはいけないコードの境界が明確になる（強制力は上記注意を参照）

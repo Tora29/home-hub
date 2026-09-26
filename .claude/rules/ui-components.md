@@ -97,14 +97,14 @@ let { children }: Props = $props();
 variant / size ごとにクラスを Record で定義し、文字列結合で適用する。
 
 ```typescript
-const variantClasses: Record<string, string> = {
+const variantClasses: Record<NonNullable<Props['variant']>, string> = {
 	primary: 'bg-accent text-white hover:opacity-90 disabled:opacity-60 transition-opacity',
 	secondary: 'border border-separator text-secondary hover:text-label transition-colors',
 	destructive: 'bg-destructive text-white hover:opacity-90 disabled:opacity-60 transition-opacity',
 	'ghost-destructive': 'bg-destructive/10 text-destructive hover:opacity-80 transition-opacity'
 };
 
-const sizeClasses: Record<string, string> = {
+const sizeClasses: Record<NonNullable<Props['size']>, string> = {
 	sm: 'py-1.5 px-3 text-xs',
 	md: 'py-2 px-4 text-sm',
 	lg: 'py-3 px-6'
@@ -114,10 +114,12 @@ const baseClass = 'inline-flex items-center gap-2 font-medium rounded-2xl';
 ```
 
 ```svelte
-<button class="{baseClass} {variantClasses[variant]} {sizeClasses[size]} {className}" {…rest}>
+<button class="{baseClass} {variantClasses[variant]} {sizeClasses[size]} {className}" {type} {...rest}>
 ```
 
+- `Record` のキーは Props の union 型にする（variant 追加時に定義漏れを型エラーで検出するため）
 - 親からの追加クラスは `class?: string` prop で受け取り末尾に連結する
+- `<button>` の `type` はデフォルト `'button'` にする（HTML 既定の `submit` による意図しないフォーム送信を防ぐ）
 - `class` prop はリネームして受け取る: `class: className = ''`
 
 ---
@@ -132,6 +134,9 @@ const baseClass = 'inline-flex items-center gap-2 font-medium rounded-2xl';
 | `Textarea`      | `src/lib/components/Textarea.svelte`      | サイズのみ                                            |
 | `Dialog`        | `src/lib/components/Dialog.svelte`        | role: dialog / alertdialog                            |
 | `ConfirmDialog` | `src/lib/components/ConfirmDialog.svelte` | Dialog のラッパー                                     |
+| `Checkbox`      | `src/lib/components/Checkbox.svelte`      | —                                                     |
+| `Header`        | `src/lib/components/Header.svelte`        | レイアウト専用（ロゴ・ダークモード切替・ログアウト）  |
+| `Sidebar`       | `src/lib/components/Sidebar.svelte`       | レイアウト専用（ナビゲーション）                      |
 
 ---
 
@@ -153,6 +158,19 @@ const baseClass = 'inline-flex items-center gap-2 font-medium rounded-2xl';
 - `closeOnBackdrop={false}` で backdrop クリックを無効化（処理中など）
 - `disabled={isLoading}` で Escape・backdrop による閉じるを無効化
 
+### モーダルのフォーカス要件（WAI-ARIA Dialog パターン）
+
+| 要件                                       | 現状の `Dialog.svelte`         |
+| ------------------------------------------ | ------------------------------ |
+| 開いたらダイアログ内へフォーカス移動       | 未実装                         |
+| Tab / Shift+Tab をダイアログ内に閉じ込める | 未実装                         |
+| 背景を操作不可（`inert`）にする            | 未実装                         |
+| 閉じたら開く前の要素へフォーカスを戻す     | 未実装                         |
+| Escape で閉じる                            | フォーカスが内側にある場合のみ |
+
+改修時はネイティブ `<dialog>` + `showModal()` への置き換えを優先する（上記がブラウザ標準で満たされ、
+`tabindex="-1"` の lint 抑制も不要になる）。自前実装を続ける場合は上記要件をすべて満たす。
+
 ### `tabindex="-1"` の a11y 警告抑制
 
 Svelte linter は `dialog` / `alertdialog` ロールを non-interactive と判定するため警告が出る。
@@ -162,7 +180,7 @@ Svelte linter は `dialog` / `alertdialog` ロールを non-interactive と判�
 
 ## 汎用コンポーネントへの data-testid
 
-汎用コンポーネントは `data-testid` を内部に固定しない。`{...rest}` 透過で親から渡す（→ `data-testid.md` 参照）。
+汎用コンポーネントは `data-testid` を内部に固定しない。`{...rest}` 透過で親から渡す。
 
 ```svelte
 <!-- 呼び出し側 -->
@@ -176,23 +194,27 @@ Svelte linter は `dialog` / `alertdialog` ロールを non-interactive と判�
 `@lucide/svelte` から import して使う。
 
 ```svelte
-import {(Plus, Trash2, AlertTriangle)} from '@lucide/svelte';
+<script lang="ts">
+	import { Plus, TriangleAlert } from '@lucide/svelte';
+</script>
 
 <Plus size={18} />
-<AlertTriangle size={18} class="shrink-0 text-destructive" />
+<TriangleAlert size={18} class="shrink-0 text-destructive" aria-hidden="true" />
 ```
 
 - サイズは `size` prop で指定（px）
 - カラーは Tailwind クラス（`class="text-secondary"`）で指定
+- 旧名エイリアス（`AlertTriangle` → `TriangleAlert` 等）は非推奨。新規コードは正式名を使う
+- 装飾目的のアイコンには `aria-hidden="true"`、アイコンのみのボタンには `aria-label` を付ける
 
 ---
 
 ## 機能固有 vs 共有コンポーネント
 
-| 条件                                         | 配置先                             |
-| -------------------------------------------- | ---------------------------------- |
-| 1つの機能でしか使わない                      | `src/routes/{feature}/components/` |
-| 複数機能で再利用する（または汎用 UI パーツ） | `src/lib/components/`              |
+| 条件                                         | 配置先                                   |
+| -------------------------------------------- | ---------------------------------------- |
+| 1つの機能でしか使わない                      | `src/lib/features/{feature}/components/` |
+| 複数機能で再利用する（または汎用 UI パーツ） | `src/lib/components/`                    |
 
 共有コンポーネントは `@feature` タグをファイルヘッダーから省略する（→ `file-headers.md` 参照）。
 

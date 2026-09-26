@@ -7,7 +7,7 @@
  */
 import { describe, test, expect, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import { page } from '@vitest/browser/context';
+import { page } from 'vitest/browser';
 import { flushSync } from 'svelte';
 import ExpensesPage from './ExpensesPage.svelte';
 import type { ExpenseWithRelations } from '../types';

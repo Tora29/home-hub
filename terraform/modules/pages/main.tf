@@ -32,6 +32,9 @@ resource "cloudflare_pages_project" "this" {
         LINE_CHANNEL_ACCESS_TOKEN = var.line_channel_access_token
         LINE_USER_ID_PRIMARY      = var.line_user_id_primary
         LINE_USER_ID_SPOUSE       = var.line_user_id_spouse
+        GOOGLE_CLIENT_ID          = var.google_client_id
+        GOOGLE_CLIENT_SECRET      = var.google_client_secret
+        ALLOWED_EMAILS            = var.allowed_emails
       }
     }
   }

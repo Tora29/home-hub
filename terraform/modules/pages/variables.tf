@@ -34,3 +34,18 @@ variable "line_user_id_spouse" {
   type      = string
   sensitive = true
 }
+
+variable "google_client_id" {
+  type      = string
+  sensitive = true
+}
+
+variable "google_client_secret" {
+  type      = string
+  sensitive = true
+}
+
+variable "allowed_emails" {
+  type      = string
+  sensitive = true
+}

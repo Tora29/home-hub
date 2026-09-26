@@ -1,6 +1,6 @@
 # Testing
 
-テスト戦略と実装規約。ui-mockup.html の data-\* 属性と @api コメントを一次仕様として、**業務要件を表すテストケースを作成する**。
+テスト戦略と実装規約。画面ファイルヘッダーの `@api` / `+server.ts` の `@endpoints` コメントと `data-testid` 属性を一次仕様として、**業務要件を表すテストケースを作成する**。
 
 ファイル配置は `directory-structure.md` の 2 層アーキテクチャに従う。
 
@@ -107,23 +107,23 @@ e2e/
 - `describe` にはテスト対象の関数名・スキーマ名・コンポーネント名を指定する
 - `test()` の説明は業務要件を表す日本語で記述する
 
-| ケース    | フォーマット                       | 例                                                             |
-| --------- | ---------------------------------- | -------------------------------------------------------------- |
-| 正常系    | `{条件}で{操作}できる`             | `正しいデータで料理を登録できる`                               |
-| 異常系    | `{条件}の場合、{エラー内容}が返る` | `料理名が空の場合、VALIDATION_ERROR「料理名は必須です」が返る` |
-| 境界値 OK | `{条件}の場合、{操作}できる`       | `料理名が100文字の場合、登録できる`                            |
-| 境界値 NG | `{条件}の場合、{エラー内容}が返る` | `料理名が101文字の場合、VALIDATION_ERROR が返る`               |
+| ケース    | フォーマット                       | 例                                                                 |
+| --------- | ---------------------------------- | ------------------------------------------------------------------ |
+| 正常系    | `{条件}で{操作}できる`             | `正しいデータで支出を登録できる`                                   |
+| 異常系    | `{条件}の場合、{エラー内容}が返る` | `カテゴリが空の場合、VALIDATION_ERROR「カテゴリは必須です」が返る` |
+| 境界値 OK | `{条件}の場合、{操作}できる`       | `金額が9,999,999円の場合、登録できる`                              |
+| 境界値 NG | `{条件}の場合、{エラー内容}が返る` | `金額が10,000,000円の場合、VALIDATION_ERROR が返る`                |
 
 ```typescript
-describe('createDishSchema', () => {
-  test('正しいデータで料理を登録できる', () => { ... });
-  test('料理名が空の場合、VALIDATION_ERROR「料理名は必須です」が返る', () => { ... });
-  test('料理名が100文字の場合、登録できる', () => { ... });
-  test('料理名が101文字の場合、VALIDATION_ERROR が返る', () => { ... });
+describe('expenseCreateSchema', () => {
+  test('正しいデータで支出を登録できる', () => { ... });
+  test('カテゴリが空の場合、VALIDATION_ERROR「カテゴリは必須です」が返る', () => { ... });
+  test('金額が9,999,999円の場合、登録できる', () => { ... });
+  test('金額が10,000,000円の場合、VALIDATION_ERROR が返る', () => { ... });
 });
 
-describe('createDish', () => {
-  test('正しいデータで料理を登録できる', async () => { ... });  // Integration
+describe('createExpense', () => {
+  test('正しいデータで支出を登録できる', async () => { ... });  // Integration
 });
 ```
 
@@ -133,37 +133,15 @@ describe('createDish', () => {
 - 関数の内部実装を確認するだけのテスト
 - 常に通る自明なテスト（フィールドの存在確認等）
 
-## カバレッジ
+## 認証ガード（`hooks.server.ts`）の検証
 
-### 対象ファイル
+`hooks.server.ts` はユニットテストを書かず、以下を E2E で必ず検証する。
 
-```
-src/lib/features/**/*.ts      ← schema.ts, server/service.ts 等（実装層）
-src/routes/**/*.ts            ← +server.ts 等（ルーティング層）
-src/lib/server/errors.ts      ← AppError
-```
+- 未認証の画面遷移 → `/login` へ 302
+- 未認証の fetch → JSON 401
+- レスポンスにセキュリティヘッダー（`X-Frame-Options` 等）が付与される
 
-### 対象外ファイル
-
-```
-src/lib/server/db.ts          ← DB 接続設定（インフラ）
-src/lib/server/tables.ts      ← Drizzle テーブル定義（型宣言）
-src/lib/server/auth.ts        ← Better Auth 設定（サードパーティ）
-src/lib/server/api-helpers.ts ← フレームワークヘルパー
-src/lib/index.ts              ← barrel export
-src/hooks.server.ts           ← 認証ガード・セッション注入（フレームワーク設定）
-src/app.d.ts
-**/*.test.ts
-**/*.integration.test.ts
-**/*.svelte.test.ts
-```
-
-### 目標値
-
-| 指標           | 目標     |
-| -------------- | -------- |
-| 関数カバレッジ | 80% 以上 |
-| 行カバレッジ   | 80% 以上 |
+> カバレッジ計測は行わない（`@vitest/coverage-v8` 未導入）。テストの十分性は「業務要件ごとにテストケースがあるか」で判断する。
 
 ## コンポーネントテストの注意事項
 
@@ -185,32 +163,36 @@ await expect.element(page.getByTestId('expense-menu')).not.toBeInTheDocument();
 await expect.element(page.getByTestId('expense-menu')).not.toBeVisible();
 ```
 
-### レスポンシブ（モバイル/デスクトップ）の振る舞いはコンポーネントテストで検証しない
+### レスポンシブ（モバイル/デスクトップ）の振る舞いは E2E で検証する
 
-`vite.config.ts` に `viewport: { width: 1280, height: 800 }` が設定されており、  
-テスト内で `page.viewport(375, 812)` を呼んでも **CSS メディアクエリには反映されない**。
+`page.viewport(375, 812)` 自体は機能する（iframe が縮み、`matchMedia` / 素の `@media` は切り替わる。2026-09 に実測済み）。
+ただしコンポーネントテストでは **`src/app.css`（Tailwind）が読み込まれない**（`+layout.svelte` でのみ import）ため、
+`md:hidden` 等の Tailwind クラスはそもそも CSS として存在せず、viewport に関係なく効かない。
 
-そのため以下の挙動はコンポーネントテスト（`*.svelte.test.ts`）では検証できない：
+そのため以下はコンポーネントテスト（`*.svelte.test.ts`）では検証しない：
 
 - `md:hidden` / `block md:hidden` 等 Tailwind レスポンシブクラスの切り替え
 - モバイル専用 UI（ハンバーガーメニュー、行メニューボタン等）の表示/非表示
 
-**→ これらは E2E テスト（Playwright）で検証する。**  
-E2E テストでは `page.setViewportSize({ width: 375, height: 812 })` が正常に機能する。
+**→ これらは E2E テスト（Playwright）で検証する。**
+E2E テストでは `page.setViewportSize({ width: 375, height: 812 })` で実アプリの CSS ごと検証できる。
 
 ```typescript
 // ✅ E2E テストで viewport を変更
-test('[SPEC: AC-016] モバイルで行メニューが開く', async ({ page }) => {
+test('モバイルで行メニューが開く', async ({ page }) => {
 	await page.setViewportSize({ width: 375, height: 812 });
 	// ...
 });
 
-// ❌ コンポーネントテストでは viewport 変更が CSS に反映されない
-test('[SPEC: AC-016] ...', async () => {
-	await page.viewport(375, 812); // 効果なし
+// ❌ コンポーネントテスト: viewport は変わるが Tailwind CSS が未読込のため md:hidden 等は効かない
+test('...', async () => {
+	await page.viewport(375, 812);
 	// ...
 });
 ```
+
+> どうしてもコンポーネントテストで検証する場合は、テストファイルで `import '../../../app.css'` のように
+> Tailwind を読み込めば `md:` クラスも切り替わる（実測済み）。ただしテストが重くなるため原則 E2E に寄せる。
 
 ### `$app/navigation` / `$app/state` のモック（ページコンポーネントテスト必須）
 
@@ -235,7 +217,7 @@ vi.mock('$app/state', () => ({
 
 ### `element().click()` + `flushSync()` パターン
 
-Vitest browser mode の公式推奨は `userEvent.click()` from `@vitest/browser/context` だが、
+Vitest browser mode の公式推奨は `userEvent.click()` from `vitest/browser` だが、
 `userEvent.click()` は内部で Playwright の CDP を使うため `locator.click()` と同様にナビゲーション完了を待機し、  
 SvelteKit 環境では 5〜15 秒かかる／タイムアウトする問題がある。
 
@@ -247,7 +229,7 @@ SvelteKit 環境では 5〜15 秒かかる／タイムアウトする問題が�
 import { flushSync } from 'svelte';
 
 // ✅ 正しい（ナビゲーションなし・即時 DOM 更新が必要な場合）
-// Unit/Component テストではセレクタは getByRole 優先（data-testid.md 参照）
+// Unit/Component テストではセレクタは getByRole 優先（E2E は data-testid 優先）
 page.getByRole('button', { name: '追加' }).element().click();
 flushSync(); // Svelte の pending state をすべて即時適用
 expect((await page.getByRole('listitem').elements()).length).toBe(1);
@@ -315,8 +297,6 @@ npm run test:unit -- --run
 # Integration テスト（単発実行）
 npm run test:integration -- --run
 
-# カバレッジ計測
-npm run test:unit -- --run --coverage
 
 # E2E テスト
 npm run test:e2e
@@ -327,4 +307,4 @@ npm run test
 
 ## なぜ必要か
 
-- test-and-fix スキルがテスト実行コマンドを判断する際の参照先
+- テスト追加・修正時にテスト種別・配置・実行コマンドを判断する際の参照先

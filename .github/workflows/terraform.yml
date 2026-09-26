@@ -11,6 +11,8 @@ on:
       - main
     paths:
       - terraform/**
+  # Secret の値だけ変更した場合・緊急時の再適用用（Actions 画面から手動実行）
+  workflow_dispatch:
 
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
@@ -22,6 +24,9 @@ env:
   TF_VAR_line_channel_access_token: ${{ secrets.TF_VAR_LINE_CHANNEL_ACCESS_TOKEN }}
   TF_VAR_line_user_id_primary: ${{ secrets.TF_VAR_LINE_USER_ID_PRIMARY }}
   TF_VAR_line_user_id_spouse: ${{ secrets.TF_VAR_LINE_USER_ID_SPOUSE }}
+  TF_VAR_google_client_id: ${{ secrets.TF_VAR_GOOGLE_CLIENT_ID }}
+  TF_VAR_google_client_secret: ${{ secrets.TF_VAR_GOOGLE_CLIENT_SECRET }}
+  TF_VAR_allowed_emails: ${{ secrets.TF_VAR_ALLOWED_EMAILS }}
 
 jobs:
   plan:
@@ -39,12 +44,18 @@ jobs:
           terraform -chdir=terraform init \
             -backend-config="endpoints={s3=\"https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com\"}"
 
+      - name: Terraform Format
+        run: terraform -chdir=terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        run: terraform -chdir=terraform validate -no-color
+
       - name: Terraform Plan
         run: terraform -chdir=terraform plan -no-color
 
   apply:
     name: Terraform Apply
-    if: github.event_name == 'push'
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
