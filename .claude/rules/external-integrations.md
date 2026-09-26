@@ -1,6 +1,6 @@
 # External Integrations
 
-Cloudflare R2・Workers AI・LINE API の実装規約。
+Workers AI・LINE API の実装規約。
 バインディングは `platform!.env` 経由でアクセスする（→ `api-patterns.md` 参照）。
 
 ---
@@ -13,8 +13,6 @@ Cloudflare R2・Workers AI・LINE API の実装規約。
 | --------------------------- | ------------ | ----------------------------------- |
 | `DB`                        | `D1Database` | Cloudflare D1                       |
 | `AI`                        | `Ai`         | Workers AI（llama-3.1 等）          |
-| `RECIPE_IMAGES`             | `R2Bucket`   | レシピ画像 R2 バケット              |
-| `RECIPE_IMAGES_PUBLIC_URL`  | `string`     | R2 公開 URL（末尾スラッシュなし）   |
 | `BETTER_AUTH_SECRET`        | `string`     | Better Auth 署名キー                |
 | `USE_REAL_AI`               | `string?`    | `'true'` のとき本物の AI を使用     |
 | `LINE_CHANNEL_ACCESS_TOKEN` | `string?`    | LINE push 送信トークン              |
@@ -26,52 +24,9 @@ Cloudflare R2・Workers AI・LINE API の実装規約。
 
 ---
 
-## Cloudflare R2
-
-### アップロードパターン
-
-```typescript
-// キー生成: crypto.randomUUID() + 拡張子
-const key = `${crypto.randomUUID()}.${ext}`;
-
-// ArrayBuffer としてアップロード
-const buffer = await file.arrayBuffer();
-await platform!.env.RECIPE_IMAGES.put(key, buffer, {
-	httpMetadata: { contentType: file.type }
-});
-
-// 公開 URL 構築（末尾スラッシュなし + スラッシュ + key）
-const url = `${platform!.env.RECIPE_IMAGES_PUBLIC_URL}/${key}`;
-return json({ url, key });
-```
-
-- `key` と `url` を分けて保存する（→ `tables.ts` の `r2ImageKey` / `imageUrl`）
-- 削除時は `r2ImageKey` を使って `RECIPE_IMAGES.delete(key)` する
-
-### バリデーション
-
-ファイル形式とサイズは `+server.ts` で検証する。
-
-```typescript
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
-```
-
-### dev 環境での R2 スキップ
-
-```typescript
-import { dev } from '$app/environment';
-
-if (dev) {
-	return json({ url: 'https://placehold.co/400x300?text=Recipe+Image', key: null });
-}
-```
-
-`dev` フラグが `true` のとき R2 バインディングは存在しないため、必ずスキップする。
-
----
-
 ## Cloudflare Workers AI
+
+現状 AI を使う feature はない（バインディングのみ保持）。新規利用時は以下に従う。
 
 ### 呼び出しパターン
 
@@ -95,13 +50,12 @@ const answer = aiResponse.response ?? 'AI からの回答を取得できませ�
 
 ### 複数エンドポイントでの共通化
 
-同一 feature 内の複数エンドポイントで上記の `AiRunner` 型・`ai.run()` 呼び出しが重複する場合
-（例: レシピ機能の AI 献立相談 `ask` と AI レシピ抽出 `extract`）、
-`server/ai.ts` に共通ヘルパーとして抽出する。
+同一 feature 内の複数エンドポイントで上記の `AiRunner` 型・`ai.run()` 呼び出しが重複する場合、
+`{feature}/server/ai.ts` に共通ヘルパーとして抽出する。
 
 ```typescript
-// lib/features/recipes/server/ai.ts
-export async function runRecipeAi(
+// lib/features/{feature}/server/ai.ts
+export async function runFeatureAi(
 	ai: unknown,
 	systemPrompt: string,
 	userMessage: string
@@ -121,13 +75,13 @@ export async function runRecipeAi(
 
 ### プロンプト構成
 
-システムプロンプトにユーザーデータ（レシピ一覧等）をコンテキストとして含める。
+システムプロンプトにユーザーデータ（登録済みデータ一覧等）をコンテキストとして含める。
 
 ```typescript
-const systemPrompt = `あなたは料理の献立相談アシスタントです。...
+const systemPrompt = `あなたは〇〇のアシスタントです。...
 
-登録済みレシピ一覧:
-${recipeContext || 'レシピが登録されていません。'}`;
+登録済みデータ一覧:
+${context || 'データが登録されていません。'}`;
 ```
 
 ### dev 環境でのモック
@@ -224,7 +178,6 @@ try {
 | サービス   | `npm run dev`（Vite）       | `make tf-dev`（Workers）      | 本番                  |
 | ---------- | --------------------------- | ----------------------------- | --------------------- |
 | D1         | モック D1                   | ローカル D1（wrangler）       | Cloudflare D1         |
-| R2         | `dev=true` でスキップ       | ローカル R2（wrangler）       | Cloudflare R2         |
 | Workers AI | `dev=true` でダミー回答     | `USE_REAL_AI=true` で実 AI 可 | Cloudflare Workers AI |
 | LINE       | `LINE_MOCK=true` でスキップ | `LINE_MOCK=true` でスキップ   | 実 LINE API           |
 

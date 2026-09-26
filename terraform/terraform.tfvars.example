@@ -14,6 +14,3 @@ better_auth_secret = "your-better-auth-secret"
 line_channel_access_token = ""
 line_user_id_primary      = ""
 line_user_id_spouse       = ""
-
-# --- R2 Public URL (未設定なら空文字のまま) -----------------------------------
-recipe_images_public_url = "https://pub-xxx.r2.dev"

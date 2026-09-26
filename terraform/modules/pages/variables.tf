@@ -10,14 +10,6 @@ variable "d1_id" {
   type = string
 }
 
-variable "r2_bucket_name" {
-  type = string
-}
-
-variable "recipe_images_public_url" {
-  type = string
-}
-
 variable "better_auth_url" {
   type      = string
   sensitive = true

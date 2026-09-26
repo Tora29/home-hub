@@ -86,7 +86,7 @@ lib/features/{feature}/
 ```
 lib/features/{feature}/
   format.ts    # 表示整形（例: expenses/format.ts の formatAmount）
-  labels.ts    # ラベル変換・マップ（例: recipes/labels.ts の DIFFICULTY_LABEL）
+  labels.ts    # ラベル変換・マップ（例: `STATUS_LABEL` 等の表示ラベルマップ）
 ```
 
 - クライアントから import 可能な純粋関数のみを置く（DB アクセス・シークレット参照は `server/` へ）
@@ -139,7 +139,6 @@ lib/features/
 lib/features/
   expenses/
     categories/
-  recipes/
   workout/
     exercises/
   dashboard/

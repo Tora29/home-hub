@@ -105,6 +105,8 @@ test.describe('ダッシュボード - 全期間切り替え', () => {
 test.describe('ダッシュボード - 月切り替え', () => {
 	test('月セレクトでデータのない月に切り替えると合計が ¥0 になる', async ({ page }) => {
 		await page.goto('/');
+		// 当月はシードデータの有無が実行日に依存するため、データのある月を起点にする
+		await page.getByTestId('dashboard-month-select').selectOption('2026-02');
 		await expect(page.getByTestId('dashboard-total')).not.toHaveText('¥0');
 
 		await page.getByTestId('dashboard-month-select').selectOption('2026-01');

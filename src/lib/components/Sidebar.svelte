@@ -27,7 +27,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import {
-		UtensilsCrossed,
 		Home,
 		Dumbbell,
 		ChevronDown,
@@ -50,19 +49,10 @@
 
 	const NAV_CATEGORIES: NavCategory[] = [
 		{
-			id: 'meal',
-			label: '献立系',
-			icon: UtensilsCrossed,
-			items: [{ testid: 'sidebar-item-recipes', href: '/recipes', label: 'レシピ一覧' }]
-		},
-		{
 			id: 'expense',
 			label: '生活',
 			icon: Home,
-			items: [
-				{ testid: 'sidebar-item-expenses', href: '/expenses', label: '家計簿' },
-				{ testid: 'sidebar-item-calendar', href: '/calendar', label: 'カレンダー' }
-			]
+			items: [{ testid: 'sidebar-item-expenses', href: '/expenses', label: '家計簿' }]
 		},
 		{
 			id: 'workout',

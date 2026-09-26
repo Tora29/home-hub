@@ -56,8 +56,6 @@ function wranglerFile(file: string) {
 
 export default async function globalSetup() {
 	// 既存ユーザーを全削除してから E2E ユーザーを挿入（外部キー制約に従い子テーブルから削除）
-	wranglerExecute(`DELETE FROM "CalendarEvent"`);
-	wranglerExecute(`DELETE FROM "Recipe"`);
 	wranglerExecute(`DELETE FROM "WorkoutRecord"`);
 	wranglerExecute(`DELETE FROM "WorkoutExercise"`);
 	wranglerExecute(`DELETE FROM "BodyWeightRecord"`);
@@ -101,7 +99,6 @@ export default async function globalSetup() {
 
 	// シードデータ投入（全削除済みのため再削除不要）
 	const seedDir = path.resolve('drizzle/seeds');
-	wranglerFile(path.join(seedDir, 'recipes.sql'));
 	wranglerFile(path.join(seedDir, 'expenses.sql'));
 	wranglerFile(path.join(seedDir, 'workout.sql'));
 

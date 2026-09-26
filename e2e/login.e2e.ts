@@ -59,13 +59,6 @@ test.describe('認証リダイレクト', () => {
 		await expect(page.getByTestId('login-google-button')).toBeVisible();
 	});
 
-	test('未認証でレシピページにアクセスするとログインページへリダイレクトされる', async ({
-		page
-	}) => {
-		await page.goto('/recipes');
-		await expect(page).toHaveURL(/\/login/);
-	});
-
 	test('未認証で支出ページにアクセスするとログインページへリダイレクトされる', async ({ page }) => {
 		await page.goto('/expenses');
 		await expect(page).toHaveURL(/\/login/);
