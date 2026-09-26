@@ -9,6 +9,7 @@
 import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
+import { getTodayDate } from '$lib/utils/date';
 import {
 	user as userTable,
 	workoutExercise,
@@ -267,10 +268,21 @@ describe('getWeeklyVolume', () => {
 		const userId = await insertUser(db);
 		const exerciseId = await insertExercise(db, userId);
 
-		const today = new Date().toISOString().slice(0, 10);
-		await insertRecord(db, userId, exerciseId, today, 80, 5);
+		await insertRecord(db, userId, exerciseId, getTodayDate(), 80, 5);
 
 		const volumes = await getWeeklyVolume(db, userId, { period: '1m' });
 		expect(volumes.length).toBeGreaterThan(0);
+	});
+
+	test('1ヶ月指定の場合、月末日の記録を含み翌月1日の記録を含まない', async () => {
+		const db = createDb(env.DB);
+		const userId = await insertUser(db);
+		const exerciseId = await insertExercise(db, userId);
+
+		await insertRecord(db, userId, exerciseId, '2098-10-31', 100, 1); // 対象（金曜）
+		await insertRecord(db, userId, exerciseId, '2098-11-01', 50, 1); // 対象外（翌月・同週の土曜）
+
+		const volumes = await getWeeklyVolume(db, userId, { period: '1m', month: '2098-10' });
+		expect(volumes.reduce((sum, v) => sum + v.volume, 0)).toBe(100);
 	});
 });

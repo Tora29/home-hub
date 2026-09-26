@@ -35,7 +35,7 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { AppError } from '$lib/server/errors';
 import { expense, expenseCategory, user as userTable } from '$lib/server/tables';
 import type * as schema from '$lib/server/tables';
-import { formatYearMonth } from '$lib/utils/date';
+import { getCurrentMonth, getMonthRange } from '$lib/utils/date';
 import type { ExpenseCreate, ExpenseUpdate } from '../schema';
 import type { ExpenseWithRelations, User } from '../types';
 
@@ -187,13 +187,10 @@ export async function getExpenses(
 }> {
 	const page = options.page ?? 1;
 	const limit = Math.min(options.limit ?? 20, 100);
-	const now = new Date();
-	const month = options.month ?? formatYearMonth(now);
+	const month = options.month ?? getCurrentMonth();
 	const offset = (page - 1) * limit;
 
-	const [year, mon] = month.split('-').map(Number);
-	const monthStart = new Date(year, mon - 1, 1);
-	const monthEnd = new Date(year, mon, 1);
+	const { start: monthStart, end: monthEnd } = getMonthRange(month);
 	const monthFilter = and(gte(expense.createdAt, monthStart), lt(expense.createdAt, monthEnd));
 
 	const [stats] = await db

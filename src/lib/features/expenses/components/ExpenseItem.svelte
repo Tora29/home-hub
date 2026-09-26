@@ -26,6 +26,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import type { ExpenseWithRelations } from '../types';
 	import { formatAmount } from '../format';
+	import { formatMonthDay } from '$lib/utils/date';
 
 	let {
 		expense,
@@ -72,9 +73,9 @@
 
 	const currentStatus = $derived(statusConfig[expense.status] ?? statusConfig.unapproved);
 
+	// SSR（UTC）とブラウザで表示がずれないよう JST 固定で整形する
 	function formatDate(dateStr: string): string {
-		const d = new Date(dateStr);
-		return `${d.getMonth() + 1}/${d.getDate()}`;
+		return formatMonthDay(new Date(dateStr));
 	}
 
 	function handleCheckboxChange() {

@@ -21,7 +21,7 @@ import { and, desc, eq, gte, lt, sql, type SQL } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { expense, expenseCategory, user as userTable } from '$lib/server/tables';
 import type * as schema from '$lib/server/tables';
-import { getCurrentMonth } from '$lib/utils/date';
+import { getCurrentMonth, getMonthRange } from '$lib/utils/date';
 import type { DashboardSummary } from '../types';
 
 type Db = DrizzleD1Database<typeof schema>;
@@ -46,9 +46,7 @@ export async function getDashboardSummary(
 	let whereClause: SQL | undefined;
 	if (options.period === 'month') {
 		const month = options.month ?? getCurrentMonth();
-		const [year, mon] = month.split('-').map(Number);
-		const monthStart = new Date(year, mon - 1, 1);
-		const monthEnd = new Date(year, mon, 1);
+		const { start: monthStart, end: monthEnd } = getMonthRange(month);
 		whereClause = and(gte(expense.createdAt, monthStart), lt(expense.createdAt, monthEnd));
 	}
 

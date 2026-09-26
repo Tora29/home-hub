@@ -30,6 +30,7 @@
 	import WeightChartSection from './WeightChartSection.svelte';
 	import VolumeChartSection from './VolumeChartSection.svelte';
 	import RestTimer from './RestTimer.svelte';
+	import { getCurrentMonth, getTodayDate } from '$lib/utils/date';
 	import type { ChartData, Exercise, WeeklyVolumePoint, WorkoutRecord } from '../types';
 
 	let {
@@ -44,12 +45,8 @@
 		todayBodyWeight: number | null;
 	} = $props();
 
-	function todayStr(): string {
-		const d = new Date();
-		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-	}
-
-	const today = todayStr();
+	const today = getTodayDate();
+	const [currentYear, currentMonthNum] = getCurrentMonth().split('-');
 
 	/**
 	 * 期間モード（月間/年間）に応じたクエリ文字列を生成する。
@@ -208,8 +205,8 @@
 	// --- 重量推移グラフ ---
 	let chartExerciseId = $state(untrack(() => exercises.items[0]?.id ?? ''));
 	let chartMode = $state<'month' | 'year'>('month');
-	let chartYear = $state(new Date().getFullYear().toString());
-	let chartMonth = $state(String(new Date().getMonth() + 1).padStart(2, '0'));
+	let chartYear = $state(currentYear);
+	let chartMonth = $state(currentMonthNum);
 	let chartData = $state<ChartData | null>(null);
 	let chartLoading = $state(false);
 	let chartError = $state('');
@@ -250,8 +247,8 @@
 
 	// --- 週間ボリューム ---
 	let volumeMode = $state<'month' | 'year'>('month');
-	let volumeYear = $state(new Date().getFullYear().toString());
-	let volumeMonth = $state(String(new Date().getMonth() + 1).padStart(2, '0'));
+	let volumeYear = $state(currentYear);
+	let volumeMonth = $state(currentMonthNum);
 	let volumeData = $state<WeeklyVolumePoint[]>([]);
 	let volumeLoading = $state(false);
 	let volumeError = $state('');
@@ -284,9 +281,8 @@
 
 	onMount(() => void fetchVolumeData());
 
-	const currentYear = new Date().getFullYear();
 	const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => {
-		const y = String(currentYear - i);
+		const y = String(Number(currentYear) - i);
 		return { value: y, label: `${y}年` };
 	});
 	const MONTHS = Array.from({ length: 12 }, (_, i) => ({

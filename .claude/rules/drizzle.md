@@ -28,6 +28,20 @@ import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 - 既存テーブルは `timestamp`（秒精度）で統一済み。新規テーブルも合わせる（秒未満の順序は `rowid` で担保 → 後述）
 - 日付のみ（`YYYY-MM-DD`）で扱う値は `text` で持つ（タイムゾーン変換を避けるため）
 
+### 日付・タイムゾーン
+
+アプリの基準は **JST（Asia/Tokyo）固定**。本番の Workers は UTC、ローカルはホストの TZ（JST）で動くため、
+実行環境の TZ に依存するコードを書かない。
+
+- 月・日の計算は `src/lib/utils/date.ts` のヘルパーのみを使う（`getCurrentMonth` / `getTodayDate` / `getMonthRange` /
+  `addMonths` / `formatYearMonth` / `formatMonthDay` / `generateMonthOptions`）
+- `new Date(y, m, d)` / `getFullYear()` / `getMonth()` / `getDate()` / `toISOString().slice(0, 10)` で暦日を求めない
+  （UTC とローカル時刻の差で月初 0〜9 時 JST の値が前月・前日になる）
+- `timestamp` カラムの月フィルタは `getMonthRange(month)` の `start` / `end` で `gte` / `lt` する
+- `text` の日付カラム（`YYYY-MM-DD`）の月フィルタは `${month}-01` 〜 `${addMonths(month, 1)}-01`（exclusive）
+- SSR（UTC）とブラウザで表示がずれないよう、画面の日付整形も同ヘルパーを使う
+- Integration テストは `npm run test:integration`（`TZ=UTC` 固定）で本番同等の UTC 環境で実行される
+
 ### ID 生成
 
 **`crypto.randomUUID()`** を全エンティティで統一する。nanoid は使わない。
