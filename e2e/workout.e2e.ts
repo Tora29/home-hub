@@ -257,8 +257,10 @@ test.describe('筋トレ記録 - 体重登録', () => {
 		await page.getByTestId('workout-body-weight-input').fill('70.5');
 		await page.getByTestId('workout-body-weight-submit-button').click();
 
-		// 成功後に入力欄がクリアされる
-		await expect(page.getByTestId('workout-body-weight-input')).toHaveValue('');
+		// 成功後は当日分が記録済みとなり、登録値を表示したままフォームが無効化される
+		await expect(page.getByTestId('workout-body-weight-submit-button')).toHaveText('記録済み');
+		await expect(page.getByTestId('workout-body-weight-input')).toBeDisabled();
+		await expect(page.getByTestId('workout-body-weight-input')).toHaveValue('70.5');
 	});
 
 	test('体重が登録済みのときはフォームが無効化される', async ({ page }) => {

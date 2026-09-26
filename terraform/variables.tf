@@ -4,7 +4,7 @@ variable "cloudflare_account_id" {
 }
 
 variable "cloudflare_api_token" {
-  description = "Cloudflare API Token（Pages + D1 + R2 の Edit 権限が必要）"
+  description = "Cloudflare API Token（Pages + D1 の Edit 権限が必要）"
   type        = string
   sensitive   = true
 }
@@ -38,9 +38,4 @@ variable "better_auth_url" {
   description = "Better Auth のベース URL"
   type        = string
   sensitive   = true
-}
-
-variable "recipe_images_public_url" {
-  description = "R2 RECIPE_IMAGES バケットの公開 URL"
-  type        = string
 }

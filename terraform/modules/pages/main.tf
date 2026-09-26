@@ -26,14 +26,6 @@ resource "cloudflare_pages_project" "this" {
         DB = var.d1_id
       }
 
-      r2_buckets = {
-        RECIPE_IMAGES = var.r2_bucket_name
-      }
-
-      environment_variables = {
-        RECIPE_IMAGES_PUBLIC_URL = var.recipe_images_public_url
-      }
-
       secrets = {
         BETTER_AUTH_URL           = var.better_auth_url
         BETTER_AUTH_SECRET        = var.better_auth_secret

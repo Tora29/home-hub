@@ -22,7 +22,6 @@ env:
   TF_VAR_line_channel_access_token: ${{ secrets.TF_VAR_LINE_CHANNEL_ACCESS_TOKEN }}
   TF_VAR_line_user_id_primary: ${{ secrets.TF_VAR_LINE_USER_ID_PRIMARY }}
   TF_VAR_line_user_id_spouse: ${{ secrets.TF_VAR_LINE_USER_ID_SPOUSE }}
-  TF_VAR_recipe_images_public_url: ${{ secrets.TF_VAR_RECIPE_IMAGES_PUBLIC_URL }}
 
 jobs:
   plan:

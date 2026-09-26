@@ -17,7 +17,7 @@ help:
 	@echo ""
 	@echo "[Dev]"
 	@echo "  dev                開発サーバー起動（Vite・高速）"
-	@echo "  tf-dev             開発サーバー起動（Cloudflare Workers 環境・D1/R2/AI 使用可）"
+	@echo "  tf-dev             開発サーバー起動（Cloudflare Workers 環境・D1/AI 使用可）"
 	@echo ""
 	@echo "[DB]"
 	@echo "  db-migrate         マイグレーション適用（ローカル）"
