@@ -15,6 +15,7 @@
   - users: User[] - ユーザー一覧
   - currentUserId: string - ログイン中ユーザーID
   - selectedMonth: string - 選択中の月 YYYY-MM
+  - currentMonth: string - サーバー基準（JST）の当月 YYYY-MM。月選択肢の起点
   - partnerPendingCount: number - 相手の未承認件数（全期間）
 -->
 <script lang="ts">
@@ -37,6 +38,7 @@
 		users,
 		currentUserId,
 		selectedMonth,
+		currentMonth,
 		partnerPendingCount
 	}: {
 		expenses: ExpenseWithRelations[];
@@ -45,6 +47,7 @@
 		users: User[];
 		currentUserId: string;
 		selectedMonth: string;
+		currentMonth: string;
 		partnerPendingCount: number;
 	} = $props();
 
@@ -82,7 +85,7 @@
 	);
 
 	// ---- 月選択肢生成（AC-002b: 常に当月を起点とした過去13か月分固定） ----
-	const monthOptions = generateMonthOptions();
+	const monthOptions = $derived(generateMonthOptions(currentMonth));
 
 	// ---- 月切り替え ----
 	async function handleMonthChange(e: Event) {

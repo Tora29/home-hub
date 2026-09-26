@@ -29,5 +29,6 @@
 	users={data.users}
 	currentUserId={data.currentUserId}
 	selectedMonth={data.selectedMonth}
+	currentMonth={data.currentMonth}
 	partnerPendingCount={data.partnerPendingCount}
 />

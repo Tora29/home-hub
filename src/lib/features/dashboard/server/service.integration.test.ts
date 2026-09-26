@@ -135,6 +135,20 @@ describe('getDashboardSummary - period=month', () => {
 		expect(result.overall).toBe(2000);
 	});
 
+	test('JST の月初早朝に登録した支出は当月に集計され、前月には含まれない', async () => {
+		const db = createDb(env.DB);
+		const userId = await insertUser(db);
+		const categoryId = await insertCategory(db);
+
+		// 2098-10-01 08:00 JST（UTC では 2098-09-30）
+		await insertExpense(db, userId, categoryId, 700, userId, new Date('2098-09-30T23:00:00Z'));
+
+		const october = await getDashboardSummary(db, { period: 'month', month: '2098-10' });
+		const september = await getDashboardSummary(db, { period: 'month', month: '2098-09' });
+		expect(october.overall).toBe(700);
+		expect(september.overall).toBe(0);
+	});
+
 	test('month 未指定の場合は当月が使用される', async () => {
 		const db = createDb(env.DB);
 		const userId = await insertUser(db);

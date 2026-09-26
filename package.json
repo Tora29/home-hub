@@ -18,7 +18,7 @@
 		"lint": "prettier --check . --cache && eslint . --cache",
 		"format": "prettier --write . --cache",
 		"test:unit": "vitest",
-		"test:integration": "vitest --config vitest.integration.config.ts",
+		"test:integration": "TZ=UTC vitest --config vitest.integration.config.ts",
 		"test": "npm run test:unit -- --run && npm run test:integration -- --run && npm run test:e2e",
 		"test:e2e": "playwright test",
 		"db:generate": "drizzle-kit generate",

@@ -12,6 +12,7 @@ import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
 import { getRecords, getTodayBodyWeight } from '$workout/server/service';
 import { getExercises } from '$workout/exercises/server/service';
+import { getTodayDate } from '$lib/utils/date';
 
 export const load: PageServerLoad = async ({ locals, platform, url, parent }) => {
 	const parentData = await parent();
@@ -20,9 +21,7 @@ export const load: PageServerLoad = async ({ locals, platform, url, parent }) =>
 	const db = createDb(platform!.env.DB);
 	const exerciseId = url.searchParams.get('exerciseId') ?? undefined;
 
-	// JST で今日の日付を取得
-	const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
-	const today = jstNow.toISOString().slice(0, 10);
+	const today = getTodayDate();
 
 	const [recordsResult, exercisesResult, todayBodyWeight] = await Promise.all([
 		getRecords(db, locals.user!.id, exerciseId),
