@@ -23,8 +23,7 @@
 		"test:e2e": "playwright test",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate:local": "wrangler d1 migrations apply home-hub --local",
-		"db:studio": "drizzle-kit studio",
-		"openapi:watch": "docker compose up swagger-ui"
+		"db:studio": "drizzle-kit studio"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.22.0",

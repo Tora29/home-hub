@@ -64,7 +64,8 @@ let { value = $bindable(''), ...rest }: Props = $props();
 
 - `$bindable()` の引数はデフォルト値（親が `bind:` を使わない場合に適用）
 - `$bindable` なしの prop に対して親から `bind:` を使うとコンパイルエラーになる
-- フォームの `value` 以外では基本使わない。状態の所有権は親に置き、イベントで通知する設計を優先する
+- 単独コンポーネントでは、フォームの `value` 以外に基本使わない。状態の所有権は親に置き、イベントで通知する設計を優先する
+- 例外: 下記「パターン A」で親が状態を所有し、子がフォームフィールドを描画するだけの場合は `bind:exerciseId` 等に使ってよい
 
 ---
 
@@ -120,7 +121,10 @@ let { value = $bindable(''), ...rest }: Props = $props();
 - `$derived`: 他の state / props から計算できる値（getter の代替）。複数行の計算は `$derived.by(() => ...)`
 - 書き込み可能な `$derived`（Svelte 5.25+）: props 由来の値を CSR で一時的に上書きしたい場合に使う（→ `csr-patterns.md`「SSR 初期値との整合」）
 - `$effect`: 副作用（DOM 操作・外部 API 呼び出し・タイマー等）。**state の同期（A が変わったら B に代入）には使わない** → `$derived` で書く
-- `$effect` 内で登録したタイマー・リスナーはクリーンアップ関数を return して解除する
+- `$effect` 内で登録したタイマー・リスナーはクリーンアップ関数を return して解除する（内部で追加に張った `setTimeout` も含む）
+- `$derived.by` 内の一時集計（計算後に捨てる `Map` / `Set`）は plain `Map` を使う。
+  `svelte/prefer-svelte-reactivity` が反応するため `// eslint-disable-next-line svelte/prefer-svelte-reactivity` で意図を残す
+- モジュール間で共有する状態は `*.svelte.ts` の `$state` で持つ（`svelte/store` の `writable` は新規に使わない）
 
 ```typescript
 let total = $derived(items.reduce((sum, item) => sum + item.price, 0));

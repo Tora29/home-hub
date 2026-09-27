@@ -65,11 +65,11 @@
 		</p>
 	{:else}
 		<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-			<input
+			<Input
 				data-testid="workout-form-date"
 				type="date"
 				bind:value={date}
-				class="col-span-2 rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-label focus:ring-2 focus:ring-accent focus:outline-none sm:col-span-1"
+				class="col-span-2 sm:col-span-1"
 			/>
 			<Select
 				data-testid="workout-form-exercise-select"

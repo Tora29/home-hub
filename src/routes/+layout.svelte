@@ -1,7 +1,6 @@
 <!--
   @file 画面: グローバルレイアウト
   @module src/routes/+layout.svelte
-  @feature dashboard
 
   @description
   全ページ共通のレイアウト。ファビコン設定・Header・Sidebar を配置し、children をメインコンテンツ領域にレンダリングする。

@@ -19,12 +19,15 @@
 
 ## 共通タグ
 
-| タグ           | 必須 | 説明                                                                         |
-| -------------- | ---- | ---------------------------------------------------------------------------- |
-| `@file`        | ◯    | 種別と名称（例: `画面: タスク一覧`、`API: タスク`）                          |
-| `@module`      | ◯    | リポジトリルートからのフルパス（`directory-structure.md` の構成に従う）      |
-| `@feature`     | ◯    | 機能名（feature ディレクトリ名、ネストしない）。共通ライブラリ配下では省略可 |
-| `@description` | ◯    | 1〜3行の概要説明                                                             |
+| タグ           | 必須 | 説明                                                                                                                               |
+| -------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `@file`        | ◯    | 種別と名称（例: `画面: タスク一覧`、`API: タスク`）                                                                                |
+| `@module`      | ◯    | リポジトリルートからのフルパス（`directory-structure.md` の構成に従う）                                                            |
+| `@feature`     | ◯    | 機能名（feature ディレクトリ名、ネストしない）。共通ライブラリ配下・全体共通の routes（`+layout.*` / `hooks.server.ts`）では省略可 |
+| `@description` | ◯    | 1〜3行の概要説明                                                                                                                   |
+
+- テストファイル（unit / integration / e2e）は下記のテスト用テンプレートに従う（`@feature` / `@description` は不要）
+- `/// <reference ... />` がある場合もヘッダーコメントをファイル先頭に置く
 
 ---
 
@@ -48,10 +51,13 @@
   - 遷移先: {パス} - {説明}
 
   @api
-  - GET /{feature} → 200 {Entity}[] - 一覧取得
-  - POST /{feature} → 201 {Entity} - 新規作成
+  - SSR load: service 直呼び（get{Entities}）
+  - POST /{feature} → 201 {Entity} - 新規作成（CSR）
+  - DELETE /{feature}/[id] → 204 - 削除（CSR）
 -->
 ```
+
+- `@api` には配下のコンポーネントが CSR で呼ぶ API をすべて列挙する。SSR の load は API を経由しないため「SSR load」と区別する
 
 ---
 
@@ -275,6 +281,8 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 ```
 
 - ファイルヘッダーの `@endpoints` が全体概観、ハンドラーコメントが処理の意図・エラーパターンを担う
+- `@calls` は全ハンドラー（GET 以外も）に付ける。`@throws` は `{ErrorCode}` 表記で、service 由来のエラーも含めて実装と一致させる
+- `@service` / `@schema` は `$lib/features/{feature}/.../server/service.ts` 形式の実在パスで書く（相対パス・エイリアス不可）
 
 ---
 

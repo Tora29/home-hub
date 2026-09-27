@@ -4,20 +4,17 @@
  * @feature expenses
  *
  * @description
- * 支出の更新・削除エンドポイント。
- *
- * @spec specs/expenses/spec.md
- * @acceptance AC-004, AC-005, AC-006, AC-007, AC-101, AC-102, AC-103, AC-104, AC-105, AC-106, AC-113
+ * 支出の更新・削除エンドポイント。登録者本人の unapproved/checked の支出のみ操作可能。
  *
  * @endpoints
- * - PUT /expenses/[id] → 200 ExpenseWithRelations - 更新（金額・カテゴリ・承認状態）
+ * - PUT /expenses/[id] → 200 ExpenseWithRelations - 更新（金額・カテゴリ・支払者）
  *   @body expenseUpdateSchema
- *   @errors 400(VALIDATION_ERROR), 404(NOT_FOUND), 409(CONFLICT)
+ *   @errors 400(VALIDATION_ERROR), 403(FORBIDDEN), 404(NOT_FOUND), 409(CONFLICT)
  * - DELETE /expenses/[id] → 204 - 削除
- *   @errors 404(NOT_FOUND), 409(CONFLICT)
+ *   @errors 403(FORBIDDEN), 404(NOT_FOUND), 409(CONFLICT)
  *
- * @service ../service.ts
- * @schema ../schema.ts
+ * @service $lib/features/expenses/server/service.ts
+ * @schema $lib/features/expenses/schema.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -28,11 +25,12 @@ import { deleteExpense, updateExpense } from '$expenses/server/service';
 
 /**
  * 支出を更新する。expenseUpdateSchema で入力値を検証後、service に委譲する。
- * @ac AC-004, AC-005, AC-006, AC-101, AC-102, AC-103, AC-104, AC-105, AC-106, AC-113
+ * @calls updateExpense
  * @body expenseUpdateSchema
- * @throws VALIDATION_ERROR - 入力値が不正な場合
- * @throws NOT_FOUND - 該当支出が存在しない場合
- * @throws CONFLICT - 確定済みの支出の場合
+ * @throws {VALIDATION_ERROR} - 入力値が不正な場合
+ * @throws {NOT_FOUND} - 該当支出・指定カテゴリ・支払者のいずれかが存在しない場合
+ * @throws {FORBIDDEN} - 他ユーザーの支出の場合
+ * @throws {CONFLICT} - pending/approved の支出の場合
  */
 export const PUT: RequestHandler = async ({ request, params, locals, platform }) => {
 	const bodyResult = await parseJsonBody(request);
@@ -52,9 +50,10 @@ export const PUT: RequestHandler = async ({ request, params, locals, platform })
 
 /**
  * 支出を削除する。
- * @ac AC-007, AC-106, AC-113
- * @throws NOT_FOUND - 該当支出が存在しない場合
- * @throws CONFLICT - 確定済みの支出の場合
+ * @calls deleteExpense
+ * @throws {NOT_FOUND} - 該当支出が存在しない場合
+ * @throws {FORBIDDEN} - 他ユーザーの支出の場合
+ * @throws {CONFLICT} - pending/approved の支出の場合
  */
 export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 	try {

@@ -8,7 +8,6 @@
 import { describe, test, expect, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
-import { flushSync } from 'svelte';
 import ExpensesPage from './ExpensesPage.svelte';
 import type { ExpenseWithRelations } from '../types';
 
@@ -35,7 +34,6 @@ function makeExpense(overrides: Partial<ExpenseWithRelations> = {}): ExpenseWith
 function makeProps(overrides: Partial<Parameters<typeof render>[1]> = {}) {
 	return {
 		expenses: [] as ExpenseWithRelations[],
-		total: 0,
 		monthTotal: 0,
 		categories: { items: [], total: 0, page: 1, limit: 20 },
 		users: [{ id: 'user-1', name: 'テストユーザー', email: 'test@example.com' }],
@@ -50,29 +48,28 @@ function makeProps(overrides: Partial<Parameters<typeof render>[1]> = {}) {
 describe('ExpensesPage', () => {
 	test('支出がない場合、空状態メッセージが表示される', async () => {
 		await render(ExpensesPage, makeProps());
-		await expect.element(page.getByTestId('expense-empty')).toBeVisible();
+		await expect.element(page.getByText('支出はまだありません')).toBeVisible();
 	});
 
 	test('支出がある場合、一覧が表示される', async () => {
 		await render(ExpensesPage, makeProps({ expenses: [makeExpense()] }));
-		await expect.element(page.getByTestId('expense-list')).toBeVisible();
-		await expect.element(page.getByTestId('expense-empty')).not.toBeInTheDocument();
+		await expect.element(page.getByRole('list')).toBeVisible();
+		await expect.element(page.getByText('支出はまだありません')).not.toBeInTheDocument();
 	});
 
-	test('月間合計が表示される', async () => {
+	test('月間合計が金額形式で表示される', async () => {
 		await render(ExpensesPage, makeProps({ monthTotal: 3500 }));
-		await expect.element(page.getByTestId('expense-total')).toBeVisible();
 		await expect.element(page.getByText('¥3,500')).toBeVisible();
 	});
 
 	test('月選択セレクトが表示される', async () => {
 		await render(ExpensesPage, makeProps());
-		await expect.element(page.getByTestId('expense-month-select')).toBeVisible();
+		await expect.element(page.getByRole('combobox')).toBeVisible();
 	});
 
 	test('支出登録ボタンが表示される', async () => {
 		await render(ExpensesPage, makeProps());
-		await expect.element(page.getByTestId('expense-create-button')).toBeVisible();
+		await expect.element(page.getByRole('button', { name: '支出を登録' })).toBeVisible();
 	});
 
 	test('自分の checked 支出がある場合、承認依頼ボタンが表示される', async () => {
@@ -80,7 +77,7 @@ describe('ExpensesPage', () => {
 			ExpensesPage,
 			makeProps({ expenses: [makeExpense({ userId: 'user-1', status: 'checked' })] })
 		);
-		await expect.element(page.getByTestId('expense-bulk-request-button')).toBeVisible();
+		await expect.element(page.getByRole('button', { name: /承認依頼する/ })).toBeVisible();
 	});
 
 	test('自分の checked 支出がない場合、承認依頼ボタンが表示されない', async () => {
@@ -88,7 +85,9 @@ describe('ExpensesPage', () => {
 			ExpensesPage,
 			makeProps({ expenses: [makeExpense({ userId: 'user-1', status: 'unapproved' })] })
 		);
-		await expect.element(page.getByTestId('expense-bulk-request-button')).not.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('button', { name: /承認依頼する/ }))
+			.not.toBeInTheDocument();
 	});
 
 	test('自分の pending 支出がある場合、申請取り消しボタンが表示される', async () => {
@@ -96,23 +95,24 @@ describe('ExpensesPage', () => {
 			ExpensesPage,
 			makeProps({ expenses: [makeExpense({ userId: 'user-1', status: 'pending' })] })
 		);
-		await expect.element(page.getByTestId('expense-bulk-cancel-button')).toBeVisible();
+		await expect.element(page.getByRole('button', { name: /申請取り消す/ })).toBeVisible();
 	});
 
 	test('パートナーの pending 支出がある場合、全件承認ボタンが表示される', async () => {
 		await render(ExpensesPage, makeProps({ partnerPendingCount: 1 }));
-		await expect.element(page.getByTestId('expense-bulk-approve-button')).toBeVisible();
+		await expect.element(page.getByRole('button', { name: /全件承認する/ })).toBeVisible();
 	});
 
 	test('パートナーの pending 支出がない場合、全件承認ボタンが表示されない', async () => {
 		await render(ExpensesPage, makeProps({ partnerPendingCount: 0 }));
-		await expect.element(page.getByTestId('expense-bulk-approve-button')).not.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('button', { name: /全件承認する/ }))
+			.not.toBeInTheDocument();
 	});
 
 	test('支出登録ボタンをクリックするとダイアログが開く', async () => {
 		await render(ExpensesPage, makeProps());
-		(page.getByTestId('expense-create-button').element() as HTMLElement).click();
-		flushSync();
+		(page.getByRole('button', { name: '支出を登録' }).element() as HTMLElement).click();
 		await expect.element(page.getByRole('dialog')).toBeVisible();
 	});
 });

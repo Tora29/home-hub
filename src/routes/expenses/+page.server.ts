@@ -4,42 +4,30 @@
  * @feature expenses
  *
  * @description
- * 支出一覧画面の初期データをサーバーサイドで取得する。
- * 不正な month パラメータは /expenses にリダイレクトする（AC-002c）。
- *
- * @spec specs/expenses/spec.md
- * @acceptance AC-001, AC-002, AC-002b, AC-002c
+ * 支出一覧画面の初期データ（支出・カテゴリ・ユーザー・相手の承認待ち件数）をサーバーサイドで取得する。
+ * 不正なクエリパラメータ（例: month=2026-13）は /expenses にリダイレクトする。
  */
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { createDb } from '$lib/server/db';
-import { getExpenses, getUsers, getUnapprovedCount } from '$expenses/server/service';
+import { getExpenses, getUsers } from '$expenses/server/service';
+import { getUnapprovedCount } from '$expenses/server/workflow';
 import { getCategories } from '$expenses/categories/server/service';
 import { expenseQuerySchema } from '$expenses/schema';
 import { getCurrentMonth } from '$lib/utils/date';
 
 export const load: PageServerLoad = async ({ platform, locals, url }) => {
-	const db = createDb(platform!.env.DB);
-	const userId = locals.user!.id;
-
-	// expenseQuerySchema で month を検証。不正値（例: 2026-13）は /expenses にリダイレクト（AC-002c）
-	const rawMonth = url.searchParams.get('month');
-	const rawPage = url.searchParams.get('page');
-	const rawLimit = url.searchParams.get('limit');
-
-	const raw: Record<string, string> = {};
-	if (rawMonth) raw.month = rawMonth;
-	if (rawPage) raw.page = rawPage;
-	if (rawLimit) raw.limit = rawLimit;
-
-	const parsed = expenseQuerySchema.safeParse(raw);
-	if (!parsed.success) {
-		redirect(302, '/expenses');
-	}
+	const parsed = expenseQuerySchema.safeParse({
+		month: url.searchParams.get('month') ?? undefined,
+		page: url.searchParams.get('page') ?? undefined,
+		limit: url.searchParams.get('limit') ?? undefined
+	});
+	if (!parsed.success) redirect(302, '/expenses');
 
 	const { month, page, limit } = parsed.data;
-
-	// currentMonth は常に今日の月。月ドロップダウンの選択肢は今月を起点に固定する（AC-002b）
+	const db = createDb(platform!.env.DB);
+	const userId = locals.user!.id;
+	// 月ドロップダウンの選択肢は常に今日の月（JST）を起点にする
 	const currentMonth = getCurrentMonth();
 	const selectedMonth = month ?? currentMonth;
 

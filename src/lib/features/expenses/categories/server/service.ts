@@ -1,25 +1,22 @@
 /**
  * @file サービス: ExpenseCategory
  * @module src/lib/features/expenses/categories/server/service.ts
- * @feature expenses/categories
+ * @feature expenses
  *
  * @description
  * 支出カテゴリ機能のビジネスロジックと DB 操作を担う。
  *
- * @spec specs/expenses/spec.md
- * @acceptance AC-010, AC-011, AC-012, AC-107, AC-108, AC-109, AC-110
- *
  * @entity ExpenseCategory
  *
  * @functions
- * - getCategories   - 一覧取得（全件）
+ * - getCategories   - 一覧取得（全件・作成順）
  * - createCategory  - 新規作成
- * - updateCategory  - 更新
- * - deleteCategory  - 削除
+ * - updateCategory  - 更新（NOT_FOUND: 不在）
+ * - deleteCategory  - 削除（NOT_FOUND: 不在 / CONFLICT: 支出が紐付く）
  *
  * @test ./service.integration.test.ts
  */
-import { eq, sql } from 'drizzle-orm';
+import { count, eq, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { AppError } from '$lib/server/errors';
 import { expense, expenseCategory } from '$lib/server/tables';
@@ -31,12 +28,14 @@ type Db = DrizzleD1Database<typeof schema>;
 
 /**
  * カテゴリ一覧を取得する（全件・全ユーザー共通）。
- * @ac AC-010
  */
 export async function getCategories(
 	db: Db
 ): Promise<{ items: Category[]; total: number; page: number; limit: number }> {
-	const rows = await db.select().from(expenseCategory).orderBy(expenseCategory.createdAt);
+	const rows = await db
+		.select()
+		.from(expenseCategory)
+		.orderBy(expenseCategory.createdAt, sql`"ExpenseCategory".rowid`);
 
 	return {
 		items: rows as Category[],
@@ -48,7 +47,6 @@ export async function getCategories(
 
 /**
  * カテゴリを新規作成する（全ユーザー共通）。
- * @ac AC-010
  */
 export async function createCategory(db: Db, data: CategoryCreate): Promise<Category> {
 	const id = crypto.randomUUID();
@@ -64,7 +62,6 @@ export async function createCategory(db: Db, data: CategoryCreate): Promise<Cate
 
 /**
  * カテゴリを更新する（全ユーザー共通）。
- * @ac AC-011
  * @throws {NOT_FOUND} - 該当カテゴリが存在しない場合
  */
 export async function updateCategory(db: Db, id: string, data: CategoryUpdate): Promise<Category> {
@@ -82,7 +79,6 @@ export async function updateCategory(db: Db, id: string, data: CategoryUpdate): 
 
 /**
  * カテゴリを削除する。いずれかのユーザーの支出が紐付く場合は CONFLICT を投げる。
- * @ac AC-012
  * @throws {NOT_FOUND} - 該当カテゴリが存在しない場合
  * @throws {CONFLICT} - カテゴリに紐付く支出が 1 件以上ある場合
  */
@@ -91,11 +87,11 @@ export async function deleteCategory(db: Db, id: string): Promise<void> {
 	if (!existing) throw new AppError('NOT_FOUND', 404, '該当データが見つかりません');
 
 	const [{ linkedCount }] = await db
-		.select({ linkedCount: sql<number>`count(*)` })
+		.select({ linkedCount: count() })
 		.from(expense)
 		.where(eq(expense.categoryId, id));
 
-	if (Number(linkedCount) > 0) {
+	if (linkedCount > 0) {
 		throw new AppError('CONFLICT', 409, 'このカテゴリは使用中のため削除できません');
 	}
 

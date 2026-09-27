@@ -1,19 +1,20 @@
 <!--
   @file 画面: カテゴリ管理
   @module src/routes/expenses/categories/+page.svelte
-  @feature expenses/categories
+  @feature expenses
 
   @description
-  支出カテゴリ管理画面。
-
-  @spec specs/expenses/spec.md
-  @acceptance AC-011, AC-012, AC-013, AC-107, AC-108, AC-109, AC-110
+  支出カテゴリ管理画面。カテゴリの追加・名称変更・削除を行う。
 
   @navigation
   - 遷移元: /expenses - 支出一覧画面
+  - 遷移先: /expenses - 支出一覧に戻る
 
   @api
-  - GET /expenses/categories（SSR load） - カテゴリ一覧取得
+  - SSR load: service 直呼び（getCategories）
+  - POST /expenses/categories → 201 Category - カテゴリ登録
+  - PUT /expenses/categories/[id] → 200 Category - カテゴリ更新
+  - DELETE /expenses/categories/[id] → 204 - カテゴリ削除
 -->
 <script lang="ts">
 	import ExpenseCategoriesPage from '$lib/features/expenses/categories/components/ExpenseCategoriesPage.svelte';

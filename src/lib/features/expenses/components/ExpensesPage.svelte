@@ -29,7 +29,7 @@
 	import ExpenseFormDialog from './ExpenseFormDialog.svelte';
 	import type { ExpenseWithRelations, Category, User } from '../types';
 	import { generateMonthOptions } from '$lib/utils/date';
-	import { formatAmount } from '../format';
+	import { formatAmount } from '$lib/utils/format';
 
 	let {
 		expenses,
@@ -84,13 +84,14 @@
 		expenses.filter((e) => e.userId === currentUserId && e.status === 'pending').length
 	);
 
-	// ---- 月選択肢生成（AC-002b: 常に当月を起点とした過去13か月分固定） ----
+	// ---- 月選択肢生成（常に当月を起点とした過去13か月分固定） ----
 	const monthOptions = $derived(generateMonthOptions(currentMonth));
 
 	// ---- 月切り替え ----
 	async function handleMonthChange(e: Event) {
 		const select = e.target as HTMLSelectElement;
-		await goto(`/expenses?month=${select.value}`, { keepFocus: true, replaceState: true });
+		const params = new URLSearchParams({ month: select.value });
+		await goto(`/expenses?${params}`, { keepFocus: true, replaceState: true, noScroll: true });
 	}
 
 	// ---- Check / Uncheck ----
@@ -100,7 +101,7 @@
 		try {
 			const res = await fetch(`/expenses/${id}/${action}`, { method: 'POST' });
 			if (!res.ok) {
-				const err = (await res.json()) as { message?: string };
+				const err = (await res.json().catch(() => ({}))) as { message?: string };
 				actionError = err.message ?? '操作に失敗しました';
 				return;
 			}
@@ -132,7 +133,7 @@
 		try {
 			const res = await fetch(`/expenses/${deleteTarget.id}`, { method: 'DELETE' });
 			if (!res.ok) {
-				const err = (await res.json()) as { message?: string };
+				const err = (await res.json().catch(() => ({}))) as { message?: string };
 				deleteError = err.message ?? '削除に失敗しました';
 				return;
 			}
@@ -160,7 +161,7 @@
 		try {
 			const res = await fetch(url, { method: 'POST' });
 			if (!res.ok) {
-				const err = (await res.json()) as { message?: string };
+				const err = (await res.json().catch(() => ({}))) as { message?: string };
 				setError(err.message ?? defaultErrorMessage);
 				return;
 			}
@@ -314,7 +315,7 @@
 		{formatAmount(monthTotal)}
 	</p>
 
-	<!-- check/uncheck エラー（AC-122） -->
+	<!-- check/uncheck エラー -->
 	{#if actionError}
 		<p
 			data-testid="expense-action-error"
@@ -372,7 +373,7 @@
 	open={deleteTarget !== null}
 	title="支出を削除しますか？"
 	description={deleteTarget
-		? `¥${deleteTarget.amount.toLocaleString('ja-JP')}（${deleteTarget.category.name}）を削除します。この操作は元に戻せません。`
+		? `${formatAmount(deleteTarget.amount)}（${deleteTarget.category.name}）を削除します。この操作は元に戻せません。`
 		: ''}
 	confirmLabel="削除する"
 	confirmVariant="destructive"
@@ -387,7 +388,7 @@
 	}}
 />
 
-<!-- 承認依頼確認ダイアログ（AC-123: 失敗時はダイアログを閉じない） -->
+<!-- 承認依頼確認ダイアログ（失敗時はダイアログを閉じずエラー表示） -->
 <ConfirmDialog
 	open={requestDialogOpen}
 	title="承認依頼しますか？"

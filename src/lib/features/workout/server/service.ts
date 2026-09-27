@@ -9,14 +9,14 @@
  * @entity WorkoutRecord, BodyWeightRecord
  *
  * @functions
- * - getRecords         - 記録一覧取得（全件・日付降順・種目フィルタ付き）
- * - createRecord       - 記録新規作成（1レコード = 1セット）
- * - deleteRecord       - 記録削除
- * - getChartData       - 種目別チャートデータ取得（日別最大重量 + 体重）
- * - getWeeklyVolume             - 週間ボリューム集計
- * - getWeeklyVolumeBreakdown   - 指定週の種目別ボリューム内訳
- * - upsertBodyWeight           - 体重登録（同日upsert）
- * - getTodayBodyWeight         - 指定日の体重取得
+ * - getRecords               - 記録一覧取得（全件・日付降順・種目フィルタ付き）
+ * - createRecord             - 記録新規作成（1レコード = 1セット。自重時は同日体重を採用）
+ * - deleteRecord             - 記録削除
+ * - getChartData             - 種目別チャートデータ取得（日別最大重量 + 体重）
+ * - getWeeklyVolume          - 週間ボリューム集計（月曜始まり）
+ * - getWeeklyVolumeBreakdown - 指定週の種目別ボリューム内訳
+ * - getTodayBodyWeight       - 指定日の体重取得
+ * - upsertBodyWeight         - 体重登録（同日 upsert）
  *
  * @test ./service.integration.test.ts
  */
@@ -27,23 +27,14 @@ import { bodyWeightRecord, workoutExercise, workoutRecord } from '$lib/server/ta
 import type * as schema from '$lib/server/tables';
 import { addMonths, getCurrentMonth } from '$lib/utils/date';
 import type { BodyWeightCreate, ChartQuery, RecordCreate, VolumeQuery } from '../schema';
-import type { ChartData, WeeklyVolumeBreakdownItem, WeeklyVolumePoint } from '../types';
+import type {
+	ChartData,
+	WeeklyVolumeBreakdownItem,
+	WeeklyVolumePoint,
+	WorkoutRecord
+} from '../types';
 
 type Db = DrizzleD1Database<typeof schema>;
-
-export type WorkoutRecord = {
-	id: string;
-	userId: string;
-	exerciseId: string;
-	exerciseName: string;
-	date: string;
-	weight: number;
-	reps: number;
-	isBodyWeight: boolean;
-	createdAt: Date;
-};
-
-export type { ChartData, WeeklyVolumeBreakdownItem, WeeklyVolumePoint };
 
 /**
  * getRecords / createRecord で共通利用する SELECT 列リスト（種目名を JOIN で含む）。
@@ -102,13 +93,14 @@ export async function getRecords(
 		.where(and(...conditions))
 		.orderBy(desc(workoutRecord.date), desc(sql`"WorkoutRecord".rowid`));
 
-	return rows as WorkoutRecord[];
+	return rows;
 }
 
 /**
  * 記録を新規作成する。isBodyWeight=true のとき同日の体重記録を weight に上書き保存する。
- * @throws {NOT_FOUND} - exerciseId に該当する種目が存在しない場合
+ * @throws {NOT_FOUND} - exerciseId に該当する自分の種目が存在しない場合
  * @throws {VALIDATION_ERROR} - isBodyWeight=true かつ同日の体重記録がない場合
+ * @throws {INTERNAL_SERVER_ERROR} - 作成直後の再取得に失敗した場合
  */
 export async function createRecord(
 	db: Db,
@@ -162,12 +154,12 @@ export async function createRecord(
 		.get();
 
 	if (!row) throw new AppError('INTERNAL_SERVER_ERROR', 500, 'サーバーエラーが発生しました');
-	return row as WorkoutRecord;
+	return row;
 }
 
 /**
  * 記録を削除する。
- * @throws {NOT_FOUND} - 該当データなし or 他ユーザーのもの
+ * @throws {NOT_FOUND} - 該当データなし or 他ユーザーのもの（存在を隠蔽）
  */
 export async function deleteRecord(db: Db, userId: string, id: string): Promise<void> {
 	const existing = await db
@@ -185,7 +177,7 @@ export async function deleteRecord(db: Db, userId: string, id: string): Promise<
 /**
  * 特定種目の期間別チャートデータを取得する。
  * 同一日付の最大重量を1点として返す。体重データも同期間で取得して返す。
- * @throws {NOT_FOUND} - exerciseId に該当する種目が存在しない場合
+ * @throws {NOT_FOUND} - exerciseId に該当する自分の種目が存在しない場合
  */
 export async function getChartData(db: Db, userId: string, query: ChartQuery): Promise<ChartData> {
 	const exercise = await db
@@ -214,7 +206,7 @@ export async function getChartData(db: Db, userId: string, query: ChartQuery): P
 	const exerciseRows = await db
 		.select({
 			date: workoutRecord.date,
-			maxWeight: sql<number>`max(${workoutRecord.weight})`
+			maxWeight: sql<number>`max(${workoutRecord.weight})`.mapWith(Number)
 		})
 		.from(workoutRecord)
 		.where(and(...dateConditions))
@@ -232,8 +224,8 @@ export async function getChartData(db: Db, userId: string, query: ChartQuery): P
 
 	return {
 		exercise: { id: exercise.id, name: exercise.name },
-		exercisePoints: exerciseRows.map((r) => ({ date: r.date, maxWeight: Number(r.maxWeight) })),
-		bodyWeightPoints: bodyWeightRows.map((r) => ({ date: r.date, weight: Number(r.weight) }))
+		exercisePoints: exerciseRows,
+		bodyWeightPoints: bodyWeightRows
 	};
 }
 
@@ -252,17 +244,15 @@ export async function getWeeklyVolume(
 
 	const weekExpr = mondayExpr(workoutRecord.date);
 
-	const rows = await db
+	return db
 		.select({
 			weekStart: sql<string>`${weekExpr}`,
-			volume: sql<number>`sum(${workoutRecord.weight} * ${workoutRecord.reps})`
+			volume: sql<number>`sum(${workoutRecord.weight} * ${workoutRecord.reps})`.mapWith(Number)
 		})
 		.from(workoutRecord)
 		.where(and(...conditions))
 		.groupBy(weekExpr)
 		.orderBy(asc(weekExpr));
-
-	return rows.map((r) => ({ weekStart: r.weekStart, volume: Number(r.volume) }));
 }
 
 /**
@@ -274,10 +264,10 @@ export async function getWeeklyVolumeBreakdown(
 	userId: string,
 	weekStart: string
 ): Promise<WeeklyVolumeBreakdownItem[]> {
-	const rows = await db
+	return db
 		.select({
 			exerciseName: workoutExercise.name,
-			volume: sql<number>`sum(${workoutRecord.weight} * ${workoutRecord.reps})`
+			volume: sql<number>`sum(${workoutRecord.weight} * ${workoutRecord.reps})`.mapWith(Number)
 		})
 		.from(workoutRecord)
 		.innerJoin(workoutExercise, eq(workoutRecord.exerciseId, workoutExercise.id))
@@ -286,8 +276,6 @@ export async function getWeeklyVolumeBreakdown(
 		)
 		.groupBy(workoutExercise.name)
 		.orderBy(desc(sql`sum(${workoutRecord.weight} * ${workoutRecord.reps})`));
-
-	return rows.map((r) => ({ exerciseName: r.exerciseName, volume: Number(r.volume) }));
 }
 
 /**
@@ -303,38 +291,35 @@ export async function getTodayBodyWeight(
 		.from(bodyWeightRecord)
 		.where(and(eq(bodyWeightRecord.userId, userId), eq(bodyWeightRecord.date, date)))
 		.get();
-	return row ? Number(row.weight) : null;
+	return row?.weight ?? null;
 }
 
 /**
- * 体重を登録する（同日の既存レコードがあれば上書き）。
+ * 体重を登録する。同日の既存レコードがあれば weight を上書きする
+ * （UNIQUE(userId, date) = uq_body_weight_user_date への ON CONFLICT で 1 クエリ化）。
  */
 export async function upsertBodyWeight(
 	db: Db,
 	userId: string,
 	data: BodyWeightCreate
 ): Promise<{ id: string; date: string; weight: number }> {
-	const existing = await db
-		.select()
-		.from(bodyWeightRecord)
-		.where(and(eq(bodyWeightRecord.userId, userId), eq(bodyWeightRecord.date, data.date)))
-		.get();
-
-	if (existing) {
-		await db
-			.update(bodyWeightRecord)
-			.set({ weight: data.weight })
-			.where(and(eq(bodyWeightRecord.userId, userId), eq(bodyWeightRecord.date, data.date)));
-		return { id: existing.id, date: data.date, weight: data.weight };
-	}
-
-	const id = crypto.randomUUID();
-	await db.insert(bodyWeightRecord).values({
-		id,
-		userId,
-		date: data.date,
-		weight: data.weight,
-		createdAt: new Date()
-	});
-	return { id, date: data.date, weight: data.weight };
+	const [row] = await db
+		.insert(bodyWeightRecord)
+		.values({
+			id: crypto.randomUUID(),
+			userId,
+			date: data.date,
+			weight: data.weight,
+			createdAt: new Date()
+		})
+		.onConflictDoUpdate({
+			target: [bodyWeightRecord.userId, bodyWeightRecord.date],
+			set: { weight: data.weight }
+		})
+		.returning({
+			id: bodyWeightRecord.id,
+			date: bodyWeightRecord.date,
+			weight: bodyWeightRecord.weight
+		});
+	return row;
 }

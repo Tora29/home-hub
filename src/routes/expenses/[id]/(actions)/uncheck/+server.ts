@@ -7,27 +7,24 @@
  * 支出の確認を取り消すエンドポイント（checked → unapproved）。
  * 登録者のみ実行可能。
  *
- * @spec specs/expenses/spec.md
- * @acceptance AC-005, AC-106, AC-114
- *
  * @endpoints
- * - POST /expenses/[id]/uncheck → 200 ExpenseWithRelations - 確認取消
+ * - POST /expenses/[id]/uncheck → 200 ExpenseWithRelations - 未承認に戻す
  *   @errors 403(FORBIDDEN), 404(NOT_FOUND), 409(CONFLICT)
  *
- * @service $expenses/service.ts
+ * @service $lib/features/expenses/server/workflow.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
-import { uncheckExpense } from '$expenses/server/service';
+import { uncheckExpense } from '$expenses/server/workflow';
 
 /**
  * 支出の確認を取り消す（checked → unapproved）。
- * @ac AC-005, AC-106, AC-114
- * @throws FORBIDDEN - 他ユーザーの支出の場合
- * @throws NOT_FOUND - 該当支出が存在しない場合
- * @throws CONFLICT - checked 以外の支出の場合
+ * @calls uncheckExpense
+ * @throws {NOT_FOUND} - 該当支出が存在しない場合
+ * @throws {FORBIDDEN} - 他ユーザーの支出の場合
+ * @throws {CONFLICT} - checked 以外の支出の場合
  */
 export const POST: RequestHandler = async ({ params, locals, platform }) => {
 	try {

@@ -13,18 +13,23 @@
   - onchange?: () => void - チェック変更ハンドラ
   - class?: string - 追加 CSS クラス（ラッパーに適用）
   - children?: Snippet - ラベルテキスト
-  - data-testid?: string - テスト用 ID
+  - ...rest - data-testid, aria-label, id 等を button[role=checkbox] に透過
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import type { HTMLButtonAttributes } from 'svelte/elements';
 
-	interface Props {
+	// 実体は button[role=checkbox] のため HTMLButtonAttributes を拡張する。
+	// 役割・状態を決める属性（type / role / aria-checked / onclick）は内部で固定する
+	interface Props extends Omit<
+		HTMLButtonAttributes,
+		'type' | 'role' | 'aria-checked' | 'onclick' | 'onchange' | 'children' | 'class' | 'disabled'
+	> {
 		checked?: boolean;
 		disabled?: boolean;
 		onchange?: () => void;
 		class?: string;
 		children?: Snippet;
-		'data-testid'?: string;
 	}
 
 	let {
@@ -33,16 +38,16 @@
 		onchange,
 		class: className = '',
 		children,
-		'data-testid': testId
+		...rest
 	}: Props = $props();
 </script>
 
 <button
+	{...rest}
 	type="button"
 	role="checkbox"
 	aria-checked={checked}
 	{disabled}
-	data-testid={testId}
 	onclick={() => !disabled && onchange?.()}
 	class="inline-flex items-center gap-2 select-none {disabled
 		? 'cursor-not-allowed opacity-40'
@@ -59,7 +64,7 @@
 				height="9"
 				viewBox="0 0 11 9"
 				fill="none"
-				class="text-white"
+				class="text-on-accent"
 				aria-hidden="true"
 			>
 				<path

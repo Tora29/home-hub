@@ -10,20 +10,27 @@ SvelteKit + Tailwind CSS v4 における UI コンポーネント設計規約。
 
 ### カラートークン
 
-| トークン               | Tailwind クラス例                           | 用途                               |
-| ---------------------- | ------------------------------------------- | ---------------------------------- |
-| `--color-bg`           | `bg-bg`                                     | ページ背景                         |
-| `--color-bg-secondary` | `bg-bg-secondary`                           | サブ背景（サイドバー・セクション） |
-| `--color-bg-card`      | `bg-bg-card`                                | カード背景                         |
-| `--color-label`        | `text-label`                                | 主要テキスト                       |
-| `--color-secondary`    | `text-secondary`                            | 補助テキスト（60% 透明度）         |
-| `--color-tertiary`     | `text-tertiary`                             | 控えめテキスト（30% 透明度）       |
-| `--color-accent`       | `bg-accent` / `text-accent` / `ring-accent` | アクション・選択状態               |
-| `--color-destructive`  | `bg-destructive` / `text-destructive`       | 削除・エラー                       |
-| `--color-success`      | `text-success`                              | 成功・完了                         |
-| `--color-warning`      | `text-warning`                              | 警告・保留状態                     |
-| `--color-bg-warning`   | `bg-bg-warning`                             | 警告背景                           |
-| `--color-separator`    | `border-separator`                          | 境界線・区切り線                   |
+| トークン               | Tailwind クラス例                           | 用途                                 |
+| ---------------------- | ------------------------------------------- | ------------------------------------ |
+| `--color-bg`           | `bg-bg`                                     | ページ背景                           |
+| `--color-bg-secondary` | `bg-bg-secondary`                           | サブ背景（サイドバー・セクション）   |
+| `--color-bg-grouped`   | `bg-bg-grouped`                             | グループ背景（ヘッダー・ナビ選択）   |
+| `--color-bg-tertiary`  | `bg-bg-tertiary`                            | 第 3 背景                            |
+| `--color-bg-card`      | `bg-bg-card`                                | カード背景                           |
+| `--color-label`        | `text-label`                                | 主要テキスト                         |
+| `--color-secondary`    | `text-secondary`                            | 補助テキスト（60% 透明度）           |
+| `--color-tertiary`     | `text-tertiary`                             | 控えめテキスト（30% 透明度）         |
+| `--color-accent`       | `bg-accent` / `text-accent` / `ring-accent` | アクション・選択状態                 |
+| `--color-destructive`  | `bg-destructive` / `text-destructive`       | 削除・エラー                         |
+| `--color-success`      | `text-success`                              | 成功・完了                           |
+| `--color-warning`      | `text-warning`                              | 警告・保留状態                       |
+| `--color-bg-warning`   | `bg-bg-warning`                             | 警告背景                             |
+| `--color-separator`    | `border-separator`                          | 境界線・区切り線                     |
+| `--color-bg-dot`       | `bg-bg-dot`                                 | ドット・装飾背景                     |
+| `--color-on-accent`    | `text-on-accent`                            | accent / destructive 背景上の文字    |
+| `--color-overlay`      | `bg-overlay` / `backdrop:bg-overlay`        | モーダル・ドロワーの背景オーバーレイ |
+
+- `text-white` / `bg-black/40` / `#hex` 等の生カラーは使わない。必要な色が無ければ `app.css` にトークンを追加する
 
 ### 特殊トークン
 
@@ -98,9 +105,10 @@ variant / size ごとにクラスを Record で定義し、文字列結合で適
 
 ```typescript
 const variantClasses: Record<NonNullable<Props['variant']>, string> = {
-	primary: 'bg-accent text-white hover:opacity-90 disabled:opacity-60 transition-opacity',
+	primary: 'bg-accent text-on-accent hover:opacity-90 disabled:opacity-60 transition-opacity',
 	secondary: 'border border-separator text-secondary hover:text-label transition-colors',
-	destructive: 'bg-destructive text-white hover:opacity-90 disabled:opacity-60 transition-opacity',
+	destructive:
+		'bg-destructive text-on-accent hover:opacity-90 disabled:opacity-60 transition-opacity',
 	'ghost-destructive': 'bg-destructive/10 text-destructive hover:opacity-80 transition-opacity'
 };
 
@@ -126,17 +134,20 @@ const baseClass = 'inline-flex items-center gap-2 font-medium rounded-2xl';
 
 ## 共通コンポーネント一覧
 
-| コンポーネント  | 場所                                      | variant                                               |
-| --------------- | ----------------------------------------- | ----------------------------------------------------- |
-| `Button`        | `src/lib/components/Button.svelte`        | primary / secondary / destructive / ghost-destructive |
-| `Input`         | `src/lib/components/Input.svelte`         | サイズのみ（sm / md / lg）                            |
-| `Select`        | `src/lib/components/Select.svelte`        | サイズのみ                                            |
-| `Textarea`      | `src/lib/components/Textarea.svelte`      | サイズのみ                                            |
-| `Dialog`        | `src/lib/components/Dialog.svelte`        | role: dialog / alertdialog                            |
-| `ConfirmDialog` | `src/lib/components/ConfirmDialog.svelte` | Dialog のラッパー                                     |
-| `Checkbox`      | `src/lib/components/Checkbox.svelte`      | —                                                     |
-| `Header`        | `src/lib/components/Header.svelte`        | レイアウト専用（ロゴ・ダークモード切替・ログアウト）  |
-| `Sidebar`       | `src/lib/components/Sidebar.svelte`       | レイアウト専用（ナビゲーション）                      |
+| コンポーネント  | 場所                                      | variant                                                                 |
+| --------------- | ----------------------------------------- | ----------------------------------------------------------------------- |
+| `Button`        | `src/lib/components/Button.svelte`        | primary / secondary / destructive / ghost-destructive                   |
+| `Input`         | `src/lib/components/Input.svelte`         | サイズのみ（sm / md / lg）                                              |
+| `Select`        | `src/lib/components/Select.svelte`        | サイズのみ                                                              |
+| `Textarea`      | `src/lib/components/Textarea.svelte`      | サイズのみ                                                              |
+| `Dialog`        | `src/lib/components/Dialog.svelte`        | role: dialog / alertdialog                                              |
+| `ConfirmDialog` | `src/lib/components/ConfirmDialog.svelte` | Dialog のラッパー                                                       |
+| `Checkbox`      | `src/lib/components/Checkbox.svelte`      | —（`<button role="checkbox">` 実装。`HTMLButtonAttributes` を extends） |
+| `Header`        | `src/lib/components/Header.svelte`        | レイアウト専用（ロゴ・ダークモード切替・ログアウト）                    |
+| `Sidebar`       | `src/lib/components/Sidebar.svelte`       | レイアウト専用（ナビゲーション）                                        |
+
+- 開閉状態は `src/lib/stores/sidebar.svelte.ts`（`$state` モジュール）で共有する。`svelte/store` の `writable` は新規に使わない
+- レイアウト専用コンポーネント内の素の `<button>` は許容するが `type="button"` を必ず明示する
 
 ---
 
@@ -203,6 +214,7 @@ const baseClass = 'inline-flex items-center gap-2 font-medium rounded-2xl';
 - カラーは Tailwind クラス（`class="text-secondary"`）で指定
 - 旧名エイリアス（`AlertTriangle` → `TriangleAlert` 等）は非推奨。新規コードは正式名を使う
 - 装飾目的のアイコンには `aria-hidden="true"`、アイコンのみのボタンには `aria-label` を付ける
+  （lucide は a11y 属性が無いと自動で `aria-hidden` を付けるが、意図の明示のため書く。自前 `<svg>` は自動付与されない）
 
 ---
 

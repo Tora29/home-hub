@@ -1,11 +1,11 @@
 <!--
   @file コンポーネント: ExpenseCategoriesPage
   @module src/lib/features/expenses/categories/components/ExpenseCategoriesPage.svelte
-  @feature expenses/categories
+  @feature expenses
 
   @description
   支出カテゴリの一覧表示・追加・編集・削除を行う管理画面コンポーネント。
-  追加/編集/削除ハンドラの共通処理は `form-helpers.ts` に委譲する。
+  追加/編集/削除ハンドラの共通処理は `$lib/utils/form-helpers.ts` に委譲する。
 
   @props
   - categories: { items: Category[] } - カテゴリ一覧
@@ -16,7 +16,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Input from '$lib/components/Input.svelte';
-	import { submitNamedForm, submitDelete } from './form-helpers';
+	import { submitNamedForm, submitDelete } from '$lib/utils/form-helpers';
 	import type { Category } from '../../types';
 
 	let {
@@ -171,7 +171,7 @@
 									maxlength={50}
 									class="w-full"
 									onkeydown={(e) => {
-										if (e.key === 'Enter') void handleEditSave(cat.id);
+										if (e.key === 'Enter' && !isSavingEdit) void handleEditSave(cat.id);
 										if (e.key === 'Escape') cancelEdit();
 									}}
 								/>

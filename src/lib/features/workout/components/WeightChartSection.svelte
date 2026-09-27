@@ -6,7 +6,7 @@
   @description
   種目別重量推移グラフカード。種目・期間（月間/年間）セレクトと WorkoutChart の表示を担う。
   データ取得（fetch）・期間状態の所有権は親（WorkoutPage.svelte）が持ち、
-  このコンポーネントは bindable props と onToggleMode/onPeriodChange コールバックで連携する。
+  このコンポーネントは bindable props と onToggleMode / onExerciseChange / onPeriodChange コールバックで連携する。
 
   @props
   - exerciseOptions: Snippet - 種目セレクトの中身（カテゴリ optgroup + その他）
@@ -20,6 +20,7 @@
   - loading: boolean - 取得中フラグ
   - error: string - エラーメッセージ
   - onToggleMode: () => void - 年間/月間切り替え時のコールバック
+  - onExerciseChange: () => void - 種目セレクト変更時のコールバック
   - onPeriodChange: () => void - 年・月セレクト変更時のコールバック
 -->
 <script lang="ts">
@@ -41,6 +42,7 @@
 		loading,
 		error,
 		onToggleMode,
+		onExerciseChange,
 		onPeriodChange
 	}: {
 		exerciseOptions: Snippet;
@@ -54,6 +56,7 @@
 		loading: boolean;
 		error: string;
 		onToggleMode: () => void;
+		onExerciseChange: () => void;
 		onPeriodChange: () => void;
 	} = $props();
 </script>
@@ -62,7 +65,12 @@
 	<h2 class="mb-3 text-sm font-medium text-secondary">重量推移グラフ</h2>
 	<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-			<Select data-testid="workout-chart-exercise-select" bind:value={exerciseId} class="text-sm">
+			<Select
+				data-testid="workout-chart-exercise-select"
+				bind:value={exerciseId}
+				onchange={onExerciseChange}
+				class="text-sm"
+			>
 				{@render exerciseOptions()}
 			</Select>
 			<Select
@@ -98,13 +106,13 @@
 				<div class="ml-auto flex flex-col items-end gap-1 text-xs text-label">
 					<span class="flex items-center gap-1.5">
 						{data.exercise.name}
-						<svg width="20" height="10" class="shrink-0">
+						<svg width="20" height="10" class="shrink-0" aria-hidden="true">
 							<line x1="0" y1="5" x2="20" y2="5" stroke="var(--color-accent)" stroke-width="2" />
 						</svg>
 					</span>
 					<span class="flex items-center gap-1.5">
 						体重
-						<svg width="20" height="10" class="shrink-0">
+						<svg width="20" height="10" class="shrink-0" aria-hidden="true">
 							<line
 								x1="0"
 								y1="5"

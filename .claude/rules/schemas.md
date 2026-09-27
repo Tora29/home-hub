@@ -40,7 +40,10 @@ import { z } from 'zod';
 // 作成用
 export const itemCreateSchema = z.object({
 	name: z
-		.string({ error: (iss) => (iss.input === undefined ? '名前は必須です' : undefined) })
+		.string({
+			error: (iss) =>
+				iss.input === undefined ? '名前は必須です' : '名前は文字列で入力してください'
+		})
 		.min(1, '名前は必須です')
 		.max(100, '100文字以内で入力してください'),
 	memo: z.string().max(500, '500文字以内で入力してください').nullable()
@@ -56,7 +59,12 @@ export type ItemUpdate = z.infer<typeof itemUpdateSchema>;
 
 - Zod v4 のエラーメッセージ指定は `error` パラメータ（v3 の `message` は非推奨、`required_error` / `invalid_type_error` は廃止）。
   `.min(1, '...')` の文字列ショートハンドは v4 でも有効
-- 未入力（`undefined`）と型違いでメッセージを分けたい場合は上記の `error: (iss) => ...` 関数形式を使う
+- 未入力（`undefined`）と型違いでメッセージを分けたい場合は `error: (iss) => ...` 関数形式を使う。
+  **`undefined` を返すと Zod 既定の英語メッセージになる**ため、全分岐で日本語を返す
+  （例: `iss.input === undefined ? '金額は必須です' : '金額は数値で入力してください'`）
+- `.int()` / `z.enum()` / `.min()` 等すべてのチェックに日本語メッセージを付ける（未指定は英語既定メッセージになる）
+- 形式チェック（`.regex()`）の後に `.refine()` を重ねる場合、regex に `{ error: '...', abort: true }` を付ける
+  （Zod v4 は regex 失敗後も refine を実行し、同一フィールドにエラーが重複するため）
 
 ---
 
@@ -104,7 +112,7 @@ export const listQuerySchema = z.object({
 	sort: z.enum(['createdAt_desc', 'amount_desc']).default('createdAt_desc'),
 	month: z
 		.string()
-		.regex(/^\d{4}-\d{2}$/, '月の形式は YYYY-MM です')
+		.regex(/^\d{4}-\d{2}$/, { error: '月の形式は YYYY-MM です', abort: true })
 		.refine((m) => {
 			const mon = Number(m.split('-')[1]);
 			return mon >= 1 && mon <= 12;

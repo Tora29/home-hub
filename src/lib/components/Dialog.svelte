@@ -17,9 +17,11 @@
   - role: 'dialog' | 'alertdialog' - ARIA ロール（デフォルト: 'dialog'）
   - aria-label: string - ARIA ラベル
   - children: Snippet - ダイアログ中身
+  - ...rest - data-testid, aria-labelledby 等を <dialog> に透過
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import type { HTMLDialogAttributes } from 'svelte/elements';
 
 	let {
 		open,
@@ -28,7 +30,8 @@
 		disabled = false,
 		role = 'dialog',
 		'aria-label': ariaLabel,
-		children
+		children,
+		...rest
 	}: {
 		open: boolean;
 		onClose: () => void;
@@ -37,7 +40,10 @@
 		role?: 'dialog' | 'alertdialog';
 		'aria-label'?: string;
 		children: Snippet;
-	} = $props();
+	} & Omit<
+		HTMLDialogAttributes,
+		'open' | 'role' | 'aria-label' | 'children' | 'class' | 'oncancel' | 'onclick' | 'onclose'
+	> = $props();
 
 	let dialogEl = $state<HTMLDialogElement>();
 
@@ -69,12 +75,13 @@
 {#if open}
 	<!-- onclick は backdrop クリック判定のみ。キーボードでは Escape（cancel イベント）で閉じられる -->
 	<dialog
+		{...rest}
 		bind:this={dialogEl}
 		{role}
 		aria-label={ariaLabel}
 		oncancel={handleCancel}
 		onclick={handleClick}
-		class="fixed inset-0 m-0 h-full max-h-none w-full max-w-none items-center justify-center border-0 bg-transparent px-4 text-inherit backdrop:bg-black/40 open:flex"
+		class="fixed inset-0 m-0 h-full max-h-none w-full max-w-none items-center justify-center border-0 bg-transparent px-4 text-inherit backdrop:bg-overlay open:flex"
 	>
 		{@render children()}
 	</dialog>

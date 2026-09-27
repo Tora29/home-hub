@@ -4,20 +4,18 @@
  * @feature expenses
  *
  * @description
- * 支出一覧取得・新規登録エンドポイント。
- *
- * @spec specs/expenses/spec.md
- * @acceptance AC-001, AC-002, AC-003, AC-101, AC-102, AC-103, AC-104, AC-105
+ * 支出一覧取得・新規登録エンドポイント。一覧は全ユーザーの支出（世帯合計）。
  *
  * @endpoints
- * - GET /expenses → 200 ExpenseList - 一覧取得（月フィルタ・ページネーション）
- *   @query month:string page:number=1 limit:number=20
- * - POST /expenses → 201 ExpenseWithRelations - 新規作成
- *   @body expenseCreateSchema
+ * - GET /expenses → 200 {items: ExpenseWithRelations[], total, page, limit, monthTotal} - 一覧取得（月フィルタ・ページネーション）
+ *   @query month:string(YYYY-MM)=当月 page:number=1 limit:number=20
  *   @errors 400(VALIDATION_ERROR)
+ * - POST /expenses → 201 ExpenseWithRelations - 新規作成（status=unapproved）
+ *   @body expenseCreateSchema
+ *   @errors 400(VALIDATION_ERROR), 404(NOT_FOUND)
  *
- * @service ./service.ts
- * @schema ./schema.ts
+ * @service $lib/features/expenses/server/service.ts
+ * @schema $lib/features/expenses/schema.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -27,9 +25,9 @@ import { expenseCreateSchema, expenseQuerySchema } from '$expenses/schema';
 import { createExpense, getExpenses } from '$expenses/server/service';
 
 /**
- * 指定月の支出一覧を取得する。month 未指定時は当月。
- * @ac AC-001, AC-002
+ * 指定月の支出一覧を取得する。expenseQuerySchema でクエリを検証後、service に委譲する。month 未指定時は当月。
  * @calls getExpenses
+ * @throws {VALIDATION_ERROR} - クエリパラメータが不正な場合
  */
 export const GET: RequestHandler = async ({ url, platform }) => {
 	const queryResult = expenseQuerySchema.safeParse({
@@ -51,9 +49,10 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 
 /**
  * 支出を新規作成する。expenseCreateSchema で入力値を検証後、service に委譲する。
- * @ac AC-003, AC-101, AC-102, AC-103, AC-104, AC-105
+ * @calls createExpense
  * @body expenseCreateSchema
- * @throws VALIDATION_ERROR - 入力値が不正な場合
+ * @throws {VALIDATION_ERROR} - 入力値が不正な場合
+ * @throws {NOT_FOUND} - 指定カテゴリまたは支払者が存在しない場合
  */
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const bodyResult = await parseJsonBody(request);

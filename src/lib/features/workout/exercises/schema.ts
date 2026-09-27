@@ -5,6 +5,7 @@
  *
  * @description
  * 筋トレ種目・種目カテゴリの作成・更新用 Zod バリデーションスキーマ。
+ * PUT は完全置換のため categoryId は必須キー（カテゴリなしは null を明示する）。
  *
  * @schemas
  * - exerciseCreateSchema         - 種目作成用入力
@@ -21,8 +22,22 @@
 import { z } from 'zod';
 
 export const exerciseCreateSchema = z.object({
-	name: z.string().min(1, '種目名は必須です').max(50, '50文字以内で入力してください'),
-	categoryId: z.string().nullable().optional()
+	name: z
+		.string({
+			error: (iss) =>
+				iss.input === undefined ? '種目名は必須です' : '種目名は文字列で入力してください'
+		})
+		.min(1, '種目名は必須です')
+		.max(50, '50文字以内で入力してください'),
+	categoryId: z
+		.string({
+			error: (iss) =>
+				iss.input === undefined
+					? 'カテゴリの指定は必須です（未設定は null）'
+					: 'カテゴリIDの形式が正しくありません'
+		})
+		.min(1, 'カテゴリIDの形式が正しくありません')
+		.nullable()
 });
 
 export const exerciseUpdateSchema = exerciseCreateSchema;
@@ -31,7 +46,13 @@ export type ExerciseCreate = z.infer<typeof exerciseCreateSchema>;
 export type ExerciseUpdate = z.infer<typeof exerciseUpdateSchema>;
 
 export const exerciseCategoryCreateSchema = z.object({
-	name: z.string().min(1, 'カテゴリ名は必須です').max(30, '30文字以内で入力してください')
+	name: z
+		.string({
+			error: (iss) =>
+				iss.input === undefined ? 'カテゴリ名は必須です' : 'カテゴリ名は文字列で入力してください'
+		})
+		.min(1, 'カテゴリ名は必須です')
+		.max(30, '30文字以内で入力してください')
 });
 
 export const exerciseCategoryUpdateSchema = exerciseCategoryCreateSchema;

@@ -10,7 +10,8 @@
   サブコンポーネント（BodyWeightSection / RecordForm / RecordList / WeightChartSection /
   VolumeChartSection）に分割し、このコンポーネントは状態の所有権とデータ取得を担う。
   種目セレクトの中身（カテゴリ optgroup）は Snippet（exerciseOptions）として各サブ
-  コンポーネントに渡す。
+  コンポーネントに渡す。グラフ・ボリュームの取得は fetchSeq で最新リクエストのみ反映し、
+  年間/月間トグルは取得失敗時のみ元の期間に戻す。
   画面右下には RestTimer（90秒インターバルタイマー、状態自己完結）を常時表示する。
 
   @props
@@ -18,6 +19,7 @@
   - exercises: { items: Exercise[] } - 種目一覧
   - filterExerciseId: string | null - フィルタ中の種目ID
   - todayBodyWeight: number | null - 本日記録済みの体重（null = 未記録）
+  - today: string - サーバー（JST）計算の本日日付（YYYY-MM-DD）。フォーム初期値・期間の初期値に使う
 -->
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
@@ -30,46 +32,46 @@
 	import WeightChartSection from './WeightChartSection.svelte';
 	import VolumeChartSection from './VolumeChartSection.svelte';
 	import RestTimer from './RestTimer.svelte';
-	import { getCurrentMonth, getTodayDate } from '$lib/utils/date';
 	import type { ChartData, Exercise, WeeklyVolumePoint, WorkoutRecord } from '../types';
 
 	let {
 		records,
 		exercises,
 		filterExerciseId,
-		todayBodyWeight
+		todayBodyWeight,
+		today
 	}: {
 		records: WorkoutRecord[];
 		exercises: { items: Exercise[] };
 		filterExerciseId: string | null;
 		todayBodyWeight: number | null;
+		today: string;
 	} = $props();
 
-	const today = getTodayDate();
-	const [currentYear, currentMonthNum] = getCurrentMonth().split('-');
+	// 期間セレクトの初期値・年の選択肢はマウント時の today（サーバー計算）から決める
+	const [currentYear, currentMonthNum] = untrack(() => today).split('-');
+
+	type FetchResult = 'ok' | 'stale' | 'error';
+	type PeriodMode = 'month' | 'year';
 
 	/**
-	 * 期間モード（月間/年間）に応じたクエリ文字列を生成する。
+	 * 期間モード（月間/年間）に応じたクエリパラメータを生成する。
 	 * chart・volume の両エンドポイントで共通利用する。
 	 */
-	function periodQueryParams(mode: 'month' | 'year', year: string, month: string): string {
-		return mode === 'month' ? `period=1m&month=${year}-${month}` : `period=year&month=${year}-01`;
+	function periodParams(mode: PeriodMode, year: string, month: string): Record<string, string> {
+		return mode === 'month'
+			? { period: '1m', month: `${year}-${month}` }
+			: { period: 'year', month: `${year}-01` };
 	}
 
-	/**
-	 * fetchSeq による競合回避付きの fetch 実行ガードを生成する。
-	 * 呼び出しごとに採番し、最新の呼び出しのみ結果を反映させる判定に使う。
-	 */
-	function createFetchSeq() {
-		let seq = 0;
-		return {
-			begin: () => ++seq,
-			isLatest: (s: number) => s === seq
-		};
+	/** !res.ok のレスポンスからエラーメッセージを取り出す（JSON 以外はフォールバック）。 */
+	async function readErrorMessage(res: Response, fallback: string): Promise<string> {
+		const err = (await res.json().catch(() => ({}))) as { message?: string };
+		return err.message ?? fallback;
 	}
 
 	// --- 体重記録 ---
-	let bodyWeightDate = $state(today);
+	let bodyWeightDate = $state(untrack(() => today));
 	let bodyWeightInput = $state('');
 	let bodyWeightError = $state('');
 	let bodyWeightLoading = $state(false);
@@ -89,8 +91,7 @@
 				body: JSON.stringify({ date: bodyWeightDate, weight: w })
 			});
 			if (!res.ok) {
-				const err = (await res.json()) as { message?: string };
-				bodyWeightError = err.message ?? 'エラーが発生しました';
+				bodyWeightError = await readErrorMessage(res, 'エラーが発生しました');
 				return;
 			}
 			bodyWeightInput = '';
@@ -104,7 +105,7 @@
 	}
 
 	// --- セット記録フォーム ---
-	let formDate = $state(today);
+	let formDate = $state(untrack(() => today));
 	let formExerciseId = $state('');
 	let formWeight = $state('');
 	let formReps = $state('5');
@@ -153,8 +154,7 @@
 				})
 			});
 			if (!res.ok) {
-				const err = (await res.json()) as { message?: string };
-				formError = err.message ?? 'エラーが発生しました';
+				formError = await readErrorMessage(res, 'エラーが発生しました');
 				return;
 			}
 			formWeight = '';
@@ -169,10 +169,11 @@
 
 	async function handleFilterChange(e: Event) {
 		const select = e.target as HTMLSelectElement;
-		const val = select.value;
-		await goto(val ? `/workout?exerciseId=${val}` : '/workout', {
+		const query = new URLSearchParams(select.value ? { exerciseId: select.value } : {}).toString();
+		await goto(query ? `/workout?${query}` : '/workout', {
 			keepFocus: true,
-			replaceState: true
+			replaceState: true,
+			noScroll: true
 		});
 	}
 
@@ -188,8 +189,7 @@
 		try {
 			const res = await fetch(`/workout/${deletingRecord.id}`, { method: 'DELETE' });
 			if (!res.ok) {
-				const err = (await res.json()) as { message?: string };
-				deleteError = err.message ?? 'エラーが発生しました';
+				deleteError = await readErrorMessage(res, 'エラーが発生しました');
 				return;
 			}
 			deletingRecord = null;
@@ -204,82 +204,99 @@
 
 	// --- 重量推移グラフ ---
 	let chartExerciseId = $state(untrack(() => exercises.items[0]?.id ?? ''));
-	let chartMode = $state<'month' | 'year'>('month');
+	let chartMode = $state<PeriodMode>('month');
 	let chartYear = $state(currentYear);
 	let chartMonth = $state(currentMonthNum);
 	let chartData = $state<ChartData | null>(null);
 	let chartLoading = $state(false);
 	let chartError = $state('');
-	const chartSeq = createFetchSeq();
+	let chartSeq = 0; // 最新リクエスト判定用（リアクティブ不要）
 
-	async function fetchChartData() {
-		if (!chartExerciseId) return;
+	async function fetchChartData(): Promise<FetchResult> {
+		if (!chartExerciseId) return 'ok';
+		const seq = ++chartSeq;
 		chartLoading = true;
 		chartError = '';
-		const seq = chartSeq.begin();
 		try {
-			const res = await fetch(
-				`/workout/chart?exerciseId=${chartExerciseId}&${periodQueryParams(chartMode, chartYear, chartMonth)}`
-			);
+			const params = new URLSearchParams({
+				exerciseId: chartExerciseId,
+				...periodParams(chartMode, chartYear, chartMonth)
+			});
+			const res = await fetch(`/workout/chart?${params}`);
+			if (seq !== chartSeq) return 'stale';
 			if (!res.ok) {
-				if (chartSeq.isLatest(seq)) chartError = 'グラフデータの取得に失敗しました';
-				return;
+				const message = await readErrorMessage(res, 'グラフデータの取得に失敗しました');
+				if (seq !== chartSeq) return 'stale';
+				chartError = message;
+				return 'error';
 			}
-			if (chartSeq.isLatest(seq)) chartData = await res.json();
+			const json = (await res.json()) as ChartData;
+			if (seq !== chartSeq) return 'stale'; // json() 待ちの間に追い越された場合
+			chartData = json;
+			return 'ok';
 		} catch {
-			if (chartSeq.isLatest(seq)) chartError = '通信エラーが発生しました';
+			if (seq !== chartSeq) return 'stale';
+			chartError = '通信エラーが発生しました';
+			return 'error';
 		} finally {
-			if (chartSeq.isLatest(seq)) chartLoading = false;
+			if (seq === chartSeq) chartLoading = false;
 		}
 	}
 
-	$effect(() => {
-		const id = chartExerciseId;
-		if (id) {
-			untrack(() => void fetchChartData());
-		}
-	});
-
-	function handleChartToggleMode() {
-		chartMode = chartMode === 'year' ? 'month' : 'year';
-		void fetchChartData();
+	async function handleChartToggleMode() {
+		const prev = chartMode;
+		chartMode = prev === 'year' ? 'month' : 'year';
+		const result = await fetchChartData();
+		if (result === 'error') chartMode = prev; // 失敗時のみロールバック
 	}
 
 	// --- 週間ボリューム ---
-	let volumeMode = $state<'month' | 'year'>('month');
+	let volumeMode = $state<PeriodMode>('month');
 	let volumeYear = $state(currentYear);
 	let volumeMonth = $state(currentMonthNum);
 	let volumeData = $state<WeeklyVolumePoint[]>([]);
 	let volumeLoading = $state(false);
 	let volumeError = $state('');
-	const volumeSeq = createFetchSeq();
+	let volumeSeq = 0; // 最新リクエスト判定用（リアクティブ不要）
 
-	async function fetchVolumeData() {
+	async function fetchVolumeData(): Promise<FetchResult> {
+		const seq = ++volumeSeq;
 		volumeLoading = true;
 		volumeError = '';
-		const seq = volumeSeq.begin();
 		try {
-			const res = await fetch(
-				`/workout/volume?${periodQueryParams(volumeMode, volumeYear, volumeMonth)}`
-			);
+			const params = new URLSearchParams(periodParams(volumeMode, volumeYear, volumeMonth));
+			const res = await fetch(`/workout/volume?${params}`);
+			if (seq !== volumeSeq) return 'stale';
 			if (!res.ok) {
-				if (volumeSeq.isLatest(seq)) volumeError = 'ボリュームデータの取得に失敗しました';
-				return;
+				const message = await readErrorMessage(res, 'ボリュームデータの取得に失敗しました');
+				if (seq !== volumeSeq) return 'stale';
+				volumeError = message;
+				return 'error';
 			}
-			if (volumeSeq.isLatest(seq)) volumeData = await res.json();
+			const json = (await res.json()) as WeeklyVolumePoint[];
+			if (seq !== volumeSeq) return 'stale'; // json() 待ちの間に追い越された場合
+			volumeData = json;
+			return 'ok';
 		} catch {
-			if (volumeSeq.isLatest(seq)) volumeError = '通信エラーが発生しました';
+			if (seq !== volumeSeq) return 'stale';
+			volumeError = '通信エラーが発生しました';
+			return 'error';
 		} finally {
-			if (volumeSeq.isLatest(seq)) volumeLoading = false;
+			if (seq === volumeSeq) volumeLoading = false;
 		}
 	}
 
-	function handleVolumeToggleMode() {
-		volumeMode = volumeMode === 'year' ? 'month' : 'year';
-		void fetchVolumeData();
+	async function handleVolumeToggleMode() {
+		const prev = volumeMode;
+		volumeMode = prev === 'year' ? 'month' : 'year';
+		const result = await fetchVolumeData();
+		if (result === 'error') volumeMode = prev; // 失敗時のみロールバック
 	}
 
-	onMount(() => void fetchVolumeData());
+	onMount(() => {
+		void fetchChartData();
+		void fetchVolumeData();
+	});
 
 	const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => {
 		const y = String(Number(currentYear) - i);
@@ -317,12 +334,15 @@
 <div class="mx-auto max-w-2xl space-y-6">
 	<div class="flex items-center gap-3">
 		<Dumbbell size={24} class="text-accent" />
-		<h1 class="flex-1 text-2xl font-medium text-label">筋トレ記録</h1>
+		<h1 data-testid="workout-page-title" class="flex-1 text-2xl font-medium text-label">
+			筋トレ記録
+		</h1>
 		<a
+			data-testid="workout-exercises-link"
 			href="/workout/exercises"
 			class="inline-flex items-center gap-1.5 rounded-2xl border border-separator px-3 py-2 text-sm text-secondary hover:text-label"
 		>
-			<ListChecks size={14} />
+			<ListChecks size={14} aria-hidden="true" />
 			<span>種目管理</span>
 		</a>
 	</div>
@@ -371,7 +391,8 @@
 			data={chartData}
 			loading={chartLoading}
 			error={chartError}
-			onToggleMode={handleChartToggleMode}
+			onToggleMode={() => void handleChartToggleMode()}
+			onExerciseChange={() => void fetchChartData()}
 			onPeriodChange={() => void fetchChartData()}
 		/>
 
@@ -384,7 +405,7 @@
 			data={volumeData}
 			loading={volumeLoading}
 			error={volumeError}
-			onToggleMode={handleVolumeToggleMode}
+			onToggleMode={() => void handleVolumeToggleMode()}
 			onPeriodChange={() => void fetchVolumeData()}
 		/>
 	{/if}
@@ -400,6 +421,8 @@
 	confirmVariant="destructive"
 	loading={deleteLoading}
 	error={deleteError}
+	data-testid="workout-record-delete-dialog"
+	confirmTestid="workout-record-delete-confirm-button"
 	onConfirm={() => void handleDeleteConfirm()}
 	onCancel={() => {
 		deletingRecord = null;

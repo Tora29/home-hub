@@ -87,17 +87,19 @@ lib/features/{feature}/
 
 ```
 lib/features/{feature}/
-  format.ts    # 表示整形（例: expenses/format.ts の formatAmount）
+  format.ts    # 表示整形（feature 固有のもの）
   labels.ts    # ラベル変換・マップ（例: `STATUS_LABEL` 等の表示ラベルマップ）
 ```
 
 - クライアントから import 可能な純粋関数のみを置く（DB アクセス・シークレット参照は `server/` へ）
 - 1 箇所でしか使わない関数は切り出さず、使用箇所にそのまま書く
+- **複数 feature で使うものは `src/lib/utils/`**（クライアント可: `date.ts` / `format.ts` の `formatAmount` / `form-helpers.ts`）
+  または **`src/lib/server/`**（サーバー専用: `user.ts` の `getUserRole` 等）へ置く。feature 間でファイルを複製しない
 
 ### 責務が複数ある場合はファイル名で分割
 
 `service.ts` が肥大化した場合（目安: 400 行超、または独立した責務が 3 つ以上）は責務ごとにファイルを分ける。
-以下は分割後のイメージ（現状の workout は `server/service.ts` 1 ファイル）。
+以下は分割後のイメージ（実例: `expenses/server/` = `service.ts`（CRUD）/ `workflow.ts`（承認フロー）/ `line.ts`（LINE 通知）/ `shared.ts`（共通クエリ））。
 
 ```
 lib/features/workout/

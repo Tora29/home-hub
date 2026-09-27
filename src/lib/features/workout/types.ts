@@ -9,20 +9,24 @@
  * チャート系・記録系の型をここに集約し、個別ファイルでの再定義を避ける。
  */
 
+/** 記録画面の種目セレクト等で使う種目の最小形（ExerciseWithCategory の部分集合）。 */
 export type Exercise = {
 	id: string;
 	name: string;
 	category: { id: string; name: string } | null;
 };
 
+/** 筋トレ記録（種目名を JOIN 済み）。service の戻り値・画面表示で共通利用する。 */
 export type WorkoutRecord = {
 	id: string;
+	userId: string;
 	exerciseId: string;
 	exerciseName: string;
 	date: string;
 	weight: number;
 	reps: number;
 	isBodyWeight: boolean;
+	createdAt: Date;
 };
 
 export type ChartPoint = { date: string; maxWeight: number };

@@ -9,8 +9,11 @@ SvelteKit + Cloudflare Pages（`adapter-cloudflare` による Worker 実行）�
 - **認証方式**: Better Auth（Google OAuth の `signIn.social()` のみ。email/password は未設定）+ Cookie セッション
 - **認可モデル**: `ALLOWED_EMAILS`（環境変数、カンマ区切り）に含まれるメールアドレスのみサインアップ可能な二人（夫婦）専用アプリ。
   照合は小文字化して完全一致。**未設定・空の場合は全員拒否（fail-closed）**。許可リスト系の判定は常に fail-closed で実装する
-  `user.role`（`'main'` | `'partner'` | `null`）でユーザーごとに機能を出し分ける（例: `workoutExercise` は `role=main` 限定）。
-  全ルートに認証を必須とする点は変わらない
+  判定は**サインアップ時（`user.create.before`）とセッション作成時（`session.create.before`）の両方**で行い、
+  許可リストから外したユーザーは既存アカウントでもログインできない。
+  `user.role`（`'main'` | `'partner'` | `null`）でユーザーごとに機能を出し分ける（例: `/workout` 配下は `role=main` 限定）。
+  role は `hooks.server.ts` が `locals.role` に注入し、`MAIN_ONLY_PREFIXES` のパスは **API も含めて** hooks で 403 にする
+  （画面だけ隠して API を素通しにしない）。全ルートに認証を必須とする点は変わらない
 - **セッション管理**:
   - 有効期限: 30日（`src/lib/server/auth.ts` の `session.expiresIn`、単位は秒）
   - セッション情報は `hooks.server.ts` で `locals.user` / `locals.session` に注入
@@ -90,7 +93,7 @@ GitHub Secrets TF_VAR_* → terraform.yml → Cloudflare Pages secrets → 本�
 
 | 本番アプリの変数            | GitHub Secret（唯一の定義元）      |
 | --------------------------- | ---------------------------------- |
-| `BETTER_AUTH_URL`           | `TF_VAR_BETTER_AUTH_URL`           |
+| `BETTER_AUTH_URL`           | `TF_VAR_BETTER_AUTH_URL`（※）      |
 | `BETTER_AUTH_SECRET`        | `TF_VAR_BETTER_AUTH_SECRET`        |
 | `GOOGLE_CLIENT_ID`          | `TF_VAR_GOOGLE_CLIENT_ID`          |
 | `GOOGLE_CLIENT_SECRET`      | `TF_VAR_GOOGLE_CLIENT_SECRET`      |
@@ -99,11 +102,13 @@ GitHub Secrets TF_VAR_* → terraform.yml → Cloudflare Pages secrets → 本�
 | `LINE_USER_ID_PRIMARY`      | `TF_VAR_LINE_USER_ID_PRIMARY`      |
 | `LINE_USER_ID_SPOUSE`       | `TF_VAR_LINE_USER_ID_SPOUSE`       |
 
-| CI 用 GitHub Secret                                               | 用途                              |
-| ----------------------------------------------------------------- | --------------------------------- |
-| `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`                  | deploy（`wrangler pages deploy`） |
-| `TF_VAR_CLOUDFLARE_API_TOKEN`                                     | Terraform の Cloudflare provider  |
-| `CLOUDFLARE_R2_ACCESS_KEY_ID` / `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | Terraform state（R2 backend）     |
+※ `BETTER_AUTH_URL` は現状コード未使用（`hooks.server.ts` が `event.url` から baseURL を生成）。削除する場合は下記 5 箇所をまとめて外す。
+
+| CI 用 GitHub Secret                                               | 用途                                                                                                       |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`                  | deploy（`wrangler pages deploy`）。`CLOUDFLARE_ACCOUNT_ID` は Terraform（account_id・R2 endpoint）でも使用 |
+| `TF_VAR_CLOUDFLARE_API_TOKEN`                                     | Terraform の Cloudflare provider                                                                           |
+| `CLOUDFLARE_R2_ACCESS_KEY_ID` / `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | Terraform state（R2 backend）                                                                              |
 
 - **Terraform の plan / apply は GitHub Actions でのみ実行する**。ローカルに `terraform.tfvars` を作らない（本番値の重複・端末への残留を防ぐ）
   - PR で `fmt` / `validate` / `plan`、main マージで `apply`
@@ -112,7 +117,7 @@ GitHub Secrets TF_VAR_* → terraform.yml → Cloudflare Pages secrets → 本�
 - Pages secrets を**ダッシュボードで手動追加・編集しない**（次回 apply で Terraform の値に上書きされる）
 - 変数を追加する場合は `terraform/variables.tf`・`terraform/main.tf`・`modules/pages`・`terraform.yml` の `env`・上表 の 5 箇所を更新し、
   `gh secret set TF_VAR_XXX` で値を登録してからマージする
-- 空値だと機能停止する変数（`GOOGLE_CLIENT_*` / `ALLOWED_EMAILS` 等）には `validation` で空文字を拒否する
+- 空値だと機能停止する変数（`BETTER_AUTH_SECRET` / `GOOGLE_CLIENT_*` / `ALLOWED_EMAILS` 等）には `validation` で空文字を拒否する
   （GitHub Secret 未登録時、`${{ secrets.X }}` は空文字になるため）
 - Secret の値は GitHub からも読み出せない（書き込み専用）。元の値は Google Cloud Console・LINE Developers 等の発行元で管理する
 - シークレットをコード・コメント・ログに書かない
@@ -153,7 +158,7 @@ GitHub Secrets TF_VAR_* → terraform.yml → Cloudflare Pages secrets → 本�
 
 依存パッケージの追加は「開発時」「マージ時」「定期」の段階で検知する。
 
-> 現状の `.claude/hooks/pre-commit-checks.sh` は **`git commit` 時に `.env` 系ファイルのステージングをブロックするのみ**。
+> 現状の `.claude/hooks/pre-commit-checks.sh` は **`git commit` 時に `.env` 系・`.dev.vars` 系ファイルのステージングをブロックするのみ**。
 > L1 / L2 は未実装のため、実装するまではパッケージ追加を L3（レビュー）で確認する。
 
 | レイヤー | タイミング | 対象                        | 仕組み                                                      | 設定ファイル             |

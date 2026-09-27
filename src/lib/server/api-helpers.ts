@@ -4,6 +4,8 @@
  *
  * @description
  * +server.ts 内で繰り返されるリクエストパース・バリデーション・エラーハンドリングを共通化する。
+ *
+ * @test ./api-helpers.test.ts
  */
 import { json } from '@sveltejs/kit';
 import { AppError } from './errors';

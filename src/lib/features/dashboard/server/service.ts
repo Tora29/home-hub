@@ -7,9 +7,6 @@
  * ダッシュボード集計サマリーのビジネスロジックと DB 操作を担う。
  * 全ユーザー（世帯）分を合算した月別・全期間の支出合計・支払者別合計・カテゴリ別合計を算出する。
  *
- * @spec specs/dashboard/spec.md
- * @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-201, AC-202, AC-203
- *
  * @entity DashboardSummary
  *
  * @functions
@@ -32,12 +29,12 @@ type SummaryOptions = {
 };
 
 // 支出金額合計の SQL 式（NULL 時は 0）。複数の集計クエリで共通利用する。
-const totalExpr = sql<number>`coalesce(sum(${expense.amount}), 0)`;
+// D1 は集計値を数値以外で返しうるため mapWith(Number) で実行時にも数値化する。
+const totalExpr = sql<number>`coalesce(sum(${expense.amount}), 0)`.mapWith(Number);
 
 /**
  * 集計サマリーを取得する。period=month の場合は指定月、period=all の場合は全期間。
  * 集計対象は全ユーザー（世帯）の支出。
- * @ac AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-201, AC-202, AC-203
  */
 export async function getDashboardSummary(
 	db: Db,
@@ -95,22 +92,22 @@ export async function getDashboardSummary(
 		.orderBy(desc(sql`sum(${expense.amount})`));
 
 	return {
-		overall: Number(overallRow.total),
+		overall: overallRow.total,
 		byPayer: payerRows.map((r) => ({
 			payerId: r.payerId,
 			payerName: r.payerName,
-			total: Number(r.total)
+			total: r.total
 		})),
 		byCategory: categoryRows.map((r) => ({
 			categoryId: r.categoryId,
 			categoryName: r.categoryName,
-			total: Number(r.total),
+			total: r.total,
 			byPayer: categoryPayerRows
 				.filter((p) => p.categoryId === r.categoryId)
 				.map((p) => ({
 					payerId: p.payerId,
 					payerName: p.payerName,
-					total: Number(p.total)
+					total: p.total
 				}))
 		}))
 	};

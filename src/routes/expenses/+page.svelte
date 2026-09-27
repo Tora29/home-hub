@@ -4,16 +4,23 @@
   @feature expenses
 
   @description
-  支出一覧画面。
-
-  @spec specs/expenses/spec.md
-  @acceptance AC-001, AC-002, AC-002b, AC-002c, AC-100, AC-101, AC-102, AC-103, AC-104, AC-105, AC-106, AC-120, AC-121, AC-122, AC-123, AC-124, AC-125
+  支出一覧画面。月切り替え・支出の登録/編集/削除・確認チェック・一括承認依頼/取消/承認を行う。
 
   @navigation
+  - 遷移元: / - ダッシュボード、サイドバー
   - 遷移先: /expenses/categories - カテゴリ管理画面
+  - 遷移先: /expenses?month=YYYY-MM - 月切り替え（同一画面）
 
   @api
-  - GET /expenses（SSR load） - 支出一覧取得
+  - SSR load: service 直呼び（getExpenses / getCategories / getUsers / getUnapprovedCount）
+  - POST /expenses → 201 ExpenseWithRelations - 支出登録
+  - PUT /expenses/[id] → 200 ExpenseWithRelations - 支出更新
+  - DELETE /expenses/[id] → 204 - 支出削除
+  - POST /expenses/[id]/check → 200 ExpenseWithRelations - 確認済みにする
+  - POST /expenses/[id]/uncheck → 200 ExpenseWithRelations - 確認取消
+  - POST /expenses/request → 200 {count} - 一括承認依頼
+  - POST /expenses/cancel → 200 {count} - 一括申請取り消し
+  - POST /expenses/approve → 200 {count} - 一括承認
 -->
 <script lang="ts">
 	import ExpensesPage from '$lib/features/expenses/components/ExpensesPage.svelte';

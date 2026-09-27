@@ -1,4 +1,3 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
 /**
  * @file テスト: 種目・カテゴリサービス
  * @module src/lib/features/workout/exercises/server/service.integration.test.ts
@@ -6,6 +5,7 @@
  *
  * @target ./service.ts
  */
+/// <reference types="@cloudflare/vitest-pool-workers/types" />
 import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
@@ -76,6 +76,21 @@ async function insertRecord(db: Db, userId: string, exerciseId: string): Promise
 
 // --- カテゴリ ---
 
+describe('getExerciseCategories', () => {
+	test('自分のカテゴリのみ作成順で取得できる', async () => {
+		const db = createDb(env.DB);
+		const userId = await insertUser(db);
+		const otherId = await insertUser(db);
+
+		await insertCategory(db, userId, '胸');
+		await insertCategory(db, userId, '背中');
+		await insertCategory(db, otherId, '他人のカテゴリ');
+
+		const categories = await getExerciseCategories(db, userId);
+		expect(categories.map((c) => c.name)).toEqual(['胸', '背中']);
+	});
+});
+
 describe('createExerciseCategory', () => {
 	test('正しいデータでカテゴリを作成できる', async () => {
 		const db = createDb(env.DB);
@@ -106,7 +121,7 @@ describe('updateExerciseCategory', () => {
 		).rejects.toMatchObject({ code: 'NOT_FOUND' });
 	});
 
-	test('他ユーザーのカテゴリは更新できない（NOT_FOUND）', async () => {
+	test('他ユーザーのカテゴリを更新しようとした場合、NOT_FOUND が返る', async () => {
 		const db = createDb(env.DB);
 		const ownerId = await insertUser(db);
 		const otherId = await insertUser(db);
@@ -130,7 +145,7 @@ describe('deleteExerciseCategory', () => {
 		expect(categories).toHaveLength(0);
 	});
 
-	test('カテゴリ削除後に紐付く種目の categoryId が null になる', async () => {
+	test('カテゴリを削除した場合、紐付く種目をカテゴリなしにできる', async () => {
 		const db = createDb(env.DB);
 		const userId = await insertUser(db);
 
@@ -144,7 +159,7 @@ describe('deleteExerciseCategory', () => {
 		expect(result.items[0].category).toBeNull();
 	});
 
-	test('他ユーザーのカテゴリは削除できない（NOT_FOUND）', async () => {
+	test('他ユーザーのカテゴリを削除しようとした場合、NOT_FOUND が返る', async () => {
 		const db = createDb(env.DB);
 		const ownerId = await insertUser(db);
 		const otherId = await insertUser(db);
@@ -159,7 +174,7 @@ describe('deleteExerciseCategory', () => {
 // --- 種目 ---
 
 describe('getExercises', () => {
-	test('自分の種目のみ取得される', async () => {
+	test('自分の種目のみ取得できる', async () => {
 		const db = createDb(env.DB);
 		const userId = await insertUser(db);
 		const otherId = await insertUser(db);
@@ -172,7 +187,7 @@ describe('getExercises', () => {
 		expect(result.items[0].name).toBe('ベンチプレス');
 	});
 
-	test('categoryId を持つ種目に category が JOIN された形で返る', async () => {
+	test('categoryId を持つ種目をカテゴリ付きで取得できる', async () => {
 		const db = createDb(env.DB);
 		const userId = await insertUser(db);
 
@@ -185,7 +200,7 @@ describe('getExercises', () => {
 		expect(result.items[0].categoryId).toBe(categoryId);
 	});
 
-	test('categoryId が null の種目は category が null で返る', async () => {
+	test('categoryId が null の種目をカテゴリなしで取得できる', async () => {
 		const db = createDb(env.DB);
 		const userId = await insertUser(db);
 
@@ -202,9 +217,10 @@ describe('createExercise', () => {
 		const db = createDb(env.DB);
 		const userId = await insertUser(db);
 
-		const created = await createExercise(db, userId, { name: 'スクワット' });
+		const created = await createExercise(db, userId, { name: 'スクワット', categoryId: null });
 		expect(created.name).toBe('スクワット');
 		expect(created.userId).toBe(userId);
+		expect(created.category).toBeNull();
 	});
 
 	test('categoryId を指定して種目を登録できる', async () => {
@@ -216,27 +232,79 @@ describe('createExercise', () => {
 		expect(created.categoryId).toBe(categoryId);
 		expect(created.category?.name).toBe('脚');
 	});
-});
 
-describe('updateExercise', () => {
-	test('自分の種目を更新できる', async () => {
+	test('他ユーザーのカテゴリを指定した場合、NOT_FOUND が返る', async () => {
+		const db = createDb(env.DB);
+		const userId = await insertUser(db);
+		const otherId = await insertUser(db);
+		const otherCategoryId = await insertCategory(db, otherId, '他人のカテゴリ');
+
+		await expect(
+			createExercise(db, userId, { name: 'スクワット', categoryId: otherCategoryId })
+		).rejects.toMatchObject({ code: 'NOT_FOUND', message: 'カテゴリが見つかりません' });
+		expect((await getExercises(db, userId)).items).toHaveLength(0);
+	});
+
+	test('存在しないカテゴリを指定した場合、NOT_FOUND が返る', async () => {
 		const db = createDb(env.DB);
 		const userId = await insertUser(db);
 
+		await expect(
+			createExercise(db, userId, { name: 'スクワット', categoryId: 'nonexistent' })
+		).rejects.toMatchObject({ code: 'NOT_FOUND' });
+	});
+});
+
+describe('updateExercise', () => {
+	test('自分の種目の名前とカテゴリを更新できる', async () => {
+		const db = createDb(env.DB);
+		const userId = await insertUser(db);
+		const categoryId = await insertCategory(db, userId, '胸');
+
 		const exerciseId = await insertExercise(db, userId, '旧名称');
-		const updated = await updateExercise(db, userId, exerciseId, { name: '新名称' });
+		const updated = await updateExercise(db, userId, exerciseId, { name: '新名称', categoryId });
 		expect(updated.name).toBe('新名称');
+		expect(updated.category?.name).toBe('胸');
 	});
 
-	test('他ユーザーの種目は更新できない（NOT_FOUND）', async () => {
+	test('categoryId=null を送った場合、カテゴリを解除できる（PUT 完全置換）', async () => {
+		const db = createDb(env.DB);
+		const userId = await insertUser(db);
+		const categoryId = await insertCategory(db, userId, '胸');
+		const exerciseId = await insertExercise(db, userId, 'ベンチプレス', categoryId);
+
+		const updated = await updateExercise(db, userId, exerciseId, {
+			name: 'ベンチプレス',
+			categoryId: null
+		});
+		expect(updated.categoryId).toBeNull();
+		expect(updated.category).toBeNull();
+	});
+
+	test('他ユーザーの種目を更新しようとした場合、NOT_FOUND が返る', async () => {
 		const db = createDb(env.DB);
 		const ownerId = await insertUser(db);
 		const otherId = await insertUser(db);
 
 		const exerciseId = await insertExercise(db, ownerId);
 		await expect(
-			updateExercise(db, otherId, exerciseId, { name: '不正更新' })
+			updateExercise(db, otherId, exerciseId, { name: '不正更新', categoryId: null })
 		).rejects.toMatchObject({ code: 'NOT_FOUND' });
+	});
+
+	test('他ユーザーのカテゴリを指定した場合、NOT_FOUND が返る', async () => {
+		const db = createDb(env.DB);
+		const userId = await insertUser(db);
+		const otherId = await insertUser(db);
+		const exerciseId = await insertExercise(db, userId, 'ベンチプレス');
+		const otherCategoryId = await insertCategory(db, otherId, '他人のカテゴリ');
+
+		await expect(
+			updateExercise(db, userId, exerciseId, { name: 'ベンチプレス', categoryId: otherCategoryId })
+		).rejects.toMatchObject({ code: 'NOT_FOUND', message: 'カテゴリが見つかりません' });
+
+		const result = await getExercises(db, userId);
+		expect(result.items[0].categoryId).toBeNull();
 	});
 });
 
@@ -247,9 +315,10 @@ describe('deleteExercise', () => {
 
 		const exerciseId = await insertExercise(db, userId);
 		await expect(deleteExercise(db, userId, exerciseId)).resolves.toBeUndefined();
+		expect((await getExercises(db, userId)).items).toHaveLength(0);
 	});
 
-	test('紐付く記録がある種目は削除できない（CONFLICT）', async () => {
+	test('紐付く記録がある種目を削除しようとした場合、CONFLICT が返る', async () => {
 		const db = createDb(env.DB);
 		const userId = await insertUser(db);
 
@@ -261,7 +330,7 @@ describe('deleteExercise', () => {
 		});
 	});
 
-	test('他ユーザーの種目は削除できない（NOT_FOUND）', async () => {
+	test('他ユーザーの種目を削除しようとした場合、NOT_FOUND が返る', async () => {
 		const db = createDb(env.DB);
 		const ownerId = await insertUser(db);
 		const otherId = await insertUser(db);

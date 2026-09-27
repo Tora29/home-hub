@@ -17,10 +17,7 @@
   【モバイル】
   初期表示は常に閉じた状態（状態は保存しない）。
   ハンバーガーボタンで開き、オーバーレイまたはメニュー項目タップで閉じる。
-  開閉状態は mobileOpen ストア（$lib/stores/sidebar）で管理する。
-
-  @spec specs/sidebar/spec.md
-  @acceptance AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007
+  開閉状態は共有状態 sidebarState.mobileOpen（$lib/stores/sidebar.svelte）で管理する。
 
   @props なし（メニュー構成はハードコード定数）
 -->
@@ -36,7 +33,7 @@
 	} from '@lucide/svelte';
 	import type { Component } from 'svelte';
 	import { onMount, tick } from 'svelte';
-	import { mobileOpen } from '$lib/stores/sidebar';
+	import { sidebarState } from '$lib/stores/sidebar.svelte';
 
 	type NavItem = { testid: string; href: string; label: string };
 	type NavCategory = {
@@ -95,7 +92,7 @@
 	$effect(() => {
 		const main = document.querySelector('main');
 		if (!main) return;
-		if ($mobileOpen) {
+		if (sidebarState.mobileOpen) {
 			main.setAttribute('inert', '');
 		} else {
 			main.removeAttribute('inert');
@@ -105,7 +102,7 @@
 		};
 	});
 
-	const isOpen = $derived(isMobile ? $mobileOpen : sidebarOpen);
+	const isOpen = $derived(isMobile ? sidebarState.mobileOpen : sidebarOpen);
 
 	const visibleCategories = $derived(
 		NAV_CATEGORIES.filter((c) => !c.requiredRole || page.data.userRole === c.requiredRole)
@@ -119,14 +116,14 @@
 <!-- モバイル用オーバーレイ -->
 <div
 	data-testid="sidebar-overlay"
-	class="absolute inset-0 z-20 bg-black/40 transition-opacity duration-300 md:hidden"
-	style:opacity={$mobileOpen ? '1' : '0'}
-	style:pointer-events={$mobileOpen ? 'auto' : 'none'}
+	class="absolute inset-0 z-20 bg-overlay transition-opacity duration-300 md:hidden"
+	style:opacity={sidebarState.mobileOpen ? '1' : '0'}
+	style:pointer-events={sidebarState.mobileOpen ? 'auto' : 'none'}
 	role="presentation"
-	onclick={() => mobileOpen.set(false)}
+	onclick={() => (sidebarState.mobileOpen = false)}
 ></div>
 
-<!-- サイドバー本体（デスクトップ: sidebarOpen、モバイル: $mobileOpen で制御） -->
+<!-- サイドバー本体（デスクトップ: sidebarOpen、モバイル: sidebarState.mobileOpen で制御） -->
 <aside class="absolute inset-y-0 left-0 z-30 flex h-full">
 	<!-- サイドバーナビ -->
 	<nav
@@ -152,17 +149,18 @@
 				{@const Icon = category.icon}
 				<div>
 					<button
+						type="button"
 						data-testid="sidebar-category-{category.id}"
 						class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-label transition-colors hover:bg-bg-grouped focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
 						aria-expanded={openMap[category.id]}
 						onclick={() => (openMap[category.id] = !openMap[category.id])}
 					>
-						<Icon size={16} />
+						<Icon size={16} aria-hidden="true" />
 						<span class="flex-1 text-left">{category.label}</span>
 						{#if openMap[category.id]}
-							<ChevronDown size={14} class="text-secondary" />
+							<ChevronDown size={14} class="text-secondary" aria-hidden="true" />
 						{:else}
-							<ChevronRight size={14} class="text-secondary" />
+							<ChevronRight size={14} class="text-secondary" aria-hidden="true" />
 						{/if}
 					</button>
 
@@ -178,7 +176,7 @@
 										data-testid={item.testid}
 										href={item.href}
 										aria-current={isActive(item.href) ? 'page' : undefined}
-										onclick={() => isMobile && mobileOpen.set(false)}
+										onclick={() => isMobile && (sidebarState.mobileOpen = false)}
 										class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-label transition-colors hover:bg-bg-grouped focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none {isActive(
 											item.href
 										)
@@ -199,15 +197,16 @@
 	<!-- デスクトップ用トグルボタン（常に表示・nav の外側に配置） -->
 	<div class="hidden flex-col border-r border-separator bg-bg-secondary px-1 pt-3 md:flex">
 		<button
+			type="button"
 			data-testid="sidebar-toggle"
 			class="flex h-9 w-9 items-center justify-center rounded-xl text-label transition-colors hover:bg-bg-grouped focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
 			aria-label={sidebarOpen ? 'サイドバーを閉じる' : 'サイドバーを開く'}
 			onclick={() => (sidebarOpen = !sidebarOpen)}
 		>
 			{#if sidebarOpen}
-				<PanelLeftClose size={20} />
+				<PanelLeftClose size={20} aria-hidden="true" />
 			{:else}
-				<PanelLeftOpen size={20} />
+				<PanelLeftOpen size={20} aria-hidden="true" />
 			{/if}
 		</button>
 	</div>

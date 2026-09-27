@@ -20,6 +20,8 @@
 	let finished = $state(false);
 	let endAt = 0;
 
+	const FINISHED_DISPLAY_MS = 800;
+
 	function start() {
 		endAt = Date.now() + DURATION_SECONDS * 1000;
 		remaining = DURATION_SECONDS;
@@ -35,12 +37,18 @@
 				remaining = 0;
 				running = false;
 				finished = true;
-				setTimeout(() => (finished = false), 800);
 			} else {
 				remaining = left;
 			}
 		}, TICK_INTERVAL_MS);
 		return () => clearInterval(id);
+	});
+
+	// 終了表示（チェックマーク）を一定時間後に消す。再スタート・アンマウント時はタイマーを解除する
+	$effect(() => {
+		if (!finished) return;
+		const id = setTimeout(() => (finished = false), FINISHED_DISPLAY_MS);
+		return () => clearTimeout(id);
 	});
 </script>
 
@@ -48,8 +56,8 @@
 	type="button"
 	onclick={start}
 	class="fixed right-4 bottom-4 z-40 flex h-16 w-16 flex-col items-center justify-center rounded-full shadow-lg transition-colors {finished
-		? 'bg-success text-white'
-		: 'bg-accent text-white hover:opacity-90'}"
+		? 'bg-success text-on-accent'
+		: 'bg-accent text-on-accent hover:opacity-90'}"
 	aria-label="90秒インターバルタイマー"
 >
 	{#if finished}

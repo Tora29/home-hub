@@ -5,7 +5,7 @@
  *
  * @description
  * 支出機能で service・API・コンポーネント間で共有する型定義。
- * openapi.yaml の schema 定義に対応する。サーバー依存なしの純粋な型ファイル。
+ * サーバー依存なしの純粋な型ファイル。
  */
 
 export type ExpenseStatus = 'unapproved' | 'checked' | 'pending' | 'approved';
@@ -27,9 +27,9 @@ export type ExpenseWithRelations = {
 	userId: string;
 	amount: number;
 	categoryId: string;
-	payerUserId: string | null;
+	payerUserId: string;
 	status: ExpenseStatus;
 	createdAt: string;
 	category: Category;
-	payer: User | null;
+	payer: User;
 };

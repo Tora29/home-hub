@@ -1,14 +1,14 @@
 <!--
   @file コンポーネント: CategoryManagementCard
   @module src/lib/features/workout/exercises/components/CategoryManagementCard.svelte
-  @feature workout/exercises
+  @feature workout
 
   @description
   筋トレ種目カテゴリの一覧表示・追加・編集・削除を行うカード。
-  追加/編集/削除ハンドラの共通処理は `form-helpers.ts` に委譲する。
+  追加/編集/削除ハンドラの共通処理は `$lib/utils/form-helpers.ts` に委譲する。
 
   @props
-  - categories: Category[] - カテゴリ一覧
+  - categories: ExerciseCategory[] - カテゴリ一覧
 -->
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
@@ -16,10 +16,10 @@
 	import Button from '$lib/components/Button.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Input from '$lib/components/Input.svelte';
-	import { submitNamedForm, submitDelete } from './form-helpers';
-	import type { Category } from '../types';
+	import { submitNamedForm, submitDelete } from '$lib/utils/form-helpers';
+	import type { ExerciseCategory } from '../types';
 
-	let { categories }: { categories: Category[] } = $props();
+	let { categories }: { categories: ExerciseCategory[] } = $props();
 
 	const MAX_NAME_LENGTH = 30;
 
@@ -35,7 +35,7 @@
 	let isSavingCategoryEdit = $state(false);
 
 	// --- カテゴリ削除 ---
-	let deletingCategory = $state<Category | null>(null);
+	let deletingCategory = $state<ExerciseCategory | null>(null);
 	let isDeletingCategory = $state(false);
 	let deleteCategoryError = $state('');
 
@@ -60,7 +60,7 @@
 		});
 	}
 
-	function startEditCategory(cat: Category) {
+	function startEditCategory(cat: ExerciseCategory) {
 		editingCategoryId = cat.id;
 		editingCategoryName = cat.name;
 		editingCategoryNameError = '';
@@ -128,12 +128,15 @@
 									maxlength={30}
 									class="w-full"
 									onkeydown={(e) => {
-										if (e.key === 'Enter') void handleEditCategorySave(cat.id);
+										if (e.key === 'Enter' && !isSavingCategoryEdit)
+											void handleEditCategorySave(cat.id);
 										if (e.key === 'Escape') cancelEditCategory();
 									}}
 								/>
 								{#if editingCategoryNameError}
-									<p class="mt-1 text-xs text-destructive">{editingCategoryNameError}</p>
+									<p role="alert" class="mt-1 text-xs text-destructive">
+										{editingCategoryNameError}
+									</p>
 								{/if}
 							</div>
 							<Button
@@ -198,7 +201,7 @@
 				onkeydown={(e) => e.key === 'Enter' && !isAddingCategory && void handleAddCategory()}
 			/>
 			{#if newCategoryNameError}
-				<p class="mt-1 text-xs text-destructive">{newCategoryNameError}</p>
+				<p role="alert" class="mt-1 text-xs text-destructive">{newCategoryNameError}</p>
 			{/if}
 		</div>
 		<Button

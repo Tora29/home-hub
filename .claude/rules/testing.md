@@ -13,12 +13,12 @@
 
 ## テスト種別と対象
 
-| 種別          | ツール                                     | 対象ファイル                                                         | 実行環境                   |
-| ------------- | ------------------------------------------ | -------------------------------------------------------------------- | -------------------------- |
-| Unit (server) | Vitest                                     | `routes/+server.ts`, `lib/features/{feature}/schema.ts`, `errors.ts` | Node                       |
-| Integration   | Vitest + `@cloudflare/vitest-pool-workers` | `lib/features/{feature}/server/*.ts`, `routes/+page.server.ts`       | Workers (Miniflare)        |
-| Unit (client) | Vitest + Playwright                        | `lib/features/{feature}/components/*.svelte`                         | Chromium (headless)        |
-| E2E           | Playwright                                 | ユーザーフロー全体                                                   | Preview ビルド (port 4173) |
+| 種別          | ツール                                     | 対象ファイル                                                               | 実行環境                                      |
+| ------------- | ------------------------------------------ | -------------------------------------------------------------------------- | --------------------------------------------- |
+| Unit (server) | Vitest                                     | `routes/+server.ts`, `lib/features/{feature}/schema.ts`, `lib/server/*.ts` | Node                                          |
+| Integration   | Vitest + `@cloudflare/vitest-pool-workers` | `lib/features/{feature}/server/*.ts`（`+page.server.ts` は任意）           | Workers (Miniflare)                           |
+| Unit (client) | Vitest + Playwright                        | `lib/features/{feature}/components/*.svelte`                               | Chromium (headless)                           |
+| E2E           | Playwright                                 | ユーザーフロー全体                                                         | 本番ビルド + `wrangler pages dev` (port 4173) |
 
 ### 「スキーマ」の使い分け
 
@@ -43,9 +43,15 @@ Zod スキーマは純粋関数（`.parse()` / `.safeParse()`）なので D1 不
 > バリデーション系を Integration テストで書くと D1 セットアップが毎回走り低速になる。
 > Zod schema の Unit テストで代替することで高速・シンプルに保つ。
 >
-> **`+server.ts` ハンドラの Unit テスト（`+server.test.ts`）について**:
+> **`+server.ts` ハンドラの Unit テスト（`server.test.ts`）について**:
 > バリデーション失敗でサービスコールが発生しないため、**service のモック不要**。
 > 正常系は `service.integration.test.ts` で DB レベルから検証するため、ハンドラ単体の Integration テストは書かない。
+> `vi.mock(service)` や「service が呼ばれないこと」の検証もしない（実装詳細）。レスポンスの status / `code` / `fields` を検証する。
+> 入力バリデーションのないハンドラ（body なしの `(actions)` 等）は `server.test.ts` を作らない（検証対象がないため）。
+>
+> **`+page.server.ts` について**: service 呼び出しのみの薄い load はテスト不要。クエリ解釈等のロジックを持つ場合のみ
+> Integration テストを書く（`vitest.integration.config.ts` で `$app/environment` は `dev=false` のスタブに解決される。
+> `$app/navigation` / `$env/*` は未対応）。
 
 ## ファイル命名・配置
 
@@ -53,7 +59,9 @@ Zod スキーマは純粋関数（`.parse()` / `.safeParse()`）なので D1 不
 
 - **実装層のテスト** は `src/lib/features/{feature}/` に実装と隣接して置く
 - **ルーティング層のテスト** は `src/routes/{feature}/` に置く
-- コンポーネントテストはコンポーネントと同階層に置く（1:1 対応）
+- コンポーネントテストはコンポーネントと同階層に置く（書く場合は 1:1 対応）
+- コンポーネントテストは業務ロジック（条件表示・入力検証・操作フロー）を持つものに書く。
+  見た目だけの共通 UI や、feature コンポーネントに委譲するだけの `+page.svelte` には書かなくてよい
 
 ```
 # 実装層（コロケーションの主体）
@@ -135,11 +143,12 @@ describe('createExpense', () => {
 
 ## 認証ガード（`hooks.server.ts`）の検証
 
-`hooks.server.ts` はユニットテストを書かず、以下を E2E で必ず検証する。
+`hooks.server.ts` はユニットテストを書かず、以下を E2E（`e2e/hooks.e2e.ts`）で必ず検証する。
 
 - 未認証の画面遷移 → `/login` へ 302
 - 未認証の fetch → JSON 401
 - レスポンスにセキュリティヘッダー（`X-Frame-Options` 等）が付与される
+- role 限定パス（`MAIN_ONLY_PREFIXES`）の API を role≠main で呼ぶ → JSON 403
 
 > カバレッジ計測は行わない（`@vitest/coverage-v8` 未導入）。テストの十分性は「業務要件ごとにテストケースがあるか」で判断する。
 
@@ -253,6 +262,8 @@ await page.getByRole('button', { name: '追加' }).click(); // 最初のクリ�
 - `element().click()` 直後に `elements()` でリスト件数を確認する場合
 - `element().click()` 直後に同期的なアサーション（`expect(mock).toHaveBeenCalled()` など）をする場合
 
+> `element()` の戻り値は `HTMLElement | SVGElement` 型のため、`click()` には `(... .element() as HTMLElement).click()` のキャストが必要な場合がある。
+
 **`flushSync` が不要なケース：**
 
 - `await expect.element(...).toBeVisible()` など、ポーリングで待機するアサーションの前
@@ -289,6 +300,16 @@ await expect(page.getByTestId('expense-menu')).toBeVisible();
 > `flushSync()` は不要（Vitest + browser mode 固有の回避策）。
 
 ---
+
+## テストデータの独立性
+
+- Integration / E2E は DB を他テストと共有しうる前提で書く。`toBeGreaterThanOrEqual` 等「他データが混ざっても通る」アサーションで逃げず、
+  固有の値（テスト専用の過去月・一意な名前）で絞り込むか、実行前後の差分で厳密に検証する
+- 日付は `src/lib/utils/date.ts` のヘルパー（`getTodayDate` / `getCurrentMonth` / `addMonths`）で求める。
+  月・日付をハードコードしない（`generateMonthOptions` の範囲外になると失敗する）。`toISOString().slice(0, 10)` / `getMonth()` 等は使わない
+- E2E で作ったデータは `try/finally`（または `afterEach`）で API 経由で削除する。名前は seed と衝突しない一意な値にする
+- 削除 API のないデータ（体重記録等）は 1 テスト内で前提作成〜検証を完結させ、テスト順序に依存させない
+  （`e2e/global-setup.ts` が実行ごとに DB を初期化する）
 
 ## テストコマンド
 

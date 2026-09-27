@@ -4,10 +4,7 @@
  * @feature expenses
  *
  * @description
- * 支出カテゴリの更新・削除エンドポイント。
- *
- * @spec specs/expenses/spec.md
- * @acceptance AC-011, AC-012, AC-107, AC-108, AC-109, AC-110
+ * 支出カテゴリの更新・削除エンドポイント（全ユーザー共通）。
  *
  * @endpoints
  * - PUT /expenses/categories/[id] → 200 Category - カテゴリ更新
@@ -16,8 +13,8 @@
  * - DELETE /expenses/categories/[id] → 204 - カテゴリ削除
  *   @errors 404(NOT_FOUND), 409(CONFLICT)
  *
- * @service ../service.ts
- * @schema ../schema.ts
+ * @service $lib/features/expenses/categories/server/service.ts
+ * @schema $lib/features/expenses/categories/schema.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -28,10 +25,10 @@ import { deleteCategory, updateCategory } from '$expenses/categories/server/serv
 
 /**
  * カテゴリを更新する。categoryUpdateSchema で入力値を検証後、service に委譲する。
- * @ac AC-011, AC-107, AC-108, AC-109
+ * @calls updateCategory
  * @body categoryUpdateSchema
- * @throws VALIDATION_ERROR - 入力値が不正な場合
- * @throws NOT_FOUND - 該当カテゴリが存在しない場合
+ * @throws {VALIDATION_ERROR} - 入力値が不正な場合
+ * @throws {NOT_FOUND} - 該当カテゴリが存在しない場合
  */
 export const PUT: RequestHandler = async ({ request, params, platform }) => {
 	const bodyResult = await parseJsonBody(request);
@@ -51,9 +48,9 @@ export const PUT: RequestHandler = async ({ request, params, platform }) => {
 
 /**
  * カテゴリを削除する。紐付く支出がある場合は 409 を返す。
- * @ac AC-012, AC-109, AC-110
- * @throws NOT_FOUND - 該当カテゴリが存在しない場合
- * @throws CONFLICT - カテゴリに紐付く支出が 1 件以上ある場合
+ * @calls deleteCategory
+ * @throws {NOT_FOUND} - 該当カテゴリが存在しない場合
+ * @throws {CONFLICT} - カテゴリに紐付く支出が 1 件以上ある場合
  */
 export const DELETE: RequestHandler = async ({ params, platform }) => {
 	try {
