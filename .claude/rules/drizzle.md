@@ -296,7 +296,7 @@ make db-migrate-all
   （drizzle-kit が生成する `PRAGMA foreign_keys=OFF/ON` は置き換える。違反が残ると migration 全体がロールバックされる。実例: `0019_user_fk.sql`）
 - カラム削除は 2 リリースに分ける: ① `tables.ts` から外し、生成 SQL の `DROP COLUMN` は除外してリリース
   → ② 次リリースで `generate --custom` に `ALTER TABLE ... DROP COLUMN` を書く（旧コードが列を参照する間に消さないため）
-  - 保留中: `User.lineUserId`（① 済み。② 未実施）
+  - 実例: `User.lineUserId`（① PR #66 → ② `0021_drop_user_line_user_id.sql`）
 - 本番適用前は `wrangler d1 time-travel info home-hub` で復元ポイント（bookmark）を記録し、`wrangler d1 export home-hub --remote` でも退避する
 - `drizzle.config.ts` のスキーマパスは `./src/lib/server/tables.ts`
 - 本番は `.github/workflows/deploy.yml` がデプロイ前に `wrangler d1 migrations apply --remote` を実行する。
