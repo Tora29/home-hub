@@ -34,7 +34,9 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 		const db = createDb(platform!.env.DB);
 		const userId = locals.user!.id;
 		const role = await getUserRole(db, userId);
-		const result = await approveExpenses(db, userId, role, buildLineEnv(platform!.env));
+		const result = await approveExpenses(db, userId, role, buildLineEnv(platform!.env), (task) =>
+			platform!.context.waitUntil(task)
+		);
 		return json(result);
 	} catch (e) {
 		return handleApiError(e);

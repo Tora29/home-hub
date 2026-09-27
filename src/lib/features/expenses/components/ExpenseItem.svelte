@@ -191,20 +191,21 @@
 						class="rounded-xl p-1.5 text-secondary hover:bg-bg-secondary hover:text-label"
 						aria-label="操作メニューを開く"
 						aria-expanded={openMenuId === expense.id}
+						aria-controls="expense-menu-{expense.id}"
 						type="button"
 					>
 						<MoreVertical size={18} />
 					</button>
 
 					{#if openMenuId === expense.id}
+						<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+						<!-- disclosure パターン: 外側クリックで閉じる判定から除外するためだけの stopPropagation（操作要素は内部の button） -->
 						<div
+							id="expense-menu-{expense.id}"
 							data-testid="expense-menu"
-							role="menu"
-							tabindex={0}
 							in:fade={{ duration: 100 }}
 							out:fade={{ duration: 80 }}
 							onclick={(e) => e.stopPropagation()}
-							onkeydown={(e) => e.stopPropagation()}
 							class="absolute top-full right-0 z-20 mt-1 w-40 rounded-2xl border border-separator bg-bg-card py-1 shadow-md"
 						>
 							<button
@@ -214,7 +215,6 @@
 									onEdit(expense);
 								}}
 								class="flex w-full items-center gap-2 px-4 py-2 text-sm text-label hover:bg-bg-secondary"
-								role="menuitem"
 								type="button"
 							>
 								<Pencil size={14} />
@@ -227,7 +227,6 @@
 									onDelete(expense);
 								}}
 								class="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-bg-secondary"
-								role="menuitem"
 								type="button"
 							>
 								<Trash2 size={14} />

@@ -186,12 +186,14 @@ try {
 
 ```typescript
 // +server.ts
-platform!.context.waitUntil(notifyPartnerBestEffort(lineEnv, role, message));
-return json(updated);
+const result = await approveExpenses(db, userId, role, buildLineEnv(platform!.env), (task) =>
+	platform!.context.waitUntil(task)
+);
+return json(result);
 ```
 
 - `waitUntil` を使わずに `await` しない Promise を放置すると、レスポンス返却後に処理が打ち切られる可能性がある
-- 現状の expenses は service 内で `await` している（通知完了までレスポンスが遅れる）。改修時に `waitUntil` へ寄せる
+- service には `defer?: Defer` 引数で渡す（`requestExpenses` / `approveExpenses` 参照）。未指定時は `await` するため、テストでは省略して完了まで待てる
 
 ---
 

@@ -158,25 +158,22 @@ const baseClass = 'inline-flex items-center gap-2 font-medium rounded-2xl';
 - `closeOnBackdrop={false}` で backdrop クリックを無効化（処理中など）
 - `disabled={isLoading}` で Escape・backdrop による閉じるを無効化
 
-### モーダルのフォーカス要件（WAI-ARIA Dialog パターン）
+### ネイティブ `<dialog>` による実装
 
-| 要件                                       | 現状の `Dialog.svelte`         |
-| ------------------------------------------ | ------------------------------ |
-| 開いたらダイアログ内へフォーカス移動       | 未実装                         |
-| Tab / Shift+Tab をダイアログ内に閉じ込める | 未実装                         |
-| 背景を操作不可（`inert`）にする            | 未実装                         |
-| 閉じたら開く前の要素へフォーカスを戻す     | 未実装                         |
-| Escape で閉じる                            | フォーカスが内側にある場合のみ |
+`Dialog.svelte` は `<dialog>` + `showModal()` で実装しており、WAI-ARIA Dialog パターンの要件をブラウザ標準で満たす。
 
-改修時はネイティブ `<dialog>` + `showModal()` への置き換えを優先する（上記がブラウザ標準で満たされ、
-`tabindex="-1"` の lint 抑制も不要になる）。自前実装を続ける場合は上記要件をすべて満たす。
+| 要件                                             | 担当                                                                                                                           |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| 開いたらダイアログ内へフォーカス移動             | `showModal()`（最初のフォーカス可能要素 / `autofocus`）                                                                        |
+| 背景（ページ要素）へのフォーカス移動・操作を防ぐ | top layer + inert（ブラウザ標準。最後の要素の次はブラウザ UI へ抜けるのが仕様）                                                |
+| 閉じたら開く前の要素へフォーカスを戻す           | 開く直前の `document.activeElement` を保持し、アンマウント時に `focus()`（DOM から外れる dialog では標準の復帰が働かないため） |
+| Escape で閉じる                                  | `cancel` イベントを `preventDefault` し `onClose` で親に委譲                                                                   |
+| backdrop クリック                                | `<dialog>` 自体（カード外）のクリックを `onClose` で親に委譲                                                                   |
 
-### `tabindex="-1"` の a11y 警告抑制
-
-Svelte linter は `dialog` / `alertdialog` ロールを non-interactive と判定するため警告が出る。
-`tabindex="-1"` はフォーカス管理に必要な正しいパターンのため `svelte-ignore` で抑制する（→ `svelte.md` 参照）。
-
----
+- `open` の状態は親が持つ。`Dialog` 内で `dialog.close()` による自己クローズをしない（Escape も親経由）
+- backdrop の色は `backdrop:` バリアント、表示時レイアウトは `open:flex` で指定する（常時 `flex` だと閉じた dialog が表示される）
+- 自前の `role="dialog"` div + `tabindex="-1"` によるモーダルは新規に作らない
+- 上記の挙動は `e2e/expenses.e2e.ts` の「キーボード・モーダル操作」で回帰テストしている
 
 ## 汎用コンポーネントへの data-testid
 

@@ -141,16 +141,10 @@ XSS リスクのため `{@html}` は使用しない（→ `security.md` 参照�
 
 ## a11y linter の既知の制限
 
-### `dialog` / `alertdialog` ロールと `tabindex="-1"`
+### モーダル
 
-Svelte の linter は `dialog` / `alertdialog` ロールを non-interactive と判定するため、`tabindex="-1"` に `a11y_no_noninteractive_tabindex` 警告が出る。
-しかし `tabindex="-1"` はモーダルへのプログラマティックフォーカス（`element.focus()`）に必要な正しいパターンであるため、`svelte-ignore` で抑制し意図をコメントで残す。
-
-```svelte
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-<!-- dialog/alertdialog ロールは Svelte linter が non-interactive と判定するが、tabindex="-1" はフォーカス管理に必要な正しいパターン -->
-<div role="dialog" aria-modal="true" tabindex={-1}>
-```
+モーダルは `src/lib/components/Dialog.svelte`（ネイティブ `<dialog>` + `showModal()`）を使う（→ `ui-components.md`）。
+`role="dialog"` の div に `tabindex="-1"` を付ける自前実装はしない（フォーカス管理が不完全になるため）。
 
 ### ドロップダウンメニューの role
 
@@ -170,7 +164,7 @@ Svelte の linter は `dialog` / `alertdialog` ロールを non-interactive と�
 </div>
 ```
 
-> 既存の `ExpenseItem.svelte` は `role="menu"` + `tabindex={0}` のまま（矢印キー操作未実装）。改修時に上記へ寄せる。
+> 実装例: `ExpenseItem.svelte`（ボタンに `aria-expanded` / `aria-controls`、Escape は `ExpensesPage.svelte` の `svelte:window` で閉じる）。
 
 ---
 
