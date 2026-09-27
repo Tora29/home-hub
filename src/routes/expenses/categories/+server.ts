@@ -4,19 +4,16 @@
  * @feature expenses
  *
  * @description
- * 支出カテゴリの一覧取得・新規登録エンドポイント。
- *
- * @spec specs/expenses/spec.md
- * @acceptance AC-010, AC-107, AC-108
+ * 支出カテゴリの一覧取得・新規登録エンドポイント（全ユーザー共通）。
  *
  * @endpoints
- * - GET /expenses/categories → 200 CategoryList - カテゴリ一覧取得
+ * - GET /expenses/categories → 200 {items: Category[], total, page: 1, limit: total} - カテゴリ一覧取得（全件）
  * - POST /expenses/categories → 201 Category - カテゴリ登録
  *   @body categoryCreateSchema
  *   @errors 400(VALIDATION_ERROR)
  *
- * @service ./service.ts
- * @schema ./schema.ts
+ * @service $lib/features/expenses/categories/server/service.ts
+ * @schema $lib/features/expenses/categories/schema.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -27,7 +24,6 @@ import { createCategory, getCategories } from '$expenses/categories/server/servi
 
 /**
  * カテゴリ一覧を取得する（全件）。
- * @ac AC-010
  * @calls getCategories
  */
 export const GET: RequestHandler = async ({ platform }) => {
@@ -42,9 +38,9 @@ export const GET: RequestHandler = async ({ platform }) => {
 
 /**
  * カテゴリを新規作成する。categoryCreateSchema で入力値を検証後、service に委譲する。
- * @ac AC-010, AC-107, AC-108
+ * @calls createCategory
  * @body categoryCreateSchema
- * @throws VALIDATION_ERROR - 入力値が不正な場合
+ * @throws {VALIDATION_ERROR} - 入力値が不正な場合
  */
 export const POST: RequestHandler = async ({ request, platform }) => {
 	const bodyResult = await parseJsonBody(request);

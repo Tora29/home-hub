@@ -1,12 +1,10 @@
 /**
  * @file スキーマ: ExpenseCategory
  * @module src/lib/features/expenses/categories/schema.ts
- * @feature expenses/categories
+ * @feature expenses
  *
  * @description
  * 支出カテゴリ機能の Zod バリデーションスキーマ。FE/BE 共通で使用する。
- *
- * @spec specs/expenses/spec.md - Schema セクション
  *
  * @schemas
  * - categoryCreateSchema - 作成用入力
@@ -20,7 +18,10 @@ import { z } from 'zod';
 
 export const categoryCreateSchema = z.object({
 	name: z
-		.string({ error: (iss) => (iss.input === undefined ? 'カテゴリ名は必須です' : undefined) })
+		.string({
+			error: (iss) =>
+				iss.input === undefined ? 'カテゴリ名は必須です' : 'カテゴリ名は文字列で入力してください'
+		})
 		.min(1, 'カテゴリ名は必須です')
 		.max(50, '50文字以内で入力してください')
 });

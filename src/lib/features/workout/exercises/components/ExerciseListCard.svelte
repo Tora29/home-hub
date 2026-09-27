@@ -1,15 +1,16 @@
 <!--
   @file コンポーネント: ExerciseListCard
   @module src/lib/features/workout/exercises/components/ExerciseListCard.svelte
-  @feature workout/exercises
+  @feature workout
 
   @description
   筋トレ種目の一覧表示・追加・編集・削除を行うカード。カテゴリ選択も含む。
-  追加/編集/削除ハンドラの共通処理は `form-helpers.ts` に委譲する。
+  追加/編集/削除ハンドラの共通処理は `$lib/utils/form-helpers.ts` に委譲する。
+  POST / PUT は常に categoryId（カテゴリなしは null）を送る（PUT = 完全置換）。
 
   @props
   - exercises: { items: ExerciseWithCategory[] } - 種目一覧（カテゴリ情報含む）
-  - categories: Category[] - カテゴリ一覧（種目のカテゴリ選択用）
+  - categories: ExerciseCategory[] - カテゴリ一覧（種目のカテゴリ選択用）
 -->
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
@@ -18,15 +19,15 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Input from '$lib/components/Input.svelte';
 	import Select from '$lib/components/Select.svelte';
-	import { submitNamedForm, submitDelete } from './form-helpers';
-	import type { Category, ExerciseWithCategory } from '../types';
+	import { submitNamedForm, submitDelete } from '$lib/utils/form-helpers';
+	import type { ExerciseCategory, ExerciseWithCategory } from '../types';
 
 	let {
 		exercises,
 		categories
 	}: {
 		exercises: { items: ExerciseWithCategory[] };
-		categories: Category[];
+		categories: ExerciseCategory[];
 	} = $props();
 
 	const MAX_NAME_LENGTH = 50;
@@ -140,7 +141,13 @@
 					onkeydown={(e) => e.key === 'Enter' && !isAdding && void handleAdd()}
 				/>
 				{#if newNameError}
-					<p class="mt-1 text-xs text-destructive">{newNameError}</p>
+					<p
+						data-testid="workout-exercise-name-error"
+						role="alert"
+						class="mt-1 text-xs text-destructive"
+					>
+						{newNameError}
+					</p>
 				{/if}
 			</div>
 			<Button
@@ -188,15 +195,16 @@
 									maxlength={50}
 									class="w-full"
 									onkeydown={(e) => {
-										if (e.key === 'Enter') void handleEditSave(exercise.id);
+										if (e.key === 'Enter' && !isSavingEdit) void handleEditSave(exercise.id);
 										if (e.key === 'Escape') cancelEdit();
 									}}
 								/>
 								{#if editingNameError}
-									<p class="mt-1 text-xs text-destructive">{editingNameError}</p>
+									<p role="alert" class="mt-1 text-xs text-destructive">{editingNameError}</p>
 								{/if}
 							</div>
 							<Button
+								data-testid="workout-exercise-edit-save-button"
 								variant="primary"
 								size="sm"
 								onclick={() => void handleEditSave(exercise.id)}
@@ -234,7 +242,9 @@
 						<div class="flex min-w-0 flex-1 flex-col">
 							<span class="text-sm font-medium text-label">{exercise.name}</span>
 							{#if exercise.category}
-								<span class="text-xs text-secondary">{exercise.category.name}</span>
+								<span data-testid="workout-exercise-category-name" class="text-xs text-secondary"
+									>{exercise.category.name}</span
+								>
 							{/if}
 						</div>
 						<Button

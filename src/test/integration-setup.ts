@@ -1,3 +1,11 @@
+/**
+ * @file テスト: Integration テスト共通セットアップ
+ * @module src/test/integration-setup.ts
+ * @testType integration
+ *
+ * @description
+ * vitest.integration.config.ts の setupFiles。Miniflare の D1 に drizzle/migrations を適用する。
+ */
 /// <reference types="@cloudflare/vitest-pool-workers/types" />
 import { applyD1Migrations, env } from 'cloudflare:test';
 import { beforeAll } from 'vitest';

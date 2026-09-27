@@ -8,6 +8,7 @@
   WeeklyVolumeChart の表示、バークリック時の種目別内訳ダイアログ表示を担う。
   期間状態・ボリュームデータ取得の所有権は親（WorkoutPage.svelte）が持ち、
   内訳ダイアログの取得状態はバークリックに閉じたローカル関心のためこのコンポーネントが保持する。
+  内訳の取得は fetchSeq で最新のバークリック分のみ反映する。
 
   @props
   - mode: 'month' | 'year' - 期間モード
@@ -25,6 +26,7 @@
 	import Select from '$lib/components/Select.svelte';
 	import Checkbox from '$lib/components/Checkbox.svelte';
 	import Dialog from '$lib/components/Dialog.svelte';
+	import Button from '$lib/components/Button.svelte';
 	import WeeklyVolumeChart from './WeeklyVolumeChart.svelte';
 	import type { WeeklyVolumeBreakdownItem, WeeklyVolumePoint } from '../types';
 
@@ -56,6 +58,7 @@
 	let breakdownItems = $state<WeeklyVolumeBreakdownItem[]>([]);
 	let breakdownLoading = $state(false);
 	let breakdownError = $state('');
+	let breakdownSeq = 0; // 最新リクエスト判定用（リアクティブ不要）
 
 	function weekStartLabel(weekStart: string): string {
 		const [y, m, d] = weekStart.split('-');
@@ -63,21 +66,28 @@
 	}
 
 	async function handleVolumeBarClick(weekStart: string) {
+		const seq = ++breakdownSeq;
 		breakdownWeekStart = weekStart;
 		breakdownItems = [];
 		breakdownLoading = true;
 		breakdownError = '';
 		try {
-			const res = await fetch(`/workout/volume?weekStart=${weekStart}`);
+			const params = new URLSearchParams({ weekStart });
+			const res = await fetch(`/workout/volume?${params}`);
+			if (seq !== breakdownSeq) return;
 			if (!res.ok) {
-				breakdownError = '取得に失敗しました';
+				const err = (await res.json().catch(() => ({}))) as { message?: string };
+				if (seq !== breakdownSeq) return;
+				breakdownError = err.message ?? '取得に失敗しました';
 				return;
 			}
-			breakdownItems = (await res.json()) as WeeklyVolumeBreakdownItem[];
+			const json = (await res.json()) as WeeklyVolumeBreakdownItem[];
+			if (seq !== breakdownSeq) return; // json() 待ちの間に追い越された場合
+			breakdownItems = json;
 		} catch {
-			breakdownError = '通信エラーが発生しました';
+			if (seq === breakdownSeq) breakdownError = '通信エラーが発生しました';
 		} finally {
-			breakdownLoading = false;
+			if (seq === breakdownSeq) breakdownLoading = false;
 		}
 	}
 </script>
@@ -164,12 +174,9 @@
 			</div>
 		{/if}
 		<div class="mt-4 flex justify-end">
-			<button
-				onclick={() => (breakdownWeekStart = null)}
-				class="text-sm text-secondary hover:text-label"
-			>
+			<Button variant="secondary" size="sm" onclick={() => (breakdownWeekStart = null)}>
 				閉じる
-			</button>
+			</Button>
 		</div>
 	</div>
 </Dialog>

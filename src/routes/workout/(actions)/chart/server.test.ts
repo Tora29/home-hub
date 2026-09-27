@@ -5,39 +5,41 @@
  *
  * @target ./+server.ts
  */
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import { GET } from './+server';
-
-vi.mock('$lib/server/db', () => ({ createDb: vi.fn() }));
-vi.mock('$workout/server/service', () => ({
-	getChartData: vi.fn()
-}));
 
 const mockLocals = { user: { id: 'test-user-id' } };
 const mockPlatform = { env: { DB: {} } };
 
+async function get(query: string): Promise<Response> {
+	const url = new URL(`http://localhost/workout/chart?${query}`);
+	return GET({ url, locals: mockLocals, platform: mockPlatform } as any);
+}
+
 describe('GET /workout/chart', () => {
-	test('exerciseId が空の場合、400 VALIDATION_ERROR が返る', async () => {
-		const url = new URL('http://localhost/workout/chart?exerciseId=');
-		const response = await GET({ url, locals: mockLocals, platform: mockPlatform } as any);
+	test('exerciseId が未指定の場合、400 VALIDATION_ERROR「種目IDは必須です」が返る', async () => {
+		const response = await get('period=1m');
 		expect(response.status).toBe(400);
 		const body = await response.json();
 		expect(body.code).toBe('VALIDATION_ERROR');
+		expect(body.fields).toEqual([{ field: 'exerciseId', message: '種目IDは必須です' }]);
 	});
 
 	test('period が不正な値の場合、400 VALIDATION_ERROR が返る', async () => {
-		const url = new URL('http://localhost/workout/chart?exerciseId=ex-1&period=invalid');
-		const response = await GET({ url, locals: mockLocals, platform: mockPlatform } as any);
+		const response = await get('exerciseId=ex-1&period=invalid');
 		expect(response.status).toBe(400);
 		const body = await response.json();
 		expect(body.code).toBe('VALIDATION_ERROR');
+		expect(body.fields).toEqual([
+			{ field: 'period', message: '期間は 1m / year / all のいずれかを指定してください' }
+		]);
 	});
 
-	test('バリデーション失敗時は getChartData が呼ばれない', async () => {
-		const { getChartData } = await import('$workout/server/service');
-		vi.mocked(getChartData).mockClear();
-		const url = new URL('http://localhost/workout/chart?exerciseId=');
-		await GET({ url, locals: mockLocals, platform: mockPlatform } as any);
-		expect(getChartData).not.toHaveBeenCalled();
+	test('month が13月の場合、400 VALIDATION_ERROR「月は01〜12で入力してください」が返る', async () => {
+		const response = await get('exerciseId=ex-1&period=1m&month=2024-13');
+		expect(response.status).toBe(400);
+		const body = await response.json();
+		expect(body.code).toBe('VALIDATION_ERROR');
+		expect(body.fields).toEqual([{ field: 'month', message: '月は01〜12で入力してください' }]);
 	});
 });

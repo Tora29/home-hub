@@ -56,6 +56,9 @@ export const GET: RequestHandler = async ({ platform }) => {
 - 未認証のブラウザアクセス → `/login` へリダイレクト（302）
 - 未認証の API 呼び出し（fetch）→ JSON 401
 - 公開パスの追加が必要な場合は `hooks.server.ts` の `PUBLIC_PATHS` に追記する
+- `user.role` は hooks が `locals.role` に注入済み。ハンドラ・load で DB から role を再取得しない
+- role 限定のパスは `hooks.server.ts` の `MAIN_ONLY_PREFIXES` に追記する（API = JSON 403 `FORBIDDEN`。
+  画面遷移は `+page.server.ts` の load で `locals.role` を見て `error(403)`）
 
 ---
 
@@ -112,7 +115,6 @@ return json({
 - `limit` のデフォルト値は 20、最大値は 100
 - **件数が少ない場合も含め、一覧取得は常にこの形式に統一する**（全件返却のマスタ系は `page: 1` / `limit: items.length`）
 - 集計・グラフ用データ（`/dashboard/summary`、`/workout/chart` 等）は一覧ではないため対象外
-- 既知の乖離: `GET /workout/exercises/categories` は配列を直接返している（修正時に本形式へ統一する）
 
 ---
 

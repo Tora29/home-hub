@@ -24,7 +24,7 @@
 
 	let { value = $bindable(''), size = 'md', class: className = '', ...rest }: Props = $props();
 
-	const sizeClasses: Record<string, string> = {
+	const sizeClasses: Record<NonNullable<Props['size']>, string> = {
 		sm: 'py-1.5 px-3 text-xs',
 		md: 'py-2 px-3 text-sm',
 		lg: 'py-3 px-4'

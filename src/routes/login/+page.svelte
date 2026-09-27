@@ -7,9 +7,15 @@
   Google OAuth でログインする画面。
   "Google でログイン" ボタン 1 つのみ表示し、Better Auth の signIn.social() を呼び出す。
   OAuth エラー時は URL の ?error パラメータを検知してエラーメッセージを表示する。
+  signIn.social() 自体の失敗（Better Auth のエラー応答・通信エラー）もその場でエラー表示する。
 
   @navigation
-  - 遷移先: / - ホーム画面（認証成功後）
+  - 遷移先: Google OAuth 同意画面 → /api/auth/callback/google → / - 認証成功後
+  - 遷移先: /login?error=... - OAuth 失敗時（Better Auth がリダイレクト）
+
+  @api
+  - POST /api/auth/sign-in/social → 200 { url, redirect } - Google OAuth 開始（Better Auth 管理）
+  - GET /api/auth/callback/google → 302 / - OAuth コールバック（Better Auth 管理）
 -->
 <script lang="ts">
 	import { page } from '$app/state';
@@ -17,13 +23,21 @@
 	import Button from '$lib/components/Button.svelte';
 
 	let isLoading = $state(false);
-	const hasError = $derived(!!page.url.searchParams.get('error'));
+	let signInError = $state('');
+	const hasOAuthError = $derived(!!page.url.searchParams.get('error'));
 
 	async function handleGoogleLogin() {
 		isLoading = true;
+		signInError = '';
 		try {
-			await authClient.signIn.social({ provider: 'google', callbackURL: '/' });
-		} finally {
+			// 成功時は Better Auth が Google の同意画面へ遷移させる。失敗時は error が返る（throw しない）
+			const result = await authClient.signIn.social({ provider: 'google', callbackURL: '/' });
+			if (result.error) {
+				signInError = 'ログインを開始できませんでした。もう一度お試しください。';
+				isLoading = false;
+			}
+		} catch {
+			signInError = '通信エラーが発生しました';
 			isLoading = false;
 		}
 	}
@@ -39,7 +53,15 @@
 			<p class="mt-1 text-sm text-secondary">暮らしをふたりで</p>
 		</div>
 
-		{#if hasError}
+		{#if signInError}
+			<p
+				data-testid="login-signin-error"
+				role="alert"
+				class="mb-4 text-center text-sm text-destructive"
+			>
+				{signInError}
+			</p>
+		{:else if hasOAuthError}
 			<p
 				data-testid="login-auth-error"
 				role="alert"

@@ -4,7 +4,8 @@
  *
  * @description
  * アプリケーション全体で使用するカスタムエラークラス。
- * +server.ts 内で throw し、エラーレスポンスに変換する。
+ * 期待されるエラー（NOT_FOUND・CONFLICT 等）を service で throw し、
+ * +server.ts ハンドラは api-helpers.ts の handleApiError でエラーレスポンスに変換する。
  */
 
 export type ErrorCode =

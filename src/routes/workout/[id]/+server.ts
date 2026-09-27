@@ -4,13 +4,14 @@
  * @feature workout
  *
  * @description
- * 筋トレ記録の削除エンドポイント。
+ * 筋トレ記録の削除エンドポイント。他ユーザーの記録は存在を隠蔽して 404 を返す。
+ * role !== 'main' の呼び出しは hooks.server.ts が 403 を返す。
  *
  * @endpoints
  * - DELETE /workout/[id] → 204 - 記録削除
- *   @errors 404(NOT_FOUND)
+ *   @errors 403(FORBIDDEN), 404(NOT_FOUND)
  *
- * @service ../service.ts
+ * @service $lib/features/workout/server/service.ts
  */
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
@@ -19,7 +20,8 @@ import { deleteRecord } from '$workout/server/service';
 
 /**
  * 記録を削除する。
- * @throws NOT_FOUND - 該当データなし or 他ユーザーのもの
+ * @calls deleteRecord
+ * @throws {NOT_FOUND} - 該当データなし or 他ユーザーのもの
  */
 export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 	try {

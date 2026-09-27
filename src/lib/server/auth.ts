@@ -5,11 +5,13 @@
  * @description
  * Better Auth の設定とインスタンス生成。
  * Google OAuth プロバイダーを使用した認証。
+ * ALLOWED_EMAILS（fail-closed）でユーザー作成・セッション作成の両方を制限する。
  * hooks.server.ts から利用する。
  */
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import type { D1Database } from '@cloudflare/workers-types';
+import { eq } from 'drizzle-orm';
 import { createDb } from './db';
 import { user, session, account, verification } from './tables';
 
@@ -27,6 +29,7 @@ export function createAuth(config: {
 		.split(',')
 		.map((e) => e.trim().toLowerCase())
 		.filter(Boolean);
+	const isAllowed = (email: string) => allowedList.includes(email.toLowerCase());
 
 	return betterAuth({
 		secret: config.secret,
@@ -45,9 +48,22 @@ export function createAuth(config: {
 			user: {
 				create: {
 					before: async (newUser) => {
-						if (!allowedList.includes(newUser.email.toLowerCase())) {
+						if (!isAllowed(newUser.email)) {
 							throw new Error('unauthorized');
 						}
+					}
+				}
+			},
+			session: {
+				create: {
+					// 既存ユーザーでも許可リストから外れた場合はログインさせない（false = セッションを作成しない）
+					before: async (newSession) => {
+						const row = await db
+							.select({ email: user.email })
+							.from(user)
+							.where(eq(user.id, newSession.userId))
+							.get();
+						if (!row || !isAllowed(row.email)) return false;
 					}
 				}
 			}
@@ -59,8 +75,12 @@ export function createAuth(config: {
 			log: (level: string, message: string, ...args: unknown[]) => {
 				const timestamp = new Date().toISOString();
 				const formatted = `${timestamp} ${level.toUpperCase()} [Better Auth]: ${message}`;
-				if (level === 'error') console.error(formatted, ...args);
-				else if (level === 'warn') console.warn(formatted, ...args);
+				// args にはリクエスト・セッション・トークン等が含まれうるため、Error の name/message のみ出力する
+				const details = args
+					.filter((a): a is Error => a instanceof Error)
+					.map((e) => `${e.name}: ${e.message}`);
+				if (level === 'error') console.error(formatted, ...details);
+				else if (level === 'warn') console.warn(formatted, ...details);
 			}
 		}
 	});

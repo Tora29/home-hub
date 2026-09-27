@@ -186,11 +186,17 @@ try {
 
 ```typescript
 // +server.ts
-const result = await approveExpenses(db, userId, role, buildLineEnv(platform!.env), (task) =>
-	platform!.context.waitUntil(task)
+const result = await approveExpenses(
+	db,
+	locals.user!.id,
+	{ role: locals.role, lineEnv: buildLineEnv(platform!.env), origin: url.origin },
+	(task) => platform!.context.waitUntil(task)
 );
 return json(result);
 ```
+
+- 通知本文に載せる URL は `origin`（`url.origin`）から組み立てる。本番ドメインをハードコードしない
+- LINE 関連の処理は `expenses/server/line.ts`（`buildLineEnv` / `notifyPartnerBestEffort`）に集約済み
 
 - `waitUntil` を使わずに `await` しない Promise を放置すると、レスポンス返却後に処理が打ち切られる可能性がある
 - service には `defer?: Defer` 引数で渡す（`requestExpenses` / `approveExpenses` 参照）。未指定時は `await` するため、テストでは省略して完了まで待てる

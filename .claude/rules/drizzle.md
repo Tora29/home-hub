@@ -81,8 +81,9 @@ categoryId: text('categoryId')
 
 `schemas.md` の「INDEX の設計」に従い、テーブル定義の第 3 引数で宣言する。
 
-> 既存の INDEX / UNIQUE（`idx_workout_record_*`・`uq_body_weight_user_date` 等）はマイグレーション SQL に手書きで作成されており、
-> `tables.ts` には未宣言。新規は `tables.ts` で宣言して `npm run db:generate` で生成する（手書き SQL を増やさない）。
+> 既存の INDEX / UNIQUE（`idx_workout_record_*`・`uq_body_weight_user_date` 等）も `tables.ts` に宣言済み（SQL と名前・カラム完全一致）。
+> 新規は `tables.ts` で宣言して `npm run db:generate` で生成する（手書き SQL を増やさない）。
+> 旧機能の残骸 `Tag` / `Dish` / `DishTag`（drizzle 管理外）は `0020_drop_legacy_dish.sql` で削除済み。
 
 ```typescript
 export const expense = sqliteTable('Expense', {/* ... */}, (t) => [
@@ -125,17 +126,18 @@ const expenseSelectFields = {
 ### JOIN パターン
 
 ```typescript
-// INNER JOIN（必ず存在する外部キー）
+// INNER JOIN（NOT NULL の外部キー）
 .innerJoin(expenseCategory, eq(expense.categoryId, expenseCategory.id))
+.innerJoin(userTable, eq(expense.payerUserId, userTable.id))
 
 // LEFT JOIN（null 許容の外部キー）
-.leftJoin(userTable, eq(expense.payerUserId, userTable.id))
+.leftJoin(workoutExerciseCategory, eq(workoutExercise.categoryId, workoutExerciseCategory.id))
 ```
 
 LEFT JOIN の結果は null チェックが必要。
 
 ```typescript
-payer: row.payer?.id ? row.payer : null;
+category: row.category?.id ? row.category : null;
 ```
 
 ### COUNT / SUM
@@ -228,7 +230,10 @@ await db
 	.where(eq(expense.id, id));
 ```
 
-- 所有者チェック（`userId` 一致）は更新前に service で行い、不一致は `AppError('FORBIDDEN')`
+- 所有者チェック（`userId` 一致）は更新前に service で行う。不一致時のコードはデータの公開範囲で使い分ける
+  - 個人データ（workout 系: 本人しか閲覧できない）→ where に `userId` を含めて取得し `AppError('NOT_FOUND')`（存在を隠蔽）
+  - 世帯共有データ（expenses: 全員が閲覧できる）→ 取得後に `userId` を比較し `AppError('FORBIDDEN')`
+- 他テーブル参照（`categoryId` 等）を受け取る場合、参照先が**同一ユーザー所有か**も検証する（他人のデータを紐付けさせない）
 
 ---
 
@@ -284,6 +289,15 @@ make db-migrate-all
 ```
 
 - マイグレーションファイルは `drizzle/migrations/` に出力される（Git 管理対象）。生成後の SQL は必ず目視確認する
+- SQL を手で書く必要がある場合（データ移行・管理外テーブルの DROP 等）も `npx drizzle-kit generate --custom --name xxx` で
+  空ファイルを生成して書く。**ファイルを直接置かない**（`meta/_journal.json` / snapshot に載らず、以後の `db:generate` が壊れる）
+- 適用済みのマイグレーション SQL は編集しない（wrangler は `d1_migrations` にファイル名で適用履歴を持つ）
+- テーブル再作成を伴う変更では、D1 で効かない `PRAGMA foreign_keys=OFF` ではなく `PRAGMA defer_foreign_keys = on` を使う
+  （drizzle-kit が生成する `PRAGMA foreign_keys=OFF/ON` は置き換える。違反が残ると migration 全体がロールバックされる。実例: `0019_user_fk.sql`）
+- カラム削除は 2 リリースに分ける: ① `tables.ts` から外し、生成 SQL の `DROP COLUMN` は除外してリリース
+  → ② 次リリースで `generate --custom` に `ALTER TABLE ... DROP COLUMN` を書く（旧コードが列を参照する間に消さないため）
+  - 保留中: `User.lineUserId`（① 済み。② 未実施）
+- 本番適用前は `wrangler d1 time-travel info home-hub` で復元ポイント（bookmark）を記録し、`wrangler d1 export home-hub --remote` でも退避する
 - `drizzle.config.ts` のスキーマパスは `./src/lib/server/tables.ts`
 - 本番は `.github/workflows/deploy.yml` がデプロイ前に `wrangler d1 migrations apply --remote` を実行する。
   カラム削除・リネーム等の破壊的変更は「新カラム追加 → コード移行 → 旧カラム削除」の複数リリースに分ける

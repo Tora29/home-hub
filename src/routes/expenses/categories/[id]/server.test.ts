@@ -5,64 +5,38 @@
  *
  * @target ./+server.ts
  */
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import { PUT } from './+server';
 
-vi.mock('$lib/server/db', () => ({ createDb: vi.fn() }));
-vi.mock('$expenses/categories/server/service', () => ({
-	updateCategory: vi.fn(),
-	deleteCategory: vi.fn()
-}));
+type ErrorBody = { code: string; fields: { field: string; message: string }[] };
 
-const mockPlatform = { env: { DB: {} } };
-const mockParams = { id: 'category-1' };
+async function callPut(body: unknown) {
+	const request = new Request('http://localhost/expenses/categories/category-1', {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(body)
+	});
+	return PUT({
+		request,
+		params: { id: 'category-1' },
+		platform: { env: { DB: {} } }
+	} as unknown as Parameters<typeof PUT>[0]);
+}
 
 describe('PUT /expenses/categories/[id]', () => {
-	test('name が空文字の場合、400 VALIDATION_ERROR が返る', async () => {
-		const request = new Request('http://localhost/expenses/categories/category-1', {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ name: '' })
-		});
-		const response = await PUT({
-			request,
-			params: mockParams,
-			platform: mockPlatform
-		} as any);
+	test('カテゴリ名が空文字の場合、400 VALIDATION_ERROR「カテゴリ名は必須です」が返る', async () => {
+		const response = await callPut({ name: '' });
 		expect(response.status).toBe(400);
-		const body = await response.json();
+		const body = (await response.json()) as ErrorBody;
 		expect(body.code).toBe('VALIDATION_ERROR');
+		expect(body.fields).toContainEqual({ field: 'name', message: 'カテゴリ名は必須です' });
 	});
 
-	test('name が51文字の場合、400 VALIDATION_ERROR が返る', async () => {
-		const request = new Request('http://localhost/expenses/categories/category-1', {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ name: 'a'.repeat(51) })
-		});
-		const response = await PUT({
-			request,
-			params: mockParams,
-			platform: mockPlatform
-		} as any);
+	test('カテゴリ名が51文字の場合、400 VALIDATION_ERROR「50文字以内で入力してください」が返る', async () => {
+		const response = await callPut({ name: 'a'.repeat(51) });
 		expect(response.status).toBe(400);
-		const body = await response.json();
+		const body = (await response.json()) as ErrorBody;
 		expect(body.code).toBe('VALIDATION_ERROR');
-	});
-
-	test('バリデーション失敗時は updateCategory が呼ばれない', async () => {
-		const { updateCategory } = await import('$expenses/categories/server/service');
-		vi.mocked(updateCategory).mockClear();
-		const request = new Request('http://localhost/expenses/categories/category-1', {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ name: '' })
-		});
-		await PUT({
-			request,
-			params: mockParams,
-			platform: mockPlatform
-		} as any);
-		expect(updateCategory).not.toHaveBeenCalled();
+		expect(body.fields).toContainEqual({ field: 'name', message: '50文字以内で入力してください' });
 	});
 });

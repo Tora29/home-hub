@@ -6,6 +6,7 @@
   @description
   週間ボリューム（重量×回数合計）を棒グラフで表示するSVGコンポーネント。
   Y軸グリッド・X軸ラベルの描画は `ChartAxes.svelte` に委譲する。
+  onBarClick 指定時は各バーが role="button"（aria-label 付き・Enter / Space で操作可能）になる。
 
   @props
   - points: WeeklyVolumePoint[] - 週ごとのボリュームデータ
@@ -65,6 +66,14 @@
 		}
 		return ticks;
 	});
+
+	function handleBarKeydown(e: KeyboardEvent, weekStart: string) {
+		if (!onBarClick) return;
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault(); // Space によるページスクロールを防ぐ
+			onBarClick(weekStart);
+		}
+	}
 </script>
 
 {#if points.length === 0}
@@ -94,9 +103,12 @@
 					rx="2"
 					role={onBarClick ? 'button' : undefined}
 					tabindex={onBarClick ? 0 : undefined}
+					aria-label={onBarClick
+						? `${p.weekStart} の週 ボリューム ${p.volume.toLocaleString()}（内訳を表示）`
+						: undefined}
 					style={onBarClick ? 'cursor: pointer' : undefined}
 					onclick={() => onBarClick?.(p.weekStart)}
-					onkeydown={(e) => e.key === 'Enter' && onBarClick?.(p.weekStart)}
+					onkeydown={(e) => handleBarKeydown(e, p.weekStart)}
 				/>
 			{/each}
 		</g>

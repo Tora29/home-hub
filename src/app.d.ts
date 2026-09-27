@@ -1,12 +1,21 @@
+/**
+ * @file 型定義: SvelteKit アプリ全体の型
+ * @module src/app.d.ts
+ *
+ * @description
+ * App.Locals / App.PageData / App.Platform（Cloudflare バインディング・環境変数）の型定義。
+ * 環境変数の一覧はここが唯一の参照先（→ external-integrations.md）。
+ * @see https://svelte.dev/docs/kit/types#app.d.ts
+ */
 /// <reference types="vite-plugin-pwa/client" />
-// See https://svelte.dev/docs/kit/types#app.d.ts
-// for information about these interfaces
 declare global {
 	namespace App {
 		// interface Error {}
 		interface Locals {
 			user: import('better-auth').User | null;
 			session: import('better-auth').Session | null;
+			// User.role（'main' | 'partner' | null）。hooks.server.ts で注入
+			role: string | null;
 		}
 		interface PageData {
 			userRole?: string | null;

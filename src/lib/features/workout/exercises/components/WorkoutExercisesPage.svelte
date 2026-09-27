@@ -1,7 +1,7 @@
 <!--
   @file コンポーネント: WorkoutExercisesPage
   @module src/lib/features/workout/exercises/components/WorkoutExercisesPage.svelte
-  @feature workout/exercises
+  @feature workout
 
   @description
   筋トレ種目の一覧表示・追加・編集・削除、および種目カテゴリの管理を行う画面コンポーネント。
@@ -12,20 +12,20 @@
 
   @props
   - exercises: { items: ExerciseWithCategory[] } - 種目一覧（カテゴリ情報含む）
-  - categories: Category[] - カテゴリ一覧
+  - categories: ExerciseCategory[] - カテゴリ一覧
 -->
 <script lang="ts">
 	import { Dumbbell, ArrowLeft } from '@lucide/svelte';
 	import CategoryManagementCard from './CategoryManagementCard.svelte';
 	import ExerciseListCard from './ExerciseListCard.svelte';
-	import type { Category, ExerciseWithCategory } from '../types';
+	import type { ExerciseCategory, ExerciseWithCategory } from '../types';
 
 	let {
 		exercises,
 		categories
 	}: {
 		exercises: { items: ExerciseWithCategory[] };
-		categories: Category[];
+		categories: ExerciseCategory[];
 	} = $props();
 </script>
 

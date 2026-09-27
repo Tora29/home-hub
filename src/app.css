@@ -24,6 +24,12 @@
 	--color-success: #5a9e65;
 	--color-destructive: #c94b4b;
 
+	/* アクセント・破壊色の背景上に置く文字・アイコン色 */
+	--color-on-accent: #ffffff;
+
+	/* モーダル・モバイルサイドバーの背面オーバーレイ */
+	--color-overlay: rgba(0, 0, 0, 0.4);
+
 	/* Border */
 	--color-separator: rgba(180, 155, 135, 0.35);
 
@@ -51,6 +57,8 @@
 	--color-separator: rgba(120, 100, 85, 0.35);
 	--color-warning: #d97706;
 	--color-bg-warning: rgba(217, 119, 6, 0.2);
+	--color-on-accent: #ffffff;
+	--color-overlay: rgba(0, 0, 0, 0.4);
 }
 
 /* iOS Safari の auto-zoom 防止: フォントサイズ 16px 未満の input/select/textarea にフォーカスすると

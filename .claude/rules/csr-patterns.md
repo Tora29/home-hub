@@ -42,7 +42,7 @@ async function handleSomeAction() {
 
 同一ページ・同一コンポーネントに「バリデーション → fetch → エラー処理 → ローディング解除」が
 ほぼ同じ形で繰り返される複数フォーム（例: カテゴリ/種目の追加・編集・削除）がある場合、
-定型フローをヘルパー関数に抽出する（`{feature}/components/form-helpers.ts` 等に配置）。
+定型フローをヘルパー関数に抽出する。複数 feature で使うため `src/lib/utils/form-helpers.ts` に共通実装がある（新規に複製しない）。
 
 ```typescript
 export async function submitNamedForm(options: {
@@ -53,9 +53,10 @@ export async function submitNamedForm(options: {
 	setError: (message: string) => void;
 	setLoading: (loading: boolean) => void;
 	request: () => Promise<Response>;
-	onSuccess: () => void;
+	onSuccess: () => void | Promise<void>; // async（invalidateAll 等）を await する
 }): Promise<void> {
-	// バリデーション → request() 実行 → エラー処理 → onSuccess の定型フローを共通化
+	// バリデーション → request() → !res.ok なら json().catch() でメッセージ → await onSuccess()
+	// → catch で「通信エラー」→ finally で loading 解除（基本 fetch フローと同じ要件を満たす）
 }
 ```
 
@@ -191,10 +192,12 @@ props（SSR の `data` 等）を初期値にするローカル状態は、**prop
 
 ```typescript
 // サーバーデータのミラー: invalidateAll() 後は新しい data に戻り、CSR fetch で上書きもできる
-let summary = $derived<Summary>(data.summary);
+let chartData = $derived<ChartData>(data.chartData);
 async function refetch() {
-	summary = await (await fetch('/dashboard/summary')).json();
+	chartData = await (await fetch(`/workout/chart?${params}`)).json();
 }
+// 選択中の値（Select の bind 用）も props 追従 + ローカル上書き可にしたい場合は同様に $derived
+let selectedMonth = $derived(month);
 
 // フォーム初期値: 入力中に親の props が変わっても値を保持する
 import { untrack } from 'svelte';

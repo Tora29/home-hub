@@ -7,10 +7,7 @@
   支出の登録・編集フォームダイアログ内コンポーネント。
   登録時は POST /expenses、編集時は PUT /expenses/[id] を呼ぶ。
   FE バリデーションで空入力・未選択を即時フィードバックする。
-  全角数字を半角に自動変換し、金額をカンマ区切りで整形する（AC-206, AC-207）。
-
-  @spec specs/expenses/spec.md
-  @acceptance AC-003, AC-006, AC-033, AC-034, AC-111, AC-112, AC-206, AC-207
+  全角数字を半角に自動変換し、金額をカンマ区切りで整形する。
 
   @props
   - mode: 'create' | 'edit' - フォームモード
@@ -64,7 +61,7 @@
 		amountRaw = raw;
 		// カンマ整形で再描画
 		input.value = raw ? Number(raw).toLocaleString('ja-JP') : '';
-		// 入力変更時にエラーをクリア（AC: タイミング）
+		// 入力変更時にエラーをクリア
 		if (amountError) amountError = '';
 	}
 
@@ -121,7 +118,8 @@
 			});
 
 			if (!res.ok) {
-				const err = (await res.json()) as {
+				// JSON 以外（Cloudflare の 5xx HTML 等）が返った場合は汎用メッセージにフォールバック
+				const err = (await res.json().catch(() => ({}))) as {
 					code?: string;
 					message?: string;
 					fields?: { field: string; message: string }[];

@@ -20,6 +20,7 @@
   - ...rest - data-testid 等をダイアログカード div に透過
 -->
 <script lang="ts">
+	import type { HTMLAttributes } from 'svelte/elements';
 	import Dialog from './Dialog.svelte';
 	import Button from './Button.svelte';
 
@@ -46,8 +47,7 @@
 		onConfirm: () => void | Promise<void>;
 		onCancel: () => void;
 		confirmTestid?: string;
-		[key: string]: unknown;
-	} = $props();
+	} & Omit<HTMLAttributes<HTMLDivElement>, 'title' | 'class' | 'children'> = $props();
 </script>
 
 <Dialog
@@ -62,7 +62,7 @@
 		<h2 class="mb-2 text-lg font-medium text-label">{title}</h2>
 		<p class="mb-6 text-sm text-secondary">{description}</p>
 		{#if error}
-			<p class="mb-4 text-sm text-destructive">{error}</p>
+			<p role="alert" class="mb-4 text-sm text-destructive">{error}</p>
 		{/if}
 		<div class="flex justify-end gap-3">
 			<Button variant="secondary" onclick={onCancel} disabled={loading} type="button">

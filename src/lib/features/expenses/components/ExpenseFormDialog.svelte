@@ -8,9 +8,6 @@
   Dialog をベースに ExpenseForm を内包する。
   登録・編集の2モードを1コンポーネントで担う。
 
-  @spec specs/expenses/spec.md
-  @acceptance AC-003, AC-006, AC-032, AC-033, AC-034
-
   @props
   - open: boolean - 表示状態
   - mode: 'create' | 'edit' - フォームモード

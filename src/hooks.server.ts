@@ -3,10 +3,12 @@
  * @module src/hooks.server.ts
  *
  * @description
- * Better Auth ハンドラの登録、セッション情報の locals への注入、
- * 全ルートへの認証ガード適用、およびセキュリティヘッダーの付与。
+ * Better Auth ハンドラの登録、セッション情報・role の locals への注入、
+ * 全ルートへの認証ガード・role 制限の適用、およびセキュリティヘッダーの付与。
  */
 import { createAuth } from '$lib/server/auth';
+import { createDb } from '$lib/server/db';
+import { getUserRole } from '$lib/server/user';
 import { building } from '$app/environment';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { json } from '@sveltejs/kit';
@@ -20,6 +22,17 @@ const PUBLIC_PATHS = new Set([
 	'/favicon.ico',
 	'/robots.txt'
 ]);
+
+// role=main のみ利用可能なパス（前方一致だが `/workout` 配下のセグメント単位で判定）
+const MAIN_ONLY_PREFIXES = ['/workout'];
+
+function isMainOnlyPath(pathname: string): boolean {
+	return MAIN_ONLY_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+function isHtmlNavigation(request: Request): boolean {
+	return request.headers.get('accept')?.includes('text/html') ?? false;
+}
 
 // _headers は SSR レスポンス（Worker 生成）に適用されないため、ここで付与する
 const SECURITY_HEADERS: Record<string, string> = {
@@ -63,6 +76,9 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	const session = await auth.api.getSession({ headers: event.request.headers });
 	event.locals.user = session?.user ?? null;
 	event.locals.session = session?.session ?? null;
+	event.locals.role = event.locals.user
+		? await getUserRole(createDb(DB), event.locals.user.id)
+		: null;
 
 	// 公開パスはそのまま通す
 	if (PUBLIC_PATHS.has(event.url.pathname)) {
@@ -73,10 +89,19 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	if (!event.locals.user) {
 		// ブラウザの画面遷移（Accept に text/html が含まれる）→ ログインページへ
 		// fetch() による API 呼び出し（application/json のみ）→ JSON 401
-		if (event.request.headers.get('accept')?.includes('text/html')) {
+		if (isHtmlNavigation(event.request)) {
 			return new Response(null, { status: 302, headers: { location: '/login' } });
 		}
 		return json({ code: 'UNAUTHORIZED', message: '認証が必要です' }, { status: 401 });
+	}
+
+	// role 制限: 画面遷移は +page.server.ts の load が 403 ページを返す。API 呼び出しはここで JSON 403
+	if (
+		isMainOnlyPath(event.url.pathname) &&
+		event.locals.role !== 'main' &&
+		!(event.request.method === 'GET' && isHtmlNavigation(event.request))
+	) {
+		return json({ code: 'FORBIDDEN', message: 'アクセス権限がありません' }, { status: 403 });
 	}
 
 	return resolve(event);

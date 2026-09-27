@@ -1,4 +1,3 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
 /**
  * @file テスト: 支出カテゴリサービス
  * @module src/lib/features/expenses/categories/server/service.integration.test.ts
@@ -6,12 +5,14 @@
  *
  * @target ./service.ts
  */
+/// <reference types="@cloudflare/vitest-pool-workers/types" />
 import { describe, test, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { createDb } from '$lib/server/db';
 import { expense, expenseCategory, user as userTable } from '$lib/server/tables';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import type * as schema from '$lib/server/tables';
+import { eq } from 'drizzle-orm';
 import { getCategories, createCategory, updateCategory, deleteCategory } from './service';
 
 type Db = DrizzleD1Database<typeof schema>;
@@ -52,28 +53,39 @@ async function insertExpense(db: Db, categoryId: string): Promise<string> {
 }
 
 describe('getCategories', () => {
-	test('全ユーザー共通のカテゴリが取得される', async () => {
+	test('全ユーザー共通のカテゴリを作成順で取得できる', async () => {
 		const db = createDb(env.DB);
 
-		await insertCategory(db, '食費');
-		await insertCategory(db, '日用品');
+		const first = await insertCategory(db, '食費');
+		const second = await insertCategory(db, '日用品');
 
 		const result = await getCategories(db);
-		expect(result.items.length).toBeGreaterThanOrEqual(2);
+		const ids = result.items.map((c) => c.id);
+		expect(ids.indexOf(first)).toBeLessThan(ids.indexOf(second));
+		expect(result.items.find((c) => c.id === second)?.name).toBe('日用品');
+		expect(result.total).toBe(result.items.length);
+		expect(result.page).toBe(1);
+		expect(result.limit).toBe(result.items.length);
 	});
 });
 
 describe('createCategory', () => {
-	test('カテゴリを作成できる', async () => {
+	test('正しいデータでカテゴリを作成できる', async () => {
 		const db = createDb(env.DB);
 
 		const created = await createCategory(db, { name: '交通費' });
 		expect(created.name).toBe('交通費');
+		const saved = await db
+			.select()
+			.from(expenseCategory)
+			.where(eq(expenseCategory.id, created.id))
+			.get();
+		expect(saved?.name).toBe('交通費');
 	});
 });
 
 describe('updateCategory', () => {
-	test('カテゴリを更新できる', async () => {
+	test('既存カテゴリの名前を更新できる', async () => {
 		const db = createDb(env.DB);
 
 		const categoryId = await insertCategory(db, '旧名称');
@@ -81,7 +93,7 @@ describe('updateCategory', () => {
 		expect(updated.name).toBe('新名称');
 	});
 
-	test('存在しないカテゴリは更新できない（NOT_FOUND）', async () => {
+	test('存在しないカテゴリの場合、NOT_FOUND が返る', async () => {
 		const db = createDb(env.DB);
 
 		await expect(updateCategory(db, crypto.randomUUID(), { name: '新名称' })).rejects.toMatchObject(
@@ -91,7 +103,7 @@ describe('updateCategory', () => {
 });
 
 describe('deleteCategory', () => {
-	test('支出が紐付くカテゴリは削除できない（CONFLICT）', async () => {
+	test('支出が紐付くカテゴリの場合、CONFLICT が返る', async () => {
 		const db = createDb(env.DB);
 
 		const categoryId = await insertCategory(db);
@@ -102,11 +114,26 @@ describe('deleteCategory', () => {
 		});
 	});
 
-	test('支出が紐付かないカテゴリは削除できる', async () => {
+	test('支出が紐付かないカテゴリを削除できる', async () => {
 		const db = createDb(env.DB);
 
 		const categoryId = await insertCategory(db);
 
-		await expect(deleteCategory(db, categoryId)).resolves.toBeUndefined();
+		await deleteCategory(db, categoryId);
+
+		const deleted = await db
+			.select()
+			.from(expenseCategory)
+			.where(eq(expenseCategory.id, categoryId))
+			.get();
+		expect(deleted).toBeUndefined();
+	});
+
+	test('存在しないカテゴリの場合、NOT_FOUND が返る', async () => {
+		const db = createDb(env.DB);
+
+		await expect(deleteCategory(db, crypto.randomUUID())).rejects.toMatchObject({
+			code: 'NOT_FOUND'
+		});
 	});
 });

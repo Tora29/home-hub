@@ -44,12 +44,12 @@
 	<h2 class="mb-3 text-sm font-medium text-secondary">体重記録</h2>
 	{#if todayBodyWeight !== null}
 		<div class="flex items-center gap-2">
-			<input
+			<Input
 				data-testid="workout-body-weight-date"
 				type="date"
 				value={today}
 				disabled
-				class="cursor-not-allowed rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-secondary opacity-50"
+				class="cursor-not-allowed opacity-50"
 			/>
 			<div class="min-w-0 flex-1">
 				<Input
@@ -72,12 +72,7 @@
 		</div>
 	{:else}
 		<div class="flex items-start gap-2">
-			<input
-				data-testid="workout-body-weight-date"
-				type="date"
-				bind:value={date}
-				class="rounded-2xl border border-separator bg-bg px-3 py-2 text-sm text-label focus:ring-2 focus:ring-accent focus:outline-none"
-			/>
+			<Input data-testid="workout-body-weight-date" type="date" bind:value={date} />
 			<div class="min-w-0 flex-1">
 				<Input
 					data-testid="workout-body-weight-input"

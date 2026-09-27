@@ -21,6 +21,11 @@
  * - /expenses/categories - カテゴリ管理
  */
 import { test, expect, type Page } from '@playwright/test';
+import { addMonths, getCurrentMonth } from '../src/lib/utils/date';
+
+// API で作成した支出は当月（JST）に入る。シード（過去の固定月）と重ならない前月は空月として使う
+const CURRENT_MONTH = getCurrentMonth();
+const EMPTY_MONTH = addMonths(CURRENT_MONTH, -1);
 
 const SEED_CATEGORY_ID = 'seed-cat-001'; // 食費
 const E2E_USER_ID = 'e2e-test-user-id';
@@ -57,7 +62,7 @@ test.describe('支出一覧 - 初期表示', () => {
 	});
 
 	test('支出がない月は空状態メッセージが表示される', async ({ page }) => {
-		await page.goto('/expenses?month=2026-01');
+		await page.goto(`/expenses?month=${EMPTY_MONTH}`);
 		await expect(page.getByTestId('expense-empty')).toBeVisible();
 		await expect(page.getByTestId('expense-empty')).toHaveText('支出はまだありません');
 	});
@@ -68,18 +73,30 @@ test.describe('支出一覧 - 初期表示', () => {
 });
 
 test.describe('支出一覧 - 月切り替え', () => {
-	test('月セレクトで 2026-02 に切り替えると支出一覧が更新される', async ({ page }) => {
-		await page.goto('/expenses');
-		await page.getByTestId('expense-month-select').selectOption('2026-02');
-		await expect(page).toHaveURL(/month=2026-02/);
-		await expect(page.getByTestId('expense-list')).toBeVisible();
-		await expect(page.getByTestId('expense-item').first()).toBeVisible();
+	test('月セレクトで支出のある月に切り替えると支出一覧が更新される', async ({ page }) => {
+		const expense = await createExpense(page, { amount: 2468 });
+		try {
+			await page.goto(`/expenses?month=${EMPTY_MONTH}`);
+			await expect(page.getByTestId('expense-empty')).toBeVisible();
+
+			await page.getByTestId('expense-month-select').selectOption(CURRENT_MONTH);
+			await expect(page).toHaveURL(new RegExp(`month=${CURRENT_MONTH}`));
+			await expect(
+				page.getByTestId('expense-item').filter({ hasText: '¥2,468' }).first()
+			).toBeVisible();
+		} finally {
+			await deleteExpense(page, expense.id);
+		}
 	});
 
-	test('2026-02 の月間合計が ¥0 より大きい値で表示される', async ({ page }) => {
-		await page.goto('/expenses?month=2026-02');
-		const totalText = await page.getByTestId('expense-total').textContent();
-		expect(totalText).not.toBe('¥0');
+	test('支出のある月の月間合計が ¥0 より大きい値で表示される', async ({ page }) => {
+		const expense = await createExpense(page, { amount: 1357 });
+		try {
+			await page.goto(`/expenses?month=${CURRENT_MONTH}`);
+			await expect(page.getByTestId('expense-total')).not.toHaveText('¥0');
+		} finally {
+			await deleteExpense(page, expense.id);
+		}
 	});
 });
 
@@ -96,21 +113,17 @@ test.describe('支出一覧 - 登録', () => {
 		await page.getByTestId('expense-amount-input').fill('1500');
 		await page.getByTestId('expense-category-select').selectOption({ label: '食費' });
 		await page.getByTestId('expense-payer-select').selectOption({ label: 'Test User' });
+		const createdRes = page.waitForResponse(
+			(res) => res.url().endsWith('/expenses') && res.request().method() === 'POST'
+		);
 		await page.getByTestId('expense-submit-button').click();
-		await expect(page.getByTestId('expense-list')).toBeVisible();
-		await expect(page.getByTestId('expense-item').first()).toBeVisible();
-
-		// クリーンアップ
-		const items = await page.getByTestId('expense-item').all();
-		for (const item of items) {
-			const text = await item.textContent();
-			if (text?.includes('¥1,500')) {
-				// 削除ボタンを取得（デスクトップ表示）
-				const deleteBtn = item.getByTestId('expense-delete-button').first();
-				await deleteBtn.click();
-				await page.getByTestId('expense-delete-confirm-button').click();
-				break;
-			}
+		const created = (await (await createdRes).json()) as { id: string };
+		try {
+			await expect(
+				page.getByTestId('expense-item').filter({ hasText: '¥1,500' }).first()
+			).toBeVisible();
+		} finally {
+			await deleteExpense(page, created.id);
 		}
 	});
 
@@ -150,7 +163,11 @@ test.describe('支出一覧 - 削除', () => {
 			const item = page.getByTestId('expense-item').filter({ hasText: '¥8,888' });
 			await item.getByTestId('expense-delete-button').first().click();
 			await expect(page.getByTestId('expense-delete-dialog')).toBeVisible();
-			await page.getByRole('button', { name: 'キャンセル' }).click();
+			// ConfirmDialog のキャンセルボタンは testid を受け取れないため、ダイアログの testid でスコープしてロールで取得
+			await page
+				.getByTestId('expense-delete-dialog')
+				.getByRole('button', { name: 'キャンセル' })
+				.click();
 			await expect(item.first()).toBeVisible();
 		} finally {
 			await deleteExpense(page, expense.id);
@@ -247,18 +264,15 @@ test.describe('カテゴリ管理', () => {
 
 	test('新しいカテゴリを追加できる', async ({ page }) => {
 		await page.getByTestId('expense-category-name-input').fill('E2Eテストカテゴリ');
+		const createdRes = page.waitForResponse(
+			(res) => res.url().endsWith('/expenses/categories') && res.request().method() === 'POST'
+		);
 		await page.getByTestId('expense-category-add-button').click();
-		await expect(page.getByText('E2Eテストカテゴリ')).toBeVisible();
-
-		// クリーンアップ: 追加したカテゴリを削除
-		const items = await page.getByTestId('expense-category-item').all();
-		for (const item of items) {
-			const text = await item.textContent();
-			if (text?.includes('E2Eテストカテゴリ')) {
-				await item.getByTestId('expense-category-delete-button').click();
-				await page.getByTestId('expense-category-delete-confirm-button').click();
-				break;
-			}
+		const created = (await (await createdRes).json()) as { id: string };
+		try {
+			await expect(page.getByText('E2Eテストカテゴリ')).toBeVisible();
+		} finally {
+			await page.request.delete(`/expenses/categories/${created.id}`);
 		}
 	});
 

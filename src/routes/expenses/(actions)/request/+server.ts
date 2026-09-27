@@ -4,37 +4,36 @@
  * @feature expenses
  *
  * @description
- * 自分の checked 支出を一括で pending にし、パートナーへ LINE 通知を送信するエンドポイント。
- * LINE 通知はベストエフォート。失敗してもロールバックせず console.error にログするのみ。
- * user.role 未設定・通知先未設定の場合は DB 更新を継続し LINE 通知をスキップ。
- *
- * @spec specs/expenses/spec.md
- * @acceptance AC-008, AC-115, AC-118, AC-119, AC-125
+ * 自分の checked 支出を一括で pending にし、相手へ LINE 通知を送信するエンドポイント。
+ * LINE 通知はベストエフォート（waitUntil でレスポンス返却後に実行）。
+ * user.role 未設定・通知先未設定の場合は DB 更新のみ行い LINE 通知をスキップ。
  *
  * @endpoints
- * - POST /expenses/request → 200 {count} - 承認依頼成功
+ * - POST /expenses/request → 200 {count} - 一括承認依頼（count = 実際に申請した件数）
  *   @errors 409(CONFLICT)
  *
- * @service $expenses/service.ts
+ * @service $lib/features/expenses/server/workflow.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
-import { requestExpenses, buildLineEnv, getUserRole } from '$expenses/server/service';
+import { requestExpenses } from '$expenses/server/workflow';
+import { buildLineEnv } from '$expenses/server/line';
 
 /**
  * 自分の checked 支出を一括で pending にし、LINE 通知を送信する。
- * @ac AC-008, AC-115, AC-118, AC-119, AC-125
- * @throws CONFLICT - checked 支出が 0 件の場合
+ * @calls requestExpenses
+ * @throws {CONFLICT} - checked 支出が 0 件の場合
  */
-export const POST: RequestHandler = async ({ locals, platform }) => {
+export const POST: RequestHandler = async ({ url, locals, platform }) => {
 	try {
 		const db = createDb(platform!.env.DB);
-		const userId = locals.user!.id;
-		const role = await getUserRole(db, userId);
-		const result = await requestExpenses(db, userId, role, buildLineEnv(platform!.env), (task) =>
-			platform!.context.waitUntil(task)
+		const result = await requestExpenses(
+			db,
+			locals.user!.id,
+			{ role: locals.role, lineEnv: buildLineEnv(platform!.env), origin: url.origin },
+			(task) => platform!.context.waitUntil(task)
 		);
 		return json(result);
 	} catch (e) {

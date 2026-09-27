@@ -7,14 +7,11 @@
   支出一覧の各行コンポーネント。デスクトップ（md+）とモバイル（<md）で異なるレイアウトを提供する。
   status に応じたバッジ表示・操作ボタンの表示/非表示制御を行う。
 
-  @spec specs/expenses/spec.md
-  @acceptance AC-004, AC-005, AC-015, AC-016, AC-017, AC-018, AC-019
-
   @props
   - expense: ExpenseWithRelations - 支出データ（リレーション付き）
   - currentUserId: string - 現在のログインユーザー ID
   - openMenuId: string | null - 開いているメニューの支出 ID
-  - checkLoading: boolean - チェック/アンチェック操作中フラグ
+  - checkLoading?: boolean - チェック/アンチェック操作中フラグ（既定 false）
   - onCheckToggle: (id: string, action: 'check' | 'uncheck') => void - チェック切り替えコールバック
   - onEdit: (expense: ExpenseWithRelations) => void - 編集コールバック
   - onDelete: (expense: ExpenseWithRelations) => void - 削除コールバック
@@ -24,8 +21,9 @@
 	import { EllipsisVertical, Pencil, Trash } from '@lucide/svelte';
 	import { fade } from 'svelte/transition';
 	import Button from '$lib/components/Button.svelte';
-	import type { ExpenseWithRelations } from '../types';
-	import { formatAmount } from '../format';
+	import Checkbox from '$lib/components/Checkbox.svelte';
+	import type { ExpenseStatus, ExpenseWithRelations } from '../types';
+	import { formatAmount } from '$lib/utils/format';
 	import { formatMonthDay } from '$lib/utils/date';
 
 	let {
@@ -64,14 +62,14 @@
 	// 行のグレーアウト: pending/approved
 	const rowFaded = $derived(isPending || isApproved);
 
-	const statusConfig: Record<string, { label: string; class: string }> = {
+	const statusConfig: Record<ExpenseStatus, { label: string; class: string }> = {
 		unapproved: { label: '未承認', class: 'bg-destructive/10 text-destructive' },
 		checked: { label: '確認済み', class: 'bg-bg-warning text-warning' },
 		pending: { label: '申請中', class: 'bg-accent/10 text-accent' },
 		approved: { label: '承認済み', class: 'bg-success/10 text-success' }
 	};
 
-	const currentStatus = $derived(statusConfig[expense.status] ?? statusConfig.unapproved);
+	const currentStatus = $derived(statusConfig[expense.status]);
 
 	// SSR（UTC）とブラウザで表示がずれないよう JST 固定で整形する
 	function formatDate(dateStr: string): string {
@@ -98,17 +96,15 @@
 	<div class="hidden items-center gap-3 md:flex">
 		<!-- チェックボックス -->
 		{#if canManage}
-			<input
+			<Checkbox
 				data-testid="expense-check-button"
-				type="checkbox"
 				checked={isChecked}
 				onchange={handleCheckboxChange}
 				disabled={checkLoading}
-				class="h-4 w-4 cursor-pointer accent-accent disabled:cursor-not-allowed disabled:opacity-50"
 				aria-label="確認済みにする"
 			/>
 		{:else}
-			<div class="h-4 w-4 shrink-0"></div>
+			<div class="h-5 w-5 shrink-0"></div>
 		{/if}
 
 		<!-- 金額 -->
@@ -120,11 +116,9 @@
 		</span>
 
 		<!-- 支払者バッジ -->
-		{#if expense.payer}
-			<span class="rounded-xl bg-bg-secondary px-2 py-0.5 text-xs text-secondary">
-				{expense.payer.name}
-			</span>
-		{/if}
+		<span class="rounded-xl bg-bg-secondary px-2 py-0.5 text-xs text-secondary">
+			{expense.payer.name}
+		</span>
 
 		<!-- ステータスバッジ -->
 		<span class="rounded-xl px-2 py-0.5 text-xs font-medium {currentStatus.class}">
@@ -168,17 +162,16 @@
 		<!-- 1行目: チェックボックス + 金額 + メニューボタン -->
 		<div class="flex items-center gap-2">
 			{#if canManage}
-				<input
+				<Checkbox
 					data-testid="expense-check-button"
-					type="checkbox"
 					checked={isChecked}
 					onchange={handleCheckboxChange}
 					disabled={checkLoading}
-					class="h-4 w-4 shrink-0 cursor-pointer accent-accent disabled:cursor-not-allowed disabled:opacity-50"
+					class="shrink-0"
 					aria-label="確認済みにする"
 				/>
 			{:else}
-				<div class="h-4 w-4 shrink-0"></div>
+				<div class="h-5 w-5 shrink-0"></div>
 			{/if}
 			<span class="flex-1 text-lg font-semibold text-label">{formatAmount(expense.amount)}</span>
 
@@ -243,11 +236,9 @@
 			<span class="rounded-xl bg-bg-secondary px-2 py-0.5 text-xs text-secondary">
 				{expense.category.name}
 			</span>
-			{#if expense.payer}
-				<span class="rounded-xl bg-bg-secondary px-2 py-0.5 text-xs text-secondary">
-					{expense.payer.name}
-				</span>
-			{/if}
+			<span class="rounded-xl bg-bg-secondary px-2 py-0.5 text-xs text-secondary">
+				{expense.payer.name}
+			</span>
 			<span class="rounded-xl px-2 py-0.5 text-xs font-medium {currentStatus.class}">
 				{currentStatus.label}
 			</span>

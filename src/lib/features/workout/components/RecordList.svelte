@@ -37,7 +37,9 @@
 	} = $props();
 
 	const recordsByDate = $derived.by(() => {
-		const map = new SvelteMap<string, WorkoutRecord[]>();
+		// 一時集計用（$derived.by 内で完結しリアクティブ不要）のため plain Map
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
+		const map = new Map<string, WorkoutRecord[]>();
 		for (const r of records) {
 			const list = map.get(r.date) ?? [];
 			list.push(r);
@@ -141,6 +143,7 @@
 		</div>
 		{#if recordsByDate.length > RECORDS_PREVIEW_COUNT}
 			<button
+				type="button"
 				onclick={() => (showAllRecords = !showAllRecords)}
 				class="mt-1 w-full py-1.5 text-xs text-secondary hover:text-label"
 			>

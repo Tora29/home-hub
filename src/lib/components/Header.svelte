@@ -6,14 +6,13 @@
   全ページ共通のヘッダーコンポーネント。
   ロゴ・ダークモード切替・ログアウトを提供する。
 
-  @spec specs/header/spec.md
-  @acceptance AC-001, AC-002, AC-003, AC-004, AC-201
+  @props なし
 -->
 <script lang="ts">
 	import { Moon, Sun, LogOut, Menu } from '@lucide/svelte';
 	import { authClient } from '$lib/auth-client';
 	import { goto } from '$app/navigation';
-	import { mobileOpen } from '$lib/stores/sidebar';
+	import { sidebarState } from '$lib/stores/sidebar.svelte';
 
 	let isDark = $state(
 		typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
@@ -40,12 +39,13 @@
 >
 	<div class="flex items-center gap-2">
 		<button
+			type="button"
 			data-testid="sidebar-hamburger"
 			class="flex h-9 w-9 items-center justify-center rounded-xl text-label transition-colors hover:bg-bg-grouped focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none md:hidden"
 			aria-label="メニューを開く"
-			onclick={() => mobileOpen.update((v) => !v)}
+			onclick={() => (sidebarState.mobileOpen = !sidebarState.mobileOpen)}
 		>
-			<Menu size={20} />
+			<Menu size={20} aria-hidden="true" />
 		</button>
 		<a
 			href="/"
@@ -59,26 +59,28 @@
 
 	<div class="flex items-center gap-2">
 		<button
+			type="button"
 			data-testid="header-dark-toggle"
 			aria-label={isDark ? 'ライトモードに切り替える' : 'ダークモードに切り替える'}
 			onclick={toggleDark}
 			class={navButtonClass}
 		>
 			{#if isDark}
-				<Sun size={18} />
+				<Sun size={18} aria-hidden="true" />
 			{:else}
-				<Moon size={18} />
+				<Moon size={18} aria-hidden="true" />
 			{/if}
 			<span class="hidden md:inline">テーマ切り替え</span>
 		</button>
 
 		<button
+			type="button"
 			data-testid="header-logout-button"
 			aria-label="ログアウト"
 			onclick={logout}
 			class={navButtonClass}
 		>
-			<LogOut size={16} />
+			<LogOut size={16} aria-hidden="true" />
 			<span class="hidden md:inline">ログアウト</span>
 		</button>
 	</div>

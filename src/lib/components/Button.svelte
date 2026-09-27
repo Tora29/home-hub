@@ -39,16 +39,16 @@
 		...rest
 	}: Props = $props();
 
-	const variantClasses: Record<string, string> = {
+	const variantClasses: Record<NonNullable<Props['variant']>, string> = {
 		primary:
-			'bg-accent text-white shadow-sm hover:opacity-90 disabled:opacity-60 transition-opacity',
+			'bg-accent text-on-accent shadow-sm hover:opacity-90 disabled:opacity-60 transition-opacity',
 		secondary: 'border border-separator text-secondary hover:text-label transition-colors',
 		destructive:
-			'bg-destructive text-white hover:opacity-90 disabled:opacity-60 transition-opacity',
+			'bg-destructive text-on-accent hover:opacity-90 disabled:opacity-60 transition-opacity',
 		'ghost-destructive': 'bg-destructive/10 text-destructive hover:opacity-80 transition-opacity'
 	};
 
-	const sizeClasses: Record<string, string> = {
+	const sizeClasses: Record<NonNullable<Props['size']>, string> = {
 		sm: 'py-1.5 px-3 text-xs',
 		md: 'py-2 px-4 text-sm',
 		lg: 'py-3 px-6'

@@ -4,17 +4,19 @@
  * @feature workout
  *
  * @description
- * 筋トレ種目の更新・削除エンドポイント。
+ * 筋トレ種目の更新（PUT = 完全置換）・削除エンドポイント。
+ * 他ユーザーの種目は存在を隠蔽して 404 を返す。
+ * role !== 'main' の呼び出しは hooks.server.ts が 403 を返す。
  *
  * @endpoints
- * - PUT /workout/exercises/[id] → 200 Exercise - 種目更新
- *   @body exerciseUpdateSchema（name, categoryId?）
- *   @errors 400(VALIDATION_ERROR), 404(NOT_FOUND)
+ * - PUT /workout/exercises/[id] → 200 ExerciseWithCategory - 種目更新
+ *   @body exerciseUpdateSchema（name, categoryId: string | null）
+ *   @errors 400(VALIDATION_ERROR), 403(FORBIDDEN), 404(NOT_FOUND)
  * - DELETE /workout/exercises/[id] → 204 - 種目削除
- *   @errors 404(NOT_FOUND), 409(CONFLICT)
+ *   @errors 403(FORBIDDEN), 404(NOT_FOUND), 409(CONFLICT)
  *
- * @service ../service.ts
- * @schema ../schema.ts
+ * @service $lib/features/workout/exercises/server/service.ts
+ * @schema $lib/features/workout/exercises/schema.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -26,8 +28,9 @@ import { deleteExercise, updateExercise } from '$workout/exercises/server/servic
 /**
  * 種目を更新する。exerciseUpdateSchema で入力値を検証後、service に委譲する。
  * @body exerciseUpdateSchema
- * @throws VALIDATION_ERROR - 入力値が不正な場合
- * @throws NOT_FOUND - 該当種目が存在しない場合
+ * @calls updateExercise
+ * @throws {VALIDATION_ERROR} - 入力値が不正な場合
+ * @throws {NOT_FOUND} - 該当種目が存在しない・他ユーザーの場合、または categoryId の自分のカテゴリが存在しない場合
  */
 export const PUT: RequestHandler = async ({ request, params, locals, platform }) => {
 	const bodyResult = await parseJsonBody(request);
@@ -46,9 +49,10 @@ export const PUT: RequestHandler = async ({ request, params, locals, platform })
 };
 
 /**
- * 種目を削除する。紐付く記録がある場合は 409 を返す。
- * @throws NOT_FOUND - 該当種目が存在しない場合
- * @throws CONFLICT - 種目に紐付く記録が 1 件以上ある場合
+ * 種目を削除する。
+ * @calls deleteExercise
+ * @throws {NOT_FOUND} - 該当種目が存在しない・他ユーザーの場合
+ * @throws {CONFLICT} - 種目に紐付く記録が 1 件以上ある場合
  */
 export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 	try {

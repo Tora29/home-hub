@@ -5,15 +5,17 @@
  *
  * @description
  * 筋トレ種目カテゴリの一覧取得・新規登録エンドポイント。
+ * role !== 'main' の呼び出しは hooks.server.ts が 403 を返す。
  *
  * @endpoints
- * - GET /workout/exercises/categories → 200 ExerciseCategory[] - カテゴリ一覧取得
+ * - GET /workout/exercises/categories → 200 { items: ExerciseCategory[]; total; page; limit } - カテゴリ一覧取得（全件）
+ *   @errors 403(FORBIDDEN)
  * - POST /workout/exercises/categories → 201 ExerciseCategory - カテゴリ登録
  *   @body exerciseCategoryCreateSchema
- *   @errors 400(VALIDATION_ERROR)
+ *   @errors 400(VALIDATION_ERROR), 403(FORBIDDEN)
  *
- * @service $workout/exercises/server/service.ts
- * @schema $workout/exercises/schema.ts
+ * @service $lib/features/workout/exercises/server/service.ts
+ * @schema $lib/features/workout/exercises/schema.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -23,14 +25,14 @@ import { exerciseCategoryCreateSchema } from '$workout/exercises/schema';
 import { getExerciseCategories, createExerciseCategory } from '$workout/exercises/server/service';
 
 /**
- * カテゴリ一覧を取得する（全件）。
+ * カテゴリ一覧を取得する（全件。マスタ系のため page=1 / limit=件数）。
  * @calls getExerciseCategories
  */
 export const GET: RequestHandler = async ({ locals, platform }) => {
 	try {
 		const db = createDb(platform!.env.DB);
-		const categories = await getExerciseCategories(db, locals.user!.id);
-		return json(categories);
+		const items = await getExerciseCategories(db, locals.user!.id);
+		return json({ items, total: items.length, page: 1, limit: items.length });
 	} catch (e) {
 		return handleApiError(e);
 	}
@@ -39,7 +41,8 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 /**
  * カテゴリを新規作成する。exerciseCategoryCreateSchema で入力値を検証後、service に委譲する。
  * @body exerciseCategoryCreateSchema
- * @throws VALIDATION_ERROR - 入力値が不正な場合
+ * @calls createExerciseCategory
+ * @throws {VALIDATION_ERROR} - 入力値が不正な場合
  */
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const bodyResult = await parseJsonBody(request);

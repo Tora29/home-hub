@@ -7,27 +7,24 @@
  * 支出を確認済みにするエンドポイント（unapproved → checked）。
  * 登録者のみ実行可能。
  *
- * @spec specs/expenses/spec.md
- * @acceptance AC-004, AC-106, AC-114
- *
  * @endpoints
  * - POST /expenses/[id]/check → 200 ExpenseWithRelations - 確認済みに更新
  *   @errors 403(FORBIDDEN), 404(NOT_FOUND), 409(CONFLICT)
  *
- * @service $expenses/service.ts
+ * @service $lib/features/expenses/server/workflow.ts
  */
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createDb } from '$lib/server/db';
 import { handleApiError } from '$lib/server/api-helpers';
-import { checkExpense } from '$expenses/server/service';
+import { checkExpense } from '$expenses/server/workflow';
 
 /**
  * 支出を確認済みにする（unapproved → checked）。
- * @ac AC-004, AC-106, AC-114
- * @throws FORBIDDEN - 他ユーザーの支出の場合
- * @throws NOT_FOUND - 該当支出が存在しない場合
- * @throws CONFLICT - unapproved 以外の支出の場合
+ * @calls checkExpense
+ * @throws {NOT_FOUND} - 該当支出が存在しない場合
+ * @throws {FORBIDDEN} - 他ユーザーの支出の場合
+ * @throws {CONFLICT} - unapproved 以外の支出の場合
  */
 export const POST: RequestHandler = async ({ params, locals, platform }) => {
 	try {

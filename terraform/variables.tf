@@ -13,6 +13,12 @@ variable "better_auth_secret" {
   description = "Better Auth のシークレットキー"
   type        = string
   sensitive   = true
+
+  # 空値だとセッション署名が成立しないため、Secret 未登録（空文字）での apply を拒否する
+  validation {
+    condition     = length(var.better_auth_secret) > 0
+    error_message = "better_auth_secret が空です。GitHub Secrets の TF_VAR_BETTER_AUTH_SECRET を確認してください。"
+  }
 }
 
 variable "line_channel_access_token" {

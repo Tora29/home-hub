@@ -5,62 +5,42 @@
  *
  * @target ./+server.ts
  */
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import { POST } from './+server';
 
-vi.mock('$lib/server/db', () => ({ createDb: vi.fn() }));
-vi.mock('$expenses/categories/server/service', () => ({
-	createCategory: vi.fn(),
-	getCategories: vi.fn()
-}));
+type ErrorBody = { code: string; fields: { field: string; message: string }[] };
 
-const mockPlatform = { env: { DB: {} } };
+async function callPost(body: string, contentType = 'application/json') {
+	const request = new Request('http://localhost/expenses/categories', {
+		method: 'POST',
+		headers: { 'Content-Type': contentType },
+		body
+	});
+	return POST({ request, platform: { env: { DB: {} } } } as unknown as Parameters<typeof POST>[0]);
+}
 
 describe('POST /expenses/categories', () => {
-	test('name が空文字の場合、400 VALIDATION_ERROR が返る', async () => {
-		const request = new Request('http://localhost/expenses/categories', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ name: '' })
-		});
-		const response = await POST({ request, platform: mockPlatform } as any);
+	test('カテゴリ名が空文字の場合、400 VALIDATION_ERROR「カテゴリ名は必須です」が返る', async () => {
+		const response = await callPost(JSON.stringify({ name: '' }));
 		expect(response.status).toBe(400);
-		const body = await response.json();
+		const body = (await response.json()) as ErrorBody;
 		expect(body.code).toBe('VALIDATION_ERROR');
+		expect(body.fields).toContainEqual({ field: 'name', message: 'カテゴリ名は必須です' });
 	});
 
-	test('name が51文字の場合、400 VALIDATION_ERROR が返る', async () => {
-		const request = new Request('http://localhost/expenses/categories', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ name: 'a'.repeat(51) })
-		});
-		const response = await POST({ request, platform: mockPlatform } as any);
+	test('カテゴリ名が51文字の場合、400 VALIDATION_ERROR「50文字以内で入力してください」が返る', async () => {
+		const response = await callPost(JSON.stringify({ name: 'a'.repeat(51) }));
 		expect(response.status).toBe(400);
-		const body = await response.json();
+		const body = (await response.json()) as ErrorBody;
 		expect(body.code).toBe('VALIDATION_ERROR');
+		expect(body.fields).toContainEqual({ field: 'name', message: '50文字以内で入力してください' });
 	});
 
 	test('リクエストボディが JSON でない場合、400 VALIDATION_ERROR が返る', async () => {
-		const request = new Request('http://localhost/expenses/categories', {
-			method: 'POST',
-			body: 'not-json'
-		});
-		const response = await POST({ request, platform: mockPlatform } as any);
+		const response = await callPost('not-json', 'text/plain');
 		expect(response.status).toBe(400);
-		const body = await response.json();
+		const body = (await response.json()) as ErrorBody;
 		expect(body.code).toBe('VALIDATION_ERROR');
-	});
-
-	test('バリデーション失敗時は createCategory が呼ばれない', async () => {
-		const { createCategory } = await import('$expenses/categories/server/service');
-		vi.mocked(createCategory).mockClear();
-		const request = new Request('http://localhost/expenses/categories', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ name: '' })
-		});
-		await POST({ request, platform: mockPlatform } as any);
-		expect(createCategory).not.toHaveBeenCalled();
+		expect(body.fields).toEqual([]);
 	});
 });
