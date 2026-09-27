@@ -165,6 +165,20 @@ GitHub Secrets TF_VAR_* → terraform.yml → Cloudflare Pages secrets → 本�
 
 > `dependency-review-action` は未導入。追加する場合は `.github/workflows/dependency-review.yml` を作成する。
 
+### 更新の運用
+
+- Dependabot はパッチ・マイナーを 1 PR にまとめ、メジャーはパッケージごとの個別 PR で届く（`.github/dependabot.yml`）
+- 開発者の npm は `min-release-age=7`（ユーザー設定）で公開 7 日未満の版を入れない。`npm install` が `ETARGET` になったら 7 日経過済みの版を指定する
+- 依存の peer 制約で**保留中のメジャー更新**（Dependabot の PR が来ても閉じる。制約が解けたら上げる）
+
+| パッケージ                                | 保留理由                                                                                 |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `vitest` / `@vitest/browser-playwright` 5 | `@cloudflare/vitest-pool-workers`（integration テスト）が `vitest ^4.1` のみ対応         |
+| `typescript` 7                            | `@sveltejs/kit` / `svelte-check` が `^5 \|\| ^6`、`typescript-eslint` が `<6.1` のみ対応 |
+| `@types/node` 23 以上                     | 上げない。型は `engines.node`（`>=22`）の最小版に合わせる                                |
+
+- `npm audit` の残存（上流未修正・dev のみ）: `drizzle-kit` 内の旧 `esbuild`（moderate）、`@sveltejs/kit` 内の `cookie`（low）
+
 ---
 
 ## なぜ必要か
