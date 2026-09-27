@@ -145,6 +145,11 @@ describe('createExpense', () => {
 
 ## コンポーネントテストの注意事項
 
+### `render()` は必ず `await` する
+
+`vitest-browser-svelte` 3 以降の `render()` は Promise を返す。`await render(Component, props)` と書く
+（`@typescript-eslint/no-floating-promises` でも検出される）。
+
 ### `toBeVisible()` と `toBeInTheDocument()` の使い分け
 
 | 状況                                                 | 正しいマッチャー          |

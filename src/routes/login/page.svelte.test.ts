@@ -33,18 +33,18 @@ beforeEach(() => {
 
 describe('+page.svelte (login)', () => {
 	test('Google でログインボタンが表示される', async () => {
-		render(LoginPage);
+		await render(LoginPage);
 		await expect.element(page.getByTestId('login-google-button')).toBeVisible();
 	});
 
 	test('エラーパラメータがない場合、エラーメッセージが表示されない', async () => {
-		render(LoginPage);
+		await render(LoginPage);
 		await expect.element(page.getByTestId('login-auth-error')).not.toBeInTheDocument();
 	});
 
 	test('?error パラメータがある場合、エラーメッセージが表示される', async () => {
 		mockKitPage.url = new URL('http://localhost/login?error=OAuthAccountNotLinked');
-		render(LoginPage);
+		await render(LoginPage);
 		await expect.element(page.getByTestId('login-auth-error')).toBeVisible();
 		await expect
 			.element(page.getByText('ログインに失敗しました。もう一度お試しください。'))
@@ -52,7 +52,7 @@ describe('+page.svelte (login)', () => {
 	});
 
 	test('ログインボタンをクリックすると signIn.social が呼ばれる', async () => {
-		render(LoginPage);
+		await render(LoginPage);
 		const { authClient } = await import('$lib/auth-client');
 		const signInSocial = vi.mocked(authClient.signIn.social);
 		signInSocial.mockClear();

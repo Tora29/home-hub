@@ -49,34 +49,34 @@ function makeProps(overrides: Partial<Parameters<typeof render>[1]> = {}) {
 
 describe('ExpensesPage', () => {
 	test('支出がない場合、空状態メッセージが表示される', async () => {
-		render(ExpensesPage, makeProps());
+		await render(ExpensesPage, makeProps());
 		await expect.element(page.getByTestId('expense-empty')).toBeVisible();
 	});
 
 	test('支出がある場合、一覧が表示される', async () => {
-		render(ExpensesPage, makeProps({ expenses: [makeExpense()] }));
+		await render(ExpensesPage, makeProps({ expenses: [makeExpense()] }));
 		await expect.element(page.getByTestId('expense-list')).toBeVisible();
 		await expect.element(page.getByTestId('expense-empty')).not.toBeInTheDocument();
 	});
 
 	test('月間合計が表示される', async () => {
-		render(ExpensesPage, makeProps({ monthTotal: 3500 }));
+		await render(ExpensesPage, makeProps({ monthTotal: 3500 }));
 		await expect.element(page.getByTestId('expense-total')).toBeVisible();
 		await expect.element(page.getByText('¥3,500')).toBeVisible();
 	});
 
 	test('月選択セレクトが表示される', async () => {
-		render(ExpensesPage, makeProps());
+		await render(ExpensesPage, makeProps());
 		await expect.element(page.getByTestId('expense-month-select')).toBeVisible();
 	});
 
 	test('支出登録ボタンが表示される', async () => {
-		render(ExpensesPage, makeProps());
+		await render(ExpensesPage, makeProps());
 		await expect.element(page.getByTestId('expense-create-button')).toBeVisible();
 	});
 
 	test('自分の checked 支出がある場合、承認依頼ボタンが表示される', async () => {
-		render(
+		await render(
 			ExpensesPage,
 			makeProps({ expenses: [makeExpense({ userId: 'user-1', status: 'checked' })] })
 		);
@@ -84,7 +84,7 @@ describe('ExpensesPage', () => {
 	});
 
 	test('自分の checked 支出がない場合、承認依頼ボタンが表示されない', async () => {
-		render(
+		await render(
 			ExpensesPage,
 			makeProps({ expenses: [makeExpense({ userId: 'user-1', status: 'unapproved' })] })
 		);
@@ -92,7 +92,7 @@ describe('ExpensesPage', () => {
 	});
 
 	test('自分の pending 支出がある場合、申請取り消しボタンが表示される', async () => {
-		render(
+		await render(
 			ExpensesPage,
 			makeProps({ expenses: [makeExpense({ userId: 'user-1', status: 'pending' })] })
 		);
@@ -100,17 +100,17 @@ describe('ExpensesPage', () => {
 	});
 
 	test('パートナーの pending 支出がある場合、全件承認ボタンが表示される', async () => {
-		render(ExpensesPage, makeProps({ partnerPendingCount: 1 }));
+		await render(ExpensesPage, makeProps({ partnerPendingCount: 1 }));
 		await expect.element(page.getByTestId('expense-bulk-approve-button')).toBeVisible();
 	});
 
 	test('パートナーの pending 支出がない場合、全件承認ボタンが表示されない', async () => {
-		render(ExpensesPage, makeProps({ partnerPendingCount: 0 }));
+		await render(ExpensesPage, makeProps({ partnerPendingCount: 0 }));
 		await expect.element(page.getByTestId('expense-bulk-approve-button')).not.toBeInTheDocument();
 	});
 
 	test('支出登録ボタンをクリックするとダイアログが開く', async () => {
-		render(ExpensesPage, makeProps());
+		await render(ExpensesPage, makeProps());
 		(page.getByTestId('expense-create-button').element() as HTMLElement).click();
 		flushSync();
 		await expect.element(page.getByRole('dialog')).toBeVisible();

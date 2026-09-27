@@ -25,12 +25,12 @@ describe('RestTimer', () => {
 	});
 
 	test('初期表示はタイマーアイコンと90sが表示される', async () => {
-		render(RestTimer);
+		await render(RestTimer);
 		await expect.element(page.getByText('90s')).toBeVisible();
 	});
 
 	test('ボタンをタップすると残り秒数のカウントダウンが始まる', async () => {
-		render(RestTimer);
+		await render(RestTimer);
 		click(page.getByRole('button', { name: '90秒インターバルタイマー' }));
 		flushSync();
 
@@ -39,7 +39,7 @@ describe('RestTimer', () => {
 	});
 
 	test('90秒経過すると一瞬通常表示以外に切り替わり、その後90s表示に自動で戻る', async () => {
-		render(RestTimer);
+		await render(RestTimer);
 		click(page.getByRole('button', { name: '90秒インターバルタイマー' }));
 		flushSync();
 
@@ -51,7 +51,7 @@ describe('RestTimer', () => {
 	});
 
 	test('実行中に再タップすると90秒にリセットして再スタートする', async () => {
-		render(RestTimer);
+		await render(RestTimer);
 		const button = page.getByRole('button', { name: '90秒インターバルタイマー' });
 
 		click(button);
