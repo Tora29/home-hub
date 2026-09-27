@@ -3,8 +3,10 @@
   @module src/lib/components/Dialog.svelte
 
   @description
-  汎用モーダルオーバーレイシェル。
-  backdrop・Escape キー・aria 属性を担当する。
+  汎用モーダルシェル。ネイティブ <dialog> + showModal() で実装し、
+  フォーカス移動・背景の inert（背景へフォーカス・操作が移らない）をブラウザ標準に任せ、
+  閉じた後は開く前のフォーカス位置へ戻す。
+  backdrop クリック・Escape キーは open の所有者（親）へ onClose で通知する。
   中身はスニペット（children）で差し込む。
 
   @props
@@ -37,31 +39,43 @@
 		children: Snippet;
 	} = $props();
 
-	function handleBackdropClick(e: MouseEvent) {
-		if (!disabled && closeOnBackdrop && e.target === e.currentTarget) {
-			onClose();
-		}
+	let dialogEl = $state<HTMLDialogElement>();
+
+	// open=true でマウントされた直後にモーダル表示し、アンマウント時に開く前のフォーカス位置へ戻す
+	// （DOM から外れる dialog では close() 標準のフォーカス復帰が働かないため明示的に戻す）
+	$effect(() => {
+		const el = dialogEl;
+		if (!el) return;
+		const previouslyFocused = document.activeElement as HTMLElement | null;
+		if (!el.open) el.showModal();
+		return () => {
+			if (el.open) el.close();
+			previouslyFocused?.focus();
+		};
+	});
+
+	// Escape はブラウザが dialog を直接閉じるため止め、open の所有者（親）に委ねる
+	function handleCancel(e: Event) {
+		e.preventDefault();
+		if (!disabled) onClose();
 	}
 
-	function handleKeydown(e: KeyboardEvent) {
-		if (!disabled && e.key === 'Escape') {
-			onClose();
-		}
+	// dialog 要素自体（= カード外の余白）のクリックを backdrop クリックとして扱う
+	function handleClick(e: MouseEvent) {
+		if (!disabled && closeOnBackdrop && e.target === e.currentTarget) onClose();
 	}
 </script>
 
 {#if open}
-	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-	<!-- dialog/alertdialog ロールは Svelte linter が non-interactive と判定するが、tabindex="-1" はフォーカス管理に必要な正しいパターン -->
-	<div
+	<!-- onclick は backdrop クリック判定のみ。キーボードでは Escape（cancel イベント）で閉じられる -->
+	<dialog
+		bind:this={dialogEl}
 		{role}
-		aria-modal="true"
 		aria-label={ariaLabel}
-		tabindex={-1}
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-		onclick={handleBackdropClick}
-		onkeydown={handleKeydown}
+		oncancel={handleCancel}
+		onclick={handleClick}
+		class="fixed inset-0 m-0 h-full max-h-none w-full max-w-none items-center justify-center border-0 bg-transparent px-4 text-inherit backdrop:bg-black/40 open:flex"
 	>
 		{@render children()}
-	</div>
+	</dialog>
 {/if}

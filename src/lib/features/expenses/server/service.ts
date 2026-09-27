@@ -54,6 +54,12 @@ export type LineEnv = {
 	lineMock?: string;
 };
 
+/**
+ * レスポンス返却後にバックグラウンド実行させるための関数（Workers の `platform.context.waitUntil`）。
+ * 未指定の場合は完了まで await する。
+ */
+export type Defer = (task: Promise<unknown>) => void;
+
 /** Cloudflare の platform.env から LineEnv を組み立てる。 */
 export function buildLineEnv(env: {
 	LINE_CHANNEL_ACCESS_TOKEN?: string;
@@ -373,12 +379,14 @@ export async function uncheckExpense(
  * @throws {CONFLICT} - checked 支出が 0 件の場合
  *
  * LINE 通知はベストエフォート。失敗してもロールバックしない。
+ * defer 指定時は通知をレスポンス返却後に実行する（通知完了を待たずに応答するため）。
  */
 export async function requestExpenses(
 	db: Db,
 	userId: string,
 	currentUserRole: string | null,
-	lineEnv: LineEnv
+	lineEnv: LineEnv,
+	defer?: Defer
 ): Promise<{ count: number }> {
 	const checkedExpenses = await db
 		.select({ id: expense.id })
@@ -396,11 +404,13 @@ export async function requestExpenses(
 
 	// LINE 通知はベストエフォート: 失敗しても DB 更新済みのため状態は正しい
 	// D1 が BEGIN トランザクション非対応のため、完全なロールバックは不可能（AC-120 は緩和）
-	await notifyPartnerBestEffort(
+	const notification = notifyPartnerBestEffort(
 		lineEnv,
 		currentUserRole,
 		'承認依頼が届いています。確認してください。\nhttps://home-hub.pages.dev/expenses'
 	);
+	if (defer) defer(notification);
+	else await notification;
 
 	return { count: checkedExpenses.length };
 }
@@ -433,12 +443,14 @@ export async function cancelExpenses(db: Db, userId: string): Promise<{ count: n
  * @throws {CONFLICT} - 承認対象の pending 支出が 0 件の場合
  *
  * LINE 通知はベストエフォート。失敗してもロールバックしない。
+ * defer 指定時は通知をレスポンス返却後に実行する（通知完了を待たずに応答するため）。
  */
 export async function approveExpenses(
 	db: Db,
 	userId: string,
 	currentUserRole: string | null,
-	lineEnv: LineEnv
+	lineEnv: LineEnv,
+	defer?: Defer
 ): Promise<{ count: number }> {
 	const pendingExpenses = await db
 		.select({ id: expense.id })
@@ -455,11 +467,13 @@ export async function approveExpenses(
 		.where(and(ne(expense.userId, userId), eq(expense.status, 'pending')));
 
 	// LINE 通知はベストエフォート
-	await notifyPartnerBestEffort(
+	const notification = notifyPartnerBestEffort(
 		lineEnv,
 		currentUserRole,
 		'支出が承認されました。\nhttps://home-hub.pages.dev/expenses'
 	);
+	if (defer) defer(notification);
+	else await notification;
 
 	return { count: pendingExpenses.length };
 }

@@ -13,6 +13,8 @@
  * - チェック: 支出を確認済みにできる
  * - カテゴリ管理: カテゴリを追加・削除できる
  * - モバイル: モバイルで行メニューが開く
+ * - キーボード・モーダル: フォーカス移動・背景へのフォーカス防止・Escape・背景クリック・フォーカス復帰
+ * - 承認依頼: 確認済み支出を申請・取消できる
  *
  * @pages
  * - /expenses - 支出一覧
@@ -293,5 +295,115 @@ test.describe('カテゴリ管理', () => {
 	test('支出一覧への戻るリンクが機能する', async ({ page }) => {
 		await page.getByRole('link', { name: '支出一覧に戻る' }).click();
 		await expect(page).toHaveURL('/expenses');
+	});
+});
+
+test.describe('支出一覧 - キーボード・モーダル操作', () => {
+	/** フォーカス中の要素が開いている <dialog> の内側にあるか */
+	const focusInsideDialog = (page: Page) =>
+		page.evaluate(() => !!document.activeElement?.closest('dialog[open]'));
+
+	/**
+	 * 背景（ダイアログ外のページ要素）にフォーカスが移っていないか。
+	 * ネイティブ modal は最後の要素の次にブラウザ UI（body）へ抜けるのが仕様のため、body は許容する。
+	 */
+	const focusNotOnBackground = (page: Page) =>
+		page.evaluate(() => {
+			const active = document.activeElement;
+			return !active || active === document.body || !!active.closest('dialog[open]');
+		});
+
+	test('登録ダイアログを開くとフォーカスがダイアログ内に移り、Tab で背景に移らない', async ({
+		page
+	}) => {
+		await page.goto('/expenses');
+		await page.getByTestId('expense-create-button').click();
+		await expect(page.getByTestId('expense-form')).toBeVisible();
+		expect(await focusInsideDialog(page)).toBe(true);
+
+		for (let i = 0; i < 10; i++) {
+			await page.keyboard.press('Tab');
+			expect(await focusNotOnBackground(page)).toBe(true);
+		}
+	});
+
+	test('Escape で登録ダイアログが閉じ、開いたボタンにフォーカスが戻る', async ({ page }) => {
+		await page.goto('/expenses');
+		const createButton = page.getByTestId('expense-create-button');
+		await createButton.click();
+		await expect(page.getByTestId('expense-form')).toBeVisible();
+
+		await page.keyboard.press('Escape');
+		await expect(page.getByTestId('expense-form')).not.toBeVisible();
+		await expect(createButton).toBeFocused();
+	});
+
+	test('登録ダイアログは背景クリックで閉じる', async ({ page }) => {
+		await page.goto('/expenses');
+		await page.getByTestId('expense-create-button').click();
+		await expect(page.getByTestId('expense-form')).toBeVisible();
+
+		await page.mouse.click(5, 5);
+		await expect(page.getByTestId('expense-form')).not.toBeVisible();
+	});
+
+	test('削除確認ダイアログは背景クリックでは閉じず、Escape で閉じる', async ({ page }) => {
+		const expense = await createExpense(page, { amount: 7777 });
+		try {
+			await page.goto('/expenses');
+			const item = page.getByTestId('expense-item').filter({ hasText: '¥7,777' });
+			await item.getByTestId('expense-delete-button').first().click();
+			await expect(page.getByTestId('expense-delete-dialog')).toBeVisible();
+
+			await page.mouse.click(5, 5);
+			await expect(page.getByTestId('expense-delete-dialog')).toBeVisible();
+
+			await page.keyboard.press('Escape');
+			await expect(page.getByTestId('expense-delete-dialog')).not.toBeVisible();
+			await expect(item).toHaveCount(1);
+		} finally {
+			await deleteExpense(page, expense.id);
+		}
+	});
+
+	test('モバイルの行メニューは Escape で閉じる', async ({ page }) => {
+		await page.setViewportSize({ width: 375, height: 812 });
+		const expense = await createExpense(page, { amount: 6666 });
+		try {
+			await page.goto('/expenses');
+			const item = page.getByTestId('expense-item').filter({ hasText: '¥6,666' });
+			await item.getByTestId('expense-menu-button').click();
+			await expect(item.getByTestId('expense-menu')).toBeVisible();
+
+			await page.keyboard.press('Escape');
+			await expect(item.getByTestId('expense-menu')).not.toBeVisible();
+		} finally {
+			await deleteExpense(page, expense.id);
+		}
+	});
+});
+
+test.describe('支出一覧 - 承認依頼', () => {
+	test('確認済み支出の承認依頼を送ると申請中になり、取消すと確認済みに戻る', async ({ page }) => {
+		const expense = await createExpense(page, { amount: 3333 });
+		try {
+			await page.request.post(`/expenses/${expense.id}/check`);
+
+			// LINE 通知は waitUntil でレスポンス返却後に実行される（E2E は LINE_MOCK でスキップ）
+			const requestRes = await page.request.post('/expenses/request');
+			expect(requestRes.status()).toBe(200);
+
+			await page.goto('/expenses');
+			const item = page.getByTestId('expense-item').filter({ hasText: '¥3,333' });
+			await expect(item.getByText('申請中').first()).toBeVisible();
+
+			const cancelRes = await page.request.post('/expenses/cancel');
+			expect(cancelRes.status()).toBe(200);
+			await page.reload();
+			await expect(item.getByText('確認済み').first()).toBeVisible();
+		} finally {
+			await page.request.post('/expenses/cancel');
+			await deleteExpense(page, expense.id);
+		}
 	});
 });

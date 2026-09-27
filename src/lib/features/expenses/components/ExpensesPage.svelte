@@ -223,10 +223,15 @@
 	function handlePageClick() {
 		if (openMenuId) openMenuId = null;
 	}
+
+	// Escape でメニューを閉じる（モーダル表示中は dialog 側が処理する）
+	function handlePageKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape' && openMenuId) openMenuId = null;
+	}
 </script>
 
-<!-- メニュー外クリックでメニューを閉じる -->
-<svelte:window onclick={handlePageClick} />
+<!-- メニュー外クリック・Escape でメニューを閉じる -->
+<svelte:window onclick={handlePageClick} onkeydown={handlePageKeydown} />
 
 <div class="mx-auto max-w-6xl">
 	<!-- ヘッダーエリア -->
