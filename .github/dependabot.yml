@@ -6,11 +6,15 @@ updates:
       interval: 'weekly'
       day: 'monday'
     open-pull-requests-limit: 10
+    # パッチ・マイナーはまとめて 1 PR、メジャーはグループ外 = パッケージごとの個別 PR
+    # （1 つのメジャー更新で CI が落ちてグループ全体が止まるのを防ぐ）
     groups:
       dev-dependencies:
         dependency-type: 'development'
+        update-types: ['minor', 'patch']
       production-dependencies:
         dependency-type: 'production'
+        update-types: ['minor', 'patch']
     commit-message:
       prefix: 'chore(deps)'
       prefix-development: 'chore(deps-dev)'
