@@ -12,7 +12,7 @@
 -->
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { Tag, ArrowLeft, Pencil, Trash2, Check, X } from '@lucide/svelte';
+	import { Tag, ArrowLeft, Pencil, Trash, Check, X } from '@lucide/svelte';
 	import Button from '$lib/components/Button.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Input from '$lib/components/Input.svelte';
@@ -220,7 +220,7 @@
 								aria-label="削除"
 								type="button"
 							>
-								<Trash2 size={14} />
+								<Trash size={14} />
 							</Button>
 						</div>
 					{/if}

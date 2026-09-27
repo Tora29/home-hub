@@ -15,7 +15,7 @@
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { AlertTriangle } from '@lucide/svelte';
+	import { TriangleAlert } from '@lucide/svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import { generateMonthOptions } from '$lib/utils/date';
@@ -74,7 +74,7 @@
 		data-testid="expense-pending-alert"
 		class="mb-6 flex items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3"
 	>
-		<AlertTriangle size={18} class="shrink-0 text-destructive" />
+		<TriangleAlert size={18} class="shrink-0 text-destructive" />
 		<p class="flex-1 text-sm text-destructive">
 			未確認の支出が {unapprovedCount} 件あります
 		</p>

@@ -21,7 +21,7 @@
   - onMenuToggle: (id: string | null) => void - モバイルメニュー開閉コールバック
 -->
 <script lang="ts">
-	import { MoreVertical, Pencil, Trash2 } from '@lucide/svelte';
+	import { EllipsisVertical, Pencil, Trash } from '@lucide/svelte';
 	import { fade } from 'svelte/transition';
 	import Button from '$lib/components/Button.svelte';
 	import type { ExpenseWithRelations } from '../types';
@@ -158,7 +158,7 @@
 				aria-label="削除"
 				type="button"
 			>
-				<Trash2 size={14} />
+				<Trash size={14} />
 			</Button>
 		{/if}
 	</div>
@@ -194,7 +194,7 @@
 						aria-controls="expense-menu-{expense.id}"
 						type="button"
 					>
-						<MoreVertical size={18} />
+						<EllipsisVertical size={18} />
 					</button>
 
 					{#if openMenuId === expense.id}
@@ -229,7 +229,7 @@
 								class="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-bg-secondary"
 								type="button"
 							>
-								<Trash2 size={14} />
+								<Trash size={14} />
 								削除
 							</button>
 						</div>
