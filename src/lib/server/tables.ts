@@ -30,7 +30,6 @@ export const user = sqliteTable(
 		emailVerified: integer('emailVerified', { mode: 'boolean' }).notNull(),
 		image: text('image'),
 		role: text('role'),
-		// lineUserId カラムは未使用のため宣言から外した（DB からの DROP は次リリースの migration で行う）
 		createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
 		updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull()
 	},
