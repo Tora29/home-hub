@@ -85,13 +85,9 @@ categoryId: text('categoryId')
 > `tables.ts` には未宣言。新規は `tables.ts` で宣言して `npm run db:generate` で生成する（手書き SQL を増やさない）。
 
 ```typescript
-export const expense = sqliteTable(
-	'Expense',
-	{
-		/* ... */
-	},
-	(t) => [index('Expense_createdAt_idx').on(t.createdAt)]
-);
+export const expense = sqliteTable('Expense', {/* ... */}, (t) => [
+	index('Expense_createdAt_idx').on(t.createdAt)
+]);
 ```
 
 ---
