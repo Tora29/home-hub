@@ -381,6 +381,7 @@
 	error={deleteError}
 	data-testid="expense-delete-dialog"
 	confirmTestid="expense-delete-confirm-button"
+	cancelTestid="expense-delete-cancel-button"
 	onConfirm={() => void handleDelete()}
 	onCancel={() => {
 		deleteTarget = null;
@@ -398,6 +399,7 @@
 	error={requestError}
 	data-testid="expense-request-dialog"
 	confirmTestid="expense-request-confirm-button"
+	cancelTestid="expense-request-cancel-button"
 	onConfirm={() => void handleRequest()}
 	onCancel={() => {
 		requestDialogOpen = false;
@@ -416,6 +418,7 @@
 	error={cancelError}
 	data-testid="expense-cancel-dialog"
 	confirmTestid="expense-cancel-confirm-button"
+	cancelTestid="expense-cancel-cancel-button"
 	onConfirm={() => void handleCancel()}
 	onCancel={() => {
 		cancelDialogOpen = false;
@@ -433,6 +436,7 @@
 	error={approveError}
 	data-testid="expense-approve-dialog"
 	confirmTestid="expense-approve-confirm-button"
+	cancelTestid="expense-approve-cancel-button"
 	onConfirm={() => void handleApprove()}
 	onCancel={() => {
 		approveDialogOpen = false;

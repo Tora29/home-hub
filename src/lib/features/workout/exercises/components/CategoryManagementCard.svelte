@@ -229,6 +229,7 @@
 	error={deleteCategoryError}
 	data-testid="workout-category-delete-dialog"
 	confirmTestid="workout-category-delete-confirm-button"
+	cancelTestid="workout-category-delete-cancel-button"
 	onConfirm={() => void handleDeleteCategoryConfirm()}
 	onCancel={() => {
 		deletingCategory = null;

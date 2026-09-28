@@ -286,6 +286,7 @@
 	error={deleteError}
 	data-testid="workout-exercise-delete-dialog"
 	confirmTestid="workout-exercise-delete-confirm-button"
+	cancelTestid="workout-exercise-delete-cancel-button"
 	onConfirm={() => void handleDeleteConfirm()}
 	onCancel={() => {
 		deletingExercise = null;

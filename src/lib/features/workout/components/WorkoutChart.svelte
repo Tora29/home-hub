@@ -127,7 +127,8 @@
 					stroke-linejoin="round"
 					stroke-linecap="round"
 				/>
-				{#each exercisePoints as p (p.date)}
+				<!-- 同一日付が複数来てもキー重複にならないようインデックスをキーにする（点は並び順のみ意味を持つ） -->
+				{#each exercisePoints as p, i (i)}
 					<circle cx={toX(p.date)} cy={toY(p.maxWeight)} r="3" fill="var(--color-accent)" />
 				{/each}
 			{/if}

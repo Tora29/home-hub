@@ -12,7 +12,7 @@
   - todayBodyWeight: number | null - 本日記録済みの体重（null = 未記録）
   - today: string - 本日の日付文字列（YYYY-MM-DD、無効化時の表示用）
   - date: string ($bindable) - 記録対象日
-  - input: string ($bindable) - 体重入力値
+  - input: number | null ($bindable) - 体重入力値（type="number" の bind のため未入力・不正値は null）
   - error: string - エラーメッセージ
   - loading: boolean - 送信中フラグ
   - onSubmit: () => void - 記録ボタン押下時のコールバック
@@ -33,7 +33,7 @@
 		todayBodyWeight: number | null;
 		today: string;
 		date: string;
-		input: string;
+		input: number | null;
 		error: string;
 		loading: boolean;
 		onSubmit: () => void;
@@ -46,6 +46,7 @@
 		<div class="flex items-center gap-2">
 			<Input
 				data-testid="workout-body-weight-date"
+				aria-label="体重の記録日"
 				type="date"
 				value={today}
 				disabled
@@ -54,8 +55,9 @@
 			<div class="min-w-0 flex-1">
 				<Input
 					data-testid="workout-body-weight-input"
+					aria-label="体重 (kg)"
 					type="number"
-					value={String(todayBodyWeight)}
+					value={todayBodyWeight}
 					disabled
 					class="w-full"
 				/>
@@ -72,10 +74,16 @@
 		</div>
 	{:else}
 		<div class="flex items-start gap-2">
-			<Input data-testid="workout-body-weight-date" type="date" bind:value={date} />
+			<Input
+				data-testid="workout-body-weight-date"
+				aria-label="体重の記録日"
+				type="date"
+				bind:value={date}
+			/>
 			<div class="min-w-0 flex-1">
 				<Input
 					data-testid="workout-body-weight-input"
+					aria-label="体重 (kg)"
 					type="number"
 					step="0.1"
 					min="0"

@@ -67,6 +67,7 @@
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 			<Select
 				data-testid="workout-chart-exercise-select"
+				aria-label="グラフの種目"
 				bind:value={exerciseId}
 				onchange={onExerciseChange}
 				class="text-sm"
@@ -75,6 +76,7 @@
 			</Select>
 			<Select
 				data-testid="workout-chart-year-select"
+				aria-label="グラフの年"
 				bind:value={year}
 				disabled={mode !== 'month'}
 				onchange={onPeriodChange}
@@ -86,6 +88,7 @@
 			</Select>
 			<Select
 				data-testid="workout-chart-month-select"
+				aria-label="グラフの月"
 				bind:value={month}
 				disabled={mode !== 'month'}
 				onchange={onPeriodChange}

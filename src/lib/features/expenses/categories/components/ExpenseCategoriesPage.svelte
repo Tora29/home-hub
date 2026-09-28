@@ -242,6 +242,7 @@
 	error={deleteError}
 	data-testid="expense-category-delete-dialog"
 	confirmTestid="expense-category-delete-confirm-button"
+	cancelTestid="expense-category-delete-cancel-button"
 	onConfirm={() => void handleDeleteConfirm()}
 	onCancel={() => {
 		deletingCategory = null;

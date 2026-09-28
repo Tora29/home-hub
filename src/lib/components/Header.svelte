@@ -28,9 +28,20 @@
 		localStorage.setItem('theme', isDark ? 'dark' : 'light');
 	}
 
+	let logoutError = $state('');
+
 	async function logout() {
-		await authClient.signOut();
-		await goto('/login');
+		logoutError = '';
+		try {
+			const result = await authClient.signOut();
+			if (result?.error) {
+				logoutError = 'ログアウトに失敗しました';
+				return;
+			}
+			await goto('/login');
+		} catch {
+			logoutError = '通信エラーが発生しました';
+		}
 	}
 </script>
 
@@ -58,6 +69,11 @@
 	</div>
 
 	<div class="flex items-center gap-2">
+		{#if logoutError}
+			<p role="alert" data-testid="header-logout-error" class="text-xs text-destructive">
+				{logoutError}
+			</p>
+		{/if}
 		<button
 			type="button"
 			data-testid="header-dark-toggle"

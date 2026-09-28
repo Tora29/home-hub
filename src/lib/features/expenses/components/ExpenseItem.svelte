@@ -101,7 +101,7 @@
 				checked={isChecked}
 				onchange={handleCheckboxChange}
 				disabled={checkLoading}
-				aria-label="確認済みにする"
+				aria-label="確認済み"
 			/>
 		{:else}
 			<div class="h-5 w-5 shrink-0"></div>
@@ -168,7 +168,7 @@
 					onchange={handleCheckboxChange}
 					disabled={checkLoading}
 					class="shrink-0"
-					aria-label="確認済みにする"
+					aria-label="確認済み"
 				/>
 			{:else}
 				<div class="h-5 w-5 shrink-0"></div>
@@ -178,17 +178,17 @@
 			<!-- 行メニューボタン（自分の unapproved/checked のみ） -->
 			{#if canManage}
 				<div class="relative">
-					<button
+					<Button
 						data-testid="expense-menu-button"
 						onclick={handleMenuToggle}
-						class="rounded-xl p-1.5 text-secondary hover:bg-bg-secondary hover:text-label"
+						variant="ghost"
+						size="icon"
 						aria-label="操作メニューを開く"
 						aria-expanded={openMenuId === expense.id}
 						aria-controls="expense-menu-{expense.id}"
-						type="button"
 					>
-						<EllipsisVertical size={18} />
-					</button>
+						<EllipsisVertical size={18} aria-hidden="true" />
+					</Button>
 
 					{#if openMenuId === expense.id}
 						<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
@@ -201,30 +201,30 @@
 							onclick={(e) => e.stopPropagation()}
 							class="absolute top-full right-0 z-20 mt-1 w-40 rounded-2xl border border-separator bg-bg-card py-1 shadow-md"
 						>
-							<button
+							<Button
 								data-testid="expense-edit-button"
 								onclick={() => {
 									onMenuToggle(null);
 									onEdit(expense);
 								}}
-								class="flex w-full items-center gap-2 px-4 py-2 text-sm text-label hover:bg-bg-secondary"
-								type="button"
+								variant="menu-item"
+								size="menu"
 							>
-								<Pencil size={14} />
+								<Pencil size={14} aria-hidden="true" />
 								編集
-							</button>
-							<button
+							</Button>
+							<Button
 								data-testid="expense-delete-button"
 								onclick={() => {
 									onMenuToggle(null);
 									onDelete(expense);
 								}}
-								class="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-bg-secondary"
-								type="button"
+								variant="menu-item-destructive"
+								size="menu"
 							>
-								<Trash size={14} />
+								<Trash size={14} aria-hidden="true" />
 								削除
-							</button>
+							</Button>
 						</div>
 					{/if}
 				</div>

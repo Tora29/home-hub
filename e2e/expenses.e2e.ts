@@ -163,11 +163,7 @@ test.describe('支出一覧 - 削除', () => {
 			const item = page.getByTestId('expense-item').filter({ hasText: '¥8,888' });
 			await item.getByTestId('expense-delete-button').first().click();
 			await expect(page.getByTestId('expense-delete-dialog')).toBeVisible();
-			// ConfirmDialog のキャンセルボタンは testid を受け取れないため、ダイアログの testid でスコープしてロールで取得
-			await page
-				.getByTestId('expense-delete-dialog')
-				.getByRole('button', { name: 'キャンセル' })
-				.click();
+			await page.getByTestId('expense-delete-cancel-button').click();
 			await expect(item.first()).toBeVisible();
 		} finally {
 			await deleteExpense(page, expense.id);
