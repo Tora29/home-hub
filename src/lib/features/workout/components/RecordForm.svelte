@@ -12,7 +12,7 @@
   - exercises: { items: Exercise[] } - 種目一覧
   - date: string ($bindable) - 記録日
   - exerciseId: string ($bindable) - 選択中の種目ID
-  - weight: string ($bindable) - 重量入力値
+  - weight: number | null ($bindable) - 重量入力値（type="number" の bind のため未入力・不正値は null）
   - reps: string ($bindable) - 回数
   - isBodyWeight: boolean ($bindable) - 自重フラグ
   - bestRecord: { weight: number; reps: number } | null - 選択種目の過去MAX
@@ -45,7 +45,7 @@
 		exercises: { items: Exercise[] };
 		date: string;
 		exerciseId: string;
-		weight: string;
+		weight: number | null;
 		reps: string;
 		isBodyWeight: boolean;
 		bestRecord: { weight: number; reps: number } | null;
@@ -67,12 +67,14 @@
 		<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
 			<Input
 				data-testid="workout-form-date"
+				aria-label="記録日"
 				type="date"
 				bind:value={date}
 				class="col-span-2 sm:col-span-1"
 			/>
 			<Select
 				data-testid="workout-form-exercise-select"
+				aria-label="種目"
 				bind:value={exerciseId}
 				class="col-span-2 sm:col-span-1"
 			>
@@ -89,6 +91,7 @@
 				{:else}
 					<Input
 						data-testid="workout-form-weight-input"
+						aria-label="重量 (kg)"
 						type="number"
 						step="0.5"
 						min="0"
@@ -103,13 +106,18 @@
 					checked={isBodyWeight}
 					onchange={() => {
 						isBodyWeight = !isBodyWeight;
-						if (isBodyWeight) weight = '';
+						if (isBodyWeight) weight = null;
 					}}
 				>
 					自重
 				</Checkbox>
 			</div>
-			<Select data-testid="workout-form-reps-select" bind:value={reps} class="w-full">
+			<Select
+				data-testid="workout-form-reps-select"
+				aria-label="回数"
+				bind:value={reps}
+				class="w-full"
+			>
 				{#each Array.from({ length: 10 }, (_, i) => i + 1) as n (n)}
 					<option value={String(n)}>{n}回</option>
 				{/each}

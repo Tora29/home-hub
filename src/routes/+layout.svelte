@@ -27,7 +27,7 @@
 
 	let { children } = $props();
 
-	let showNav = $derived(!page.url.pathname.startsWith('/login'));
+	let showNav = $derived(page.url.pathname !== '/login');
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>

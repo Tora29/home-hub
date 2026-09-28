@@ -90,6 +90,13 @@
 			if (seq === breakdownSeq) breakdownLoading = false;
 		}
 	}
+
+	/** 内訳ダイアログを閉じる。seq を進め、閉じた後に届いたレスポンスを破棄する。 */
+	function closeBreakdown() {
+		breakdownSeq++;
+		breakdownWeekStart = null;
+		breakdownLoading = false;
+	}
 </script>
 
 <div class="rounded-3xl bg-bg-card p-5 shadow-md">
@@ -97,6 +104,7 @@
 	<div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
 		<Select
 			data-testid="workout-volume-year-select"
+			aria-label="週間ボリュームの年"
 			bind:value={year}
 			disabled={mode !== 'month'}
 			onchange={onPeriodChange}
@@ -108,6 +116,7 @@
 		</Select>
 		<Select
 			data-testid="workout-volume-month-select"
+			aria-label="週間ボリュームの月"
 			bind:value={month}
 			disabled={mode !== 'month'}
 			onchange={onPeriodChange}
@@ -138,11 +147,7 @@
 	{/if}
 </div>
 
-<Dialog
-	open={breakdownWeekStart !== null}
-	onClose={() => (breakdownWeekStart = null)}
-	aria-label="週間ボリューム内訳"
->
+<Dialog open={breakdownWeekStart !== null} onClose={closeBreakdown} aria-label="週間ボリューム内訳">
 	<div class="w-full max-w-sm rounded-3xl bg-bg-card p-6 shadow-lg">
 		<h2 class="mb-4 text-base font-medium text-label">
 			{breakdownWeekStart ? weekStartLabel(breakdownWeekStart) : ''} 内訳
@@ -174,9 +179,7 @@
 			</div>
 		{/if}
 		<div class="mt-4 flex justify-end">
-			<Button variant="secondary" size="sm" onclick={() => (breakdownWeekStart = null)}>
-				閉じる
-			</Button>
+			<Button variant="secondary" size="sm" onclick={closeBreakdown}>閉じる</Button>
 		</div>
 	</div>
 </Dialog>

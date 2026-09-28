@@ -32,6 +32,7 @@
 	import WeightChartSection from './WeightChartSection.svelte';
 	import VolumeChartSection from './VolumeChartSection.svelte';
 	import RestTimer from './RestTimer.svelte';
+	import { bodyWeightCreateSchema, recordCreateSchema } from '../schema';
 	import type { ChartData, Exercise, WeeklyVolumePoint, WorkoutRecord } from '../types';
 
 	let {
@@ -72,15 +73,20 @@
 
 	// --- 体重記録 ---
 	let bodyWeightDate = $state(untrack(() => today));
-	let bodyWeightInput = $state('');
+	// type="number" の bind のため未入力・不正値は null
+	let bodyWeightInput = $state<number | null>(null);
 	let bodyWeightError = $state('');
 	let bodyWeightLoading = $state(false);
 
 	async function handleBodyWeightSubmit() {
 		bodyWeightError = '';
-		const w = parseFloat(bodyWeightInput);
-		if (!bodyWeightInput || isNaN(w)) {
-			bodyWeightError = '体重を入力してください';
+		// BE と同じスキーマで事前検証（UX 補助。最終判定は BE）
+		const parsed = bodyWeightCreateSchema.safeParse({
+			date: bodyWeightDate,
+			weight: bodyWeightInput ?? undefined
+		});
+		if (!parsed.success) {
+			bodyWeightError = parsed.error.issues[0].message;
 			return;
 		}
 		bodyWeightLoading = true;
@@ -88,13 +94,13 @@
 			const res = await fetch('/workout/body-weight', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ date: bodyWeightDate, weight: w })
+				body: JSON.stringify(parsed.data)
 			});
 			if (!res.ok) {
 				bodyWeightError = await readErrorMessage(res, 'エラーが発生しました');
 				return;
 			}
-			bodyWeightInput = '';
+			bodyWeightInput = null;
 			await invalidateAll();
 			await fetchChartData();
 		} catch {
@@ -107,8 +113,8 @@
 	// --- セット記録フォーム ---
 	let formDate = $state(untrack(() => today));
 	let formExerciseId = $state('');
-	let formWeight = $state('');
-	let formReps = $state('5');
+	let formWeight = $state<number | null>(null); // type="number" の bind のため未入力・不正値は null
+	let formReps = $state('8');
 	let formIsBodyWeight = $state(false);
 	let formError = $state('');
 	let formLoading = $state(false);
@@ -128,36 +134,30 @@
 
 	async function handleAddRecord() {
 		formError = '';
-		const r = parseInt(formReps);
-		if (!formExerciseId) {
-			formError = '種目を選択してください';
+		// BE と同じスキーマで事前検証（上限 999kg 等も含む。UX 補助で最終判定は BE）
+		const parsed = recordCreateSchema.safeParse({
+			exerciseId: formExerciseId,
+			date: formDate,
+			weight: formIsBodyWeight ? 0 : (formWeight ?? undefined),
+			reps: Number(formReps),
+			isBodyWeight: formIsBodyWeight
+		});
+		if (!parsed.success) {
+			formError = parsed.error.issues[0].message;
 			return;
-		}
-		if (!formIsBodyWeight) {
-			const w = parseFloat(formWeight);
-			if (!formWeight || isNaN(w) || w <= 0) {
-				formError = '重量を入力してください';
-				return;
-			}
 		}
 		formLoading = true;
 		try {
 			const res = await fetch('/workout', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					exerciseId: formExerciseId,
-					date: formDate,
-					weight: formIsBodyWeight ? 0 : parseFloat(formWeight),
-					reps: r,
-					isBodyWeight: formIsBodyWeight
-				})
+				body: JSON.stringify(parsed.data)
 			});
 			if (!res.ok) {
 				formError = await readErrorMessage(res, 'エラーが発生しました');
 				return;
 			}
-			formWeight = '';
+			formWeight = null;
 			await invalidateAll();
 			await Promise.all([fetchChartData(), fetchVolumeData()]);
 		} catch {
@@ -423,6 +423,7 @@
 	error={deleteError}
 	data-testid="workout-record-delete-dialog"
 	confirmTestid="workout-record-delete-confirm-button"
+	cancelTestid="workout-record-delete-cancel-button"
 	onConfirm={() => void handleDeleteConfirm()}
 	onCancel={() => {
 		deletingRecord = null;

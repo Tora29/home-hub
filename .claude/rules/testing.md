@@ -59,9 +59,10 @@ Zod スキーマは純粋関数（`.parse()` / `.safeParse()`）なので D1 不
 
 - **実装層のテスト** は `src/lib/features/{feature}/` に実装と隣接して置く
 - **ルーティング層のテスト** は `src/routes/{feature}/` に置く
-- コンポーネントテストはコンポーネントと同階層に置く（書く場合は 1:1 対応）
-- コンポーネントテストは業務ロジック（条件表示・入力検証・操作フロー）を持つものに書く。
-  見た目だけの共通 UI や、feature コンポーネントに委譲するだけの `+page.svelte` には書かなくてよい
+- コンポーネントテストはコンポーネントと同階層に置く（1:1 対応）
+- 共通 UI（`src/lib/components/`）は props の透過・disabled・コールバック等のふるまいを検証する（CSS クラス名は検証しない）
+- `+page.svelte` / `+layout.svelte` は load の戻り値の形のフィクスチャを渡し、主要要素が描画されること
+  （load とコンポーネントの props 契約）を 2〜4 件程度で検証する
 
 ```
 # 実装層（コロケーションの主体）
@@ -263,6 +264,9 @@ await page.getByRole('button', { name: '追加' }).click(); // 最初のクリ�
 - `element().click()` 直後に同期的なアサーション（`expect(mock).toHaveBeenCalled()` など）をする場合
 
 > `element()` の戻り値は `HTMLElement | SVGElement` 型のため、`click()` には `(... .element() as HTMLElement).click()` のキャストが必要な場合がある。
+
+> キー操作も `userEvent.keyboard()` は同じ理由で全体実行時に不安定（15 秒タイムアウト）になる。モーダルの Escape は
+> `dialog[open]` に `new Event('cancel', { cancelable: true })` を dispatch して再現する（実キーの挙動は E2E で検証）。
 
 **`flushSync` が不要なケース：**
 

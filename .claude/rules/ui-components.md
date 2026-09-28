@@ -134,20 +134,23 @@ const baseClass = 'inline-flex items-center gap-2 font-medium rounded-2xl';
 
 ## 共通コンポーネント一覧
 
-| コンポーネント  | 場所                                      | variant                                                                 |
-| --------------- | ----------------------------------------- | ----------------------------------------------------------------------- |
-| `Button`        | `src/lib/components/Button.svelte`        | primary / secondary / destructive / ghost-destructive                   |
-| `Input`         | `src/lib/components/Input.svelte`         | サイズのみ（sm / md / lg）                                              |
-| `Select`        | `src/lib/components/Select.svelte`        | サイズのみ                                                              |
-| `Textarea`      | `src/lib/components/Textarea.svelte`      | サイズのみ                                                              |
-| `Dialog`        | `src/lib/components/Dialog.svelte`        | role: dialog / alertdialog                                              |
-| `ConfirmDialog` | `src/lib/components/ConfirmDialog.svelte` | Dialog のラッパー                                                       |
-| `Checkbox`      | `src/lib/components/Checkbox.svelte`      | —（`<button role="checkbox">` 実装。`HTMLButtonAttributes` を extends） |
-| `Header`        | `src/lib/components/Header.svelte`        | レイアウト専用（ロゴ・ダークモード切替・ログアウト）                    |
-| `Sidebar`       | `src/lib/components/Sidebar.svelte`       | レイアウト専用（ナビゲーション）                                        |
+| コンポーネント  | 場所                                      | variant                                                                                           |
+| --------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `Button`        | `src/lib/components/Button.svelte`        | primary / secondary / destructive / ghost-destructive / ghost / menu-item / menu-item-destructive |
+| `Input`         | `src/lib/components/Input.svelte`         | サイズのみ（sm / md / lg）                                                                        |
+| `Select`        | `src/lib/components/Select.svelte`        | サイズのみ                                                                                        |
+| `Textarea`      | `src/lib/components/Textarea.svelte`      | サイズのみ                                                                                        |
+| `Dialog`        | `src/lib/components/Dialog.svelte`        | role: dialog / alertdialog                                                                        |
+| `ConfirmDialog` | `src/lib/components/ConfirmDialog.svelte` | Dialog のラッパー                                                                                 |
+| `Checkbox`      | `src/lib/components/Checkbox.svelte`      | —（`<button role="checkbox">` 実装。`HTMLButtonAttributes` を extends）                           |
+| `Header`        | `src/lib/components/Header.svelte`        | レイアウト専用（ロゴ・ダークモード切替・ログアウト）                                              |
+| `Sidebar`       | `src/lib/components/Sidebar.svelte`       | レイアウト専用（ナビゲーション）                                                                  |
 
 - 開閉状態は `src/lib/stores/sidebar.svelte.ts`（`$state` モジュール）で共有する。`svelte/store` の `writable` は新規に使わない
 - レイアウト専用コンポーネント内の素の `<button>` は許容するが `type="button"` を必ず明示する
+- アイコンだけのボタンは `Button variant="ghost" size="icon"`、ドロップダウンメニュー内の行は
+  `variant="menu-item"`（削除等は `menu-item-destructive`）+ `size="menu"` を使う（素の `<button>` で再実装しない）
+- `ConfirmDialog` のボタンには `confirmTestid` / `cancelTestid` で data-testid を渡す
 
 ---
 

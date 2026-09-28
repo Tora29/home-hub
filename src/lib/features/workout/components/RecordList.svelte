@@ -68,6 +68,7 @@
 		<h2 class="flex-1 text-sm font-medium text-secondary">記録一覧</h2>
 		<Select
 			data-testid="workout-filter-exercise-select"
+			aria-label="記録一覧の種目で絞り込む"
 			value={filterExerciseId ?? ''}
 			onchange={onFilterChange}
 			class="text-sm"

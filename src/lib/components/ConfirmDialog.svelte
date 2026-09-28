@@ -17,6 +17,7 @@
   - onConfirm: () => void | Promise<void> - 確認ボタン押下時コールバック
   - onCancel: () => void - キャンセル時コールバック
   - confirmTestid: string - 確認ボタンの data-testid（省略可）
+  - cancelTestid: string - キャンセルボタンの data-testid（省略可）
   - ...rest - data-testid 等をダイアログカード div に透過
 -->
 <script lang="ts">
@@ -35,6 +36,7 @@
 		onConfirm,
 		onCancel,
 		confirmTestid,
+		cancelTestid,
 		...rest
 	}: {
 		open: boolean;
@@ -47,6 +49,7 @@
 		onConfirm: () => void | Promise<void>;
 		onCancel: () => void;
 		confirmTestid?: string;
+		cancelTestid?: string;
 	} & Omit<HTMLAttributes<HTMLDivElement>, 'title' | 'class' | 'children'> = $props();
 </script>
 
@@ -65,7 +68,13 @@
 			<p role="alert" class="mb-4 text-sm text-destructive">{error}</p>
 		{/if}
 		<div class="flex justify-end gap-3">
-			<Button variant="secondary" onclick={onCancel} disabled={loading} type="button">
+			<Button
+				data-testid={cancelTestid}
+				variant="secondary"
+				onclick={onCancel}
+				disabled={loading}
+				type="button"
+			>
 				キャンセル
 			</Button>
 			<Button

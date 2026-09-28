@@ -8,7 +8,7 @@
   その他の属性（type, id, placeholder, maxlength 等）はすべて透過する。
 
   @props
-  - value?: string - 入力値（$bindable）
+  - value?: string | number | null - 入力値（$bindable）。type="number" の場合 Svelte の bind は number（未入力・不正値は null）を返す
   - size?: 'sm' | 'md' | 'lg' - サイズ（デフォルト 'md'）
   - class?: string - 追加 CSS クラス（w-full / flex-1 / min-w-0 / pr-12 等）
   - ...rest - type, id, placeholder, min, max, maxlength, data-testid, onchange 等を透過
@@ -17,7 +17,7 @@
 	import type { HTMLInputAttributes } from 'svelte/elements';
 
 	interface Props extends Omit<HTMLInputAttributes, 'size'> {
-		value?: string;
+		value?: string | number | null;
 		size?: 'sm' | 'md' | 'lg';
 		class?: string;
 	}

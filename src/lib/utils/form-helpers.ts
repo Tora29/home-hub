@@ -48,11 +48,13 @@ export async function submitNamedForm(
 	const { name, maxLength, requiredMessage, maxLengthMessage, setError } = options;
 
 	setError('');
-	if (!name.trim()) {
+	// 送信値（request 側で trim して送る）と同じ基準で判定する
+	const trimmed = name.trim();
+	if (!trimmed) {
 		setError(requiredMessage);
 		return;
 	}
-	if (name.length > maxLength) {
+	if (trimmed.length > maxLength) {
 		setError(maxLengthMessage);
 		return;
 	}
