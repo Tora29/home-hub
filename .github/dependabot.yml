@@ -1,10 +1,11 @@
 version: 2
 updates:
+  # 個人で見られる量に抑えるため月1回にする。脆弱性の修正（security updates）は頻度に関係なくすぐ届く
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
-      interval: 'weekly'
-      day: 'monday'
+      interval: 'monthly'
+      timezone: 'Asia/Tokyo'
     open-pull-requests-limit: 10
     # パッチ・マイナーはまとめて 1 PR、メジャーはグループ外 = パッケージごとの個別 PR
     # （1 つのメジャー更新で CI が落ちてグループ全体が止まるのを防ぐ）
@@ -22,7 +23,23 @@ updates:
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
-      interval: 'weekly'
-      day: 'monday'
+      interval: 'monthly'
+      timezone: 'Asia/Tokyo'
     commit-message:
       prefix: 'chore(ci)'
+
+  # Cloudflare プロバイダ（.terraform.lock.hcl）の更新。
+  # ./modules/d1・./modules/pages は main.tf から参照される local module として自動で読まれるため、
+  # directory は lock ファイルのある /terraform だけでよい（バージョン制約は main.tf 側にのみある）
+  - package-ecosystem: 'terraform'
+    directory: '/terraform'
+    schedule:
+      interval: 'monthly'
+      timezone: 'Asia/Tokyo'
+    # minor・patch は 1 PR にまとめる。major はグループ外 = 個別 PR
+    # （v4→v5 のようにリソース定義の書き換えが必要になることがあるため、個別に plan を確認する）
+    groups:
+      terraform-providers:
+        update-types: ['minor', 'patch']
+    commit-message:
+      prefix: 'chore(deps)'
