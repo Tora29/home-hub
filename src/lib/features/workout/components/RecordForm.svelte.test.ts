@@ -101,6 +101,30 @@ describe('RecordForm', () => {
 		await expect.element(page.getByTestId('workout-form-prev-record-hint')).not.toBeInTheDocument();
 	});
 
+	test('前回トレーニングの記録がある場合、日付と前回のMAXが過去のMAXと併せて表示される', async () => {
+		await render(RecordFormWrapper, {
+			exercises,
+			bestRecord: { weight: 80, reps: 5 },
+			prevSessionRecord: { date: '2026-09-05', weight: 70, reps: 8 }
+		});
+
+		await expect
+			.element(page.getByTestId('workout-form-prev-session-hint'))
+			.toHaveTextContent('前回（9/5）のMAX: 70kg × 8回');
+		await expect
+			.element(page.getByTestId('workout-form-prev-record-hint'))
+			.toHaveTextContent('過去のMAX: 80kg × 5回');
+	});
+
+	test('前回トレーニングの記録がない場合、前回のヒントは表示されない', async () => {
+		await render(RecordFormWrapper, { exercises, prevSessionRecord: null });
+
+		await expect.element(page.getByTestId('workout-form-add-button')).toBeVisible();
+		await expect
+			.element(page.getByTestId('workout-form-prev-session-hint'))
+			.not.toBeInTheDocument();
+	});
+
 	test('追加ボタンを押すと onSubmit が呼ばれる', async () => {
 		const onSubmit = vi.fn();
 		await render(RecordFormWrapper, { exercises, onSubmit });

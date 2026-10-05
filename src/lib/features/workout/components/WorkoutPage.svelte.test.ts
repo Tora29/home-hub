@@ -317,6 +317,48 @@ describe('WorkoutPage', () => {
 				.element(page.getByTestId('workout-form-prev-record-hint'))
 				.toHaveTextContent('過去のMAX: 80kg × 3回');
 		});
+
+		test('種目を選択した場合、記録日より前の直近トレーニング日の最大重量が前回のMAXとして表示される', async () => {
+			await renderPage({
+				records: [
+					// 記録日（today = 2026-09-27）当日の記録は前回に含めない
+					makeRecord({ id: 'r1', date: '2026-09-27', weight: 90, reps: 1 }),
+					makeRecord({ id: 'r2', date: '2026-09-20', weight: 70, reps: 6 }),
+					makeRecord({ id: 'r3', date: '2026-09-20', weight: 70, reps: 8 }),
+					makeRecord({ id: 'r4', date: '2026-09-20', weight: 65, reps: 10 }),
+					makeRecord({ id: 'r5', date: '2026-09-13', weight: 100, reps: 1 }),
+					makeRecord({
+						id: 'r6',
+						exerciseId: 'ex-2',
+						exerciseName: 'スクワット',
+						date: '2026-09-25',
+						weight: 120
+					})
+				]
+			});
+
+			changeValue('workout-form-exercise-select', 'ex-1', 'change');
+
+			await expect
+				.element(page.getByTestId('workout-form-prev-session-hint'))
+				.toHaveTextContent('前回（9/20）のMAX: 70kg × 8回');
+			await expect
+				.element(page.getByTestId('workout-form-prev-record-hint'))
+				.toHaveTextContent('過去のMAX: 100kg × 1回');
+		});
+
+		test('記録日より前の記録がない場合、前回のMAXは表示されない', async () => {
+			await renderPage({
+				records: [makeRecord({ id: 'r1', date: '2026-09-27', weight: 60, reps: 8 })]
+			});
+
+			changeValue('workout-form-exercise-select', 'ex-1', 'change');
+
+			await expect.element(page.getByTestId('workout-form-prev-record-hint')).toBeVisible();
+			await expect
+				.element(page.getByTestId('workout-form-prev-session-hint'))
+				.not.toBeInTheDocument();
+		});
 	});
 
 	describe('記録削除', () => {

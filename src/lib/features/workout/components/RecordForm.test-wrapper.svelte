@@ -12,6 +12,7 @@
   - initialIsBodyWeight: boolean - 自重フラグの初期値
   - initialWeight: number | null - 重量の初期値
   - bestRecord: { weight: number; reps: number } | null - 過去MAX
+  - prevSessionRecord: { date: string; weight: number; reps: number } | null - 前回トレーニング日のMAX
   - error: string - エラーメッセージ
   - loading: boolean - 送信中フラグ
   - onSubmit: () => void - 追加ボタン押下時のコールバック
@@ -26,6 +27,7 @@
 		initialIsBodyWeight = false,
 		initialWeight = null,
 		bestRecord = null,
+		prevSessionRecord = null,
 		error = '',
 		loading = false,
 		onSubmit = () => {}
@@ -34,6 +36,7 @@
 		initialIsBodyWeight?: boolean;
 		initialWeight?: number | null;
 		bestRecord?: { weight: number; reps: number } | null;
+		prevSessionRecord?: { date: string; weight: number; reps: number } | null;
 		error?: string;
 		loading?: boolean;
 		onSubmit?: () => void;
@@ -60,6 +63,7 @@
 	bind:reps
 	bind:isBodyWeight
 	{bestRecord}
+	{prevSessionRecord}
 	{error}
 	{loading}
 	{onSubmit}

@@ -12,6 +12,7 @@
   種目セレクトの中身（カテゴリ optgroup）は Snippet（exerciseOptions）として各サブ
   コンポーネントに渡す。グラフ・ボリュームの取得は fetchSeq で最新リクエストのみ反映し、
   年間/月間トグルは取得失敗時のみ元の期間に戻す。
+  記録フォームのヒント（過去のMAX・前回トレーニング日のMAX）は records から算出する。
   画面右下には RestTimer（90秒インターバルタイマー、状態自己完結）を常時表示する。
 
   @props
@@ -130,6 +131,19 @@
 		const filtered = records.filter((r) => r.exerciseId === formExerciseId);
 		if (filtered.length === 0) return null;
 		return filtered.reduce((best, r) => (r.weight > best.weight ? r : best));
+	});
+
+	// 前回 = 記録日より前で最も新しいトレーニング日（当日分を除外し、セット追加で前回が今日に置き換わらないようにする）
+	const prevSessionRecord = $derived.by(() => {
+		if (!formExerciseId) return null;
+		const before = records.filter((r) => r.exerciseId === formExerciseId && r.date < formDate);
+		if (before.length === 0) return null;
+		const prevDate = before.reduce((latest, r) => (r.date > latest ? r.date : latest), '');
+		return before
+			.filter((r) => r.date === prevDate)
+			.reduce((best, r) =>
+				r.weight > best.weight || (r.weight === best.weight && r.reps > best.reps) ? r : best
+			);
 	});
 
 	async function handleAddRecord() {
@@ -365,6 +379,7 @@
 		bind:reps={formReps}
 		bind:isBodyWeight={formIsBodyWeight}
 		{bestRecord}
+		{prevSessionRecord}
 		error={formError}
 		loading={formLoading}
 		onSubmit={() => void handleAddRecord()}
