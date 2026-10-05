@@ -57,8 +57,8 @@
 		"vitest-browser-svelte": "^3.1.0"
 	},
 	"dependencies": {
-		"@lucide/svelte": "^1.47.0",
-		"better-auth": "^1.5.5",
+		"@lucide/svelte": "^1.48.0",
+		"better-auth": "^1.7.6",
 		"drizzle-orm": "^0.45.3",
 		"zod": "^4.3.6"
 	},
