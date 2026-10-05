@@ -16,6 +16,7 @@
   - reps: string ($bindable) - 回数
   - isBodyWeight: boolean ($bindable) - 自重フラグ
   - bestRecord: { weight: number; reps: number } | null - 選択種目の過去MAX
+  - prevSessionRecord: { date: string; weight: number; reps: number } | null - 選択種目の前回トレーニング日（記録日より前の最新日）のMAX
   - error: string - エラーメッセージ
   - loading: boolean - 送信中フラグ
   - onSubmit: () => void - 追加ボタン押下時のコールバック
@@ -37,6 +38,7 @@
 		reps = $bindable(),
 		isBodyWeight = $bindable(),
 		bestRecord,
+		prevSessionRecord,
 		error,
 		loading,
 		onSubmit,
@@ -49,11 +51,18 @@
 		reps: string;
 		isBodyWeight: boolean;
 		bestRecord: { weight: number; reps: number } | null;
+		prevSessionRecord: { date: string; weight: number; reps: number } | null;
 		error: string;
 		loading: boolean;
 		onSubmit: () => void;
 		exerciseOptions: Snippet;
 	} = $props();
+
+	/** YYYY-MM-DD（text の暦日）を M/D に整形する。 */
+	function toMonthDay(ymd: string): string {
+		const [, m, d] = ymd.split('-');
+		return `${Number(m)}/${Number(d)}`;
+	}
 </script>
 
 <div class="rounded-3xl bg-bg-card p-5 shadow-md">
@@ -126,6 +135,11 @@
 		{#if bestRecord}
 			<p data-testid="workout-form-prev-record-hint" class="mt-2 text-xs text-secondary">
 				過去のMAX: {bestRecord.weight}kg × {bestRecord.reps}回
+			</p>
+		{/if}
+		{#if prevSessionRecord}
+			<p data-testid="workout-form-prev-session-hint" class="mt-1 text-xs text-secondary">
+				前回（{toMonthDay(prevSessionRecord.date)}）のMAX: {prevSessionRecord.weight}kg × {prevSessionRecord.reps}回
 			</p>
 		{/if}
 		{#if error}
