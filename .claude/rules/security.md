@@ -172,9 +172,10 @@ GitHub Secrets TF_VAR_* → terraform.yml → Cloudflare Pages secrets → 本�
 
 ### 更新の運用
 
-- Dependabot はパッチ・マイナーを 1 PR にまとめ、メジャーはパッケージごとの個別 PR で届く（`.github/dependabot.yml`）
+- Dependabot は月 1 回（npm / github-actions / terraform）。パッチ・マイナーを 1 PR にまとめ、メジャーはパッケージごとの個別 PR で届く（`.github/dependabot.yml`）
+- 脆弱性の修正は Dependabot security updates（リポジトリ設定で有効）が頻度に関係なく PR を作る
 - 開発者の npm は `min-release-age=7`（ユーザー設定）で公開 7 日未満の版を入れない。`npm install` が `ETARGET` になったら 7 日経過済みの版を指定する
-- 依存の peer 制約で**保留中のメジャー更新**（Dependabot の PR が来ても閉じる。制約が解けたら上げる）
+- 依存の peer 制約で**保留中のメジャー更新**（`.github/dependabot.yml` の `ignore` で PR を作らせない。制約が解けたら `ignore` から外して上げる）
 
 | パッケージ                                | 保留理由                                                                                 |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------- |
