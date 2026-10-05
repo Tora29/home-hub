@@ -137,10 +137,11 @@ git fetch --prune
 ```
 
 - squash マージの場合は作業ブランチのコミットが main に含まれず `git branch -d` が失敗するため、手順1でマージ済みを確認したうえで `-D` で削除する
-- このリポジトリは「Automatically delete head branches」が無効のため、リモートの作業ブランチも削除する
+- このリポジトリは「Automatically delete head branches」が有効（`delete_branch_on_merge: true`）のため、
+  リモートの作業ブランチは通常マージ時に削除済み。残っている場合のみ削除する
 
   ```bash
-  git push origin --delete <branch-name>
+  git ls-remote --exit-code --heads origin <branch-name> && git push origin --delete <branch-name>
   ```
 
 ### 3. 結果を伝える

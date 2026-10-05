@@ -1,26 +1,38 @@
 name: Verify App
 
+# paths で絞ると、対象外の PR（.github/ だけ・terraform/ だけ等）で必須チェック Lint / Build が
+# 「Expected」のまま止まる（GitHub の仕様）。そのため常に起動し、Build だけを変更内容で条件スキップする
+# （if で skip されたジョブは必須チェック上 success 扱い）。Lint は prettier が全ファイルを見るため常に実行する
 on:
   pull_request:
     branches:
       - main
-    paths:
-      - 'src/**'
-      - 'e2e/**'
-      - 'package-lock.json'
-      - 'package.json'
-      - 'eslint.config.js'
-      - 'svelte.config.*'
-      - 'vite.config.*'
-      - 'tsconfig.json'
-      - 'wrangler.jsonc'
-      - '.github/workflows/verify-app.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      # pull_request の checkout はマージコミット。HEAD^1（main 側）との差分 = この PR の変更
+      - name: Filter app files
+        id: filter
+        run: |
+          if git diff --name-only HEAD^1 HEAD | grep -qE '^(src/|e2e/|static/|package(-lock)?\.json$|eslint\.config\.js$|svelte\.config\.|vite\.config\.|tsconfig\.json$|wrangler\.toml$|_headers$|\.github/workflows/verify-app\.yml$)'; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "app=false" >> "$GITHUB_OUTPUT"
+          fi
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -58,6 +70,9 @@ jobs:
 
   build:
     name: Build
+    needs: changes
+    # changes が失敗した場合も Build を実行する（判定失敗で skip = success 扱いになり素通りするのを防ぐ）
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.app == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
