@@ -19,6 +19,20 @@ updates:
     commit-message:
       prefix: 'chore(deps)'
       prefix-development: 'chore(deps-dev)'
+    # 依存の peer 制約で保留中のメジャー更新は PR 自体を作らせない（閉じても次の版で再提案されるため）。
+    # 理由の一覧は .claude/rules/security.md「保留中のメジャー更新」。制約が解けたらここから外す
+    ignore:
+      # @cloudflare/vitest-pool-workers（integration テスト）が vitest ^4.1 のみ対応
+      - dependency-name: 'vitest'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@vitest/browser-playwright'
+        update-types: ['version-update:semver-major']
+      # @sveltejs/kit / svelte-check / typescript-eslint が TypeScript 7 未対応
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
+      # 型は engines.node（>=22）の最小版に合わせる
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: 'github-actions'
     directory: '/'
