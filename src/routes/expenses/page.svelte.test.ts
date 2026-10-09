@@ -35,6 +35,7 @@ function makeData(overrides: Partial<PageData> = {}): PageData {
 		selectedMonth: '2026-09',
 		currentMonth: '2026-09',
 		partnerPendingCount: 0,
+		settlement: null,
 		...overrides
 	};
 }

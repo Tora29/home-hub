@@ -10,6 +10,7 @@ import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import ExpensesPage from './ExpensesPage.svelte';
 import type { ExpenseWithRelations } from '../types';
+import type { SettlementSummary } from '../settlements/types';
 
 vi.mock('$app/navigation', () => ({
 	goto: vi.fn(),
@@ -41,6 +42,7 @@ function makeProps(overrides: Partial<Parameters<typeof render>[1]> = {}) {
 		currentMonth: '2024-06',
 		selectedMonth: '2024-06',
 		partnerPendingCount: 0,
+		settlement: null as SettlementSummary | null,
 		...overrides
 	};
 }
@@ -108,6 +110,36 @@ describe('ExpensesPage', () => {
 		await expect
 			.element(page.getByRole('button', { name: /全件承認する/ }))
 			.not.toBeInTheDocument();
+	});
+
+	test('精算額がある場合、精算ボタンを押すと選択月の精算額モーダルが開く', async () => {
+		const settlement: SettlementSummary = {
+			month: '2024-06',
+			total: 2000,
+			members: [
+				{ userId: 'user-1', name: 'テストユーザー', paid: 2000 },
+				{ userId: 'user-2', name: 'パートナー', paid: 0 }
+			],
+			transfer: {
+				fromUserId: 'user-2',
+				fromName: 'パートナー',
+				toUserId: 'user-1',
+				toName: 'テストユーザー',
+				amount: 1000
+			},
+			approvedCount: 1,
+			unapprovedCount: 0
+		};
+		await render(ExpensesPage, makeProps({ settlement }));
+
+		(page.getByTestId('expense-settlement-button').element() as HTMLElement).click();
+		await expect.element(page.getByTestId('settlement-dialog')).toBeVisible();
+		await expect.element(page.getByTestId('settlement-transfer')).toHaveTextContent('¥1,000');
+	});
+
+	test('精算額がない（ユーザーが 2 人でない）場合、精算ボタンは表示されない', async () => {
+		await render(ExpensesPage, makeProps());
+		await expect.element(page.getByTestId('expense-settlement-button')).not.toBeInTheDocument();
 	});
 
 	test('支出登録ボタンをクリックするとダイアログが開く', async () => {
