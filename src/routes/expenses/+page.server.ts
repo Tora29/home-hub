@@ -4,7 +4,7 @@
  * @feature expenses
  *
  * @description
- * 支出一覧画面の初期データ（支出・カテゴリ・ユーザー・相手の承認待ち件数）をサーバーサイドで取得する。
+ * 支出一覧画面の初期データ（支出・カテゴリ・ユーザー・相手の承認待ち件数・選択月の精算額）をサーバーサイドで取得する。
  * 不正なクエリパラメータ（例: month=2026-13）は /expenses にリダイレクトする。
  */
 import { redirect } from '@sveltejs/kit';
@@ -13,6 +13,7 @@ import { createDb } from '$lib/server/db';
 import { getExpenses, getUsers } from '$expenses/server/service';
 import { getUnapprovedCount } from '$expenses/server/workflow';
 import { getCategories } from '$expenses/categories/server/service';
+import { getSettlementSummary } from '$expenses/settlements/server/service';
 import { expenseQuerySchema } from '$expenses/schema';
 import { getCurrentMonth } from '$lib/utils/date';
 
@@ -38,6 +39,9 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
 		getUnapprovedCount(db, userId)
 	]);
 
+	// 精算額は世帯の 2 ユーザー（users）で算出する。2 人でない場合は null（精算ボタン非表示）
+	const settlement = await getSettlementSummary(db, selectedMonth, users);
+
 	return {
 		expenses: expenseData.items,
 		monthTotal: expenseData.monthTotal,
@@ -46,6 +50,7 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
 		currentUserId: userId,
 		selectedMonth,
 		currentMonth,
-		partnerPendingCount
+		partnerPendingCount,
+		settlement
 	};
 };

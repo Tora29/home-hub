@@ -4,7 +4,7 @@
   @feature expenses
 
   @description
-  支出一覧画面。月切り替え・支出の登録/編集/削除・確認チェック・一括承認依頼/取消/承認を行う。
+  支出一覧画面。月切り替え・支出の登録/編集/削除・確認チェック・一括承認依頼/取消/承認・選択月の精算額確認を行う。
 
   @navigation
   - 遷移元: / - ダッシュボード、サイドバー
@@ -12,7 +12,7 @@
   - 遷移先: /expenses?month=YYYY-MM - 月切り替え（同一画面）
 
   @api
-  - SSR load: service 直呼び（getExpenses / getCategories / getUsers / getUnapprovedCount）
+  - SSR load: service 直呼び（getExpenses / getCategories / getUsers / getUnapprovedCount / getSettlementSummary）
   - POST /expenses → 201 ExpenseWithRelations - 支出登録
   - PUT /expenses/[id] → 200 ExpenseWithRelations - 支出更新
   - DELETE /expenses/[id] → 204 - 支出削除
@@ -38,4 +38,5 @@
 	selectedMonth={data.selectedMonth}
 	currentMonth={data.currentMonth}
 	partnerPendingCount={data.partnerPendingCount}
+	settlement={data.settlement}
 />

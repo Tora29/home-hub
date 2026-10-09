@@ -15,6 +15,7 @@
  * - モバイル: モバイルで行メニューが開く
  * - キーボード・モーダル: フォーカス移動・背景へのフォーカス防止・Escape・背景クリック・フォーカス復帰
  * - 承認依頼: 確認済み支出を申請・取消できる
+ * - 精算: 精算ボタンで選択中の月の精算額モーダルが開き、承認済み支出を折半した差額が表示される
  *
  * @pages
  * - /expenses - 支出一覧
@@ -22,6 +23,7 @@
  */
 import { test, expect, type Page } from '@playwright/test';
 import { addMonths, getCurrentMonth } from '../src/lib/utils/date';
+import { E2E_SETTLEMENT_MONTH } from './settlement-month';
 
 // API で作成した支出は当月（JST）に入る。シード（過去の固定月）と重ならない前月は空月として使う
 const CURRENT_MONTH = getCurrentMonth();
@@ -415,5 +417,37 @@ test.describe('支出一覧 - 承認依頼', () => {
 			await page.request.post('/expenses/cancel');
 			await deleteExpense(page, expense.id);
 		}
+	});
+});
+
+test.describe('精算', () => {
+	test('精算ボタンで選択中の月の精算額モーダルが開き、折半した差額と各自の支払額が表示される', async ({
+		page
+	}) => {
+		await page.goto(`/expenses?month=${E2E_SETTLEMENT_MONTH}`);
+		await page.getByTestId('expense-settlement-button').click();
+
+		const dialog = page.getByTestId('settlement-dialog');
+		await expect(dialog).toBeVisible();
+		const [y, m] = E2E_SETTLEMENT_MONTH.split('-');
+		await expect(dialog.getByRole('heading', { name: `${y}年${m}月の精算` })).toBeVisible();
+		// global-setup: Test User 30,000 / Partner User 10,000 → Partner User が Test User に 10,000 支払う
+		await expect(dialog.getByTestId('settlement-transfer')).toContainText(
+			/Partner User.*Test User/
+		);
+		await expect(dialog.getByTestId('settlement-transfer')).toContainText('¥10,000');
+		await expect(dialog.getByTestId('settlement-member-paid').first()).toContainText('¥30,000');
+		await expect(dialog.getByTestId('settlement-total')).toHaveText('¥40,000');
+
+		await page.keyboard.press('Escape');
+		await expect(dialog).not.toBeVisible();
+		await expect(page.getByTestId('expense-settlement-button')).toBeFocused();
+	});
+
+	test('当月の精算額モーダルには途中経過である旨が表示される', async ({ page }) => {
+		await page.goto('/expenses');
+		await page.getByTestId('expense-settlement-button').click();
+
+		await expect(page.getByTestId('settlement-notes')).toContainText('今月は途中経過です');
 	});
 });

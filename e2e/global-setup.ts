@@ -12,6 +12,8 @@ import { execFileSync } from 'child_process';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
 import fs from 'node:fs';
+import { getMonthRange } from '../src/lib/utils/date';
+import { E2E_SETTLEMENT_MONTH } from './settlement-month';
 
 const TEST_EMAIL = process.env.TEST_EMAIL ?? 'test@example.com';
 const BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET ?? '';
@@ -115,6 +117,15 @@ export default async function globalSetup() {
 	wranglerExecute(
 		`INSERT INTO Expense (id, userId, amount, categoryId, payerUserId, status, createdAt)
      VALUES ('e2e-pending-exp-001', '${E2E_PARTNER_USER_ID}', 5000, 'e2e-partner-cat-001', '${E2E_PARTNER_USER_ID}', 'pending', strftime('%s', '2026-04-15'))`
+	);
+
+	// 精算テスト用: 精算できる過去月（全件 approved）に双方の支出を挿入（E2E ユーザー 30,000 / パートナー 10,000）
+	const settlementDay =
+		Math.floor(getMonthRange(E2E_SETTLEMENT_MONTH).start.getTime() / 1000) + 86400;
+	wranglerExecute(
+		`INSERT INTO Expense (id, userId, amount, categoryId, payerUserId, status, createdAt) VALUES
+     ('e2e-settlement-exp-001', '${E2E_USER_ID}', 30000, 'e2e-partner-cat-001', '${E2E_USER_ID}', 'approved', ${settlementDay}),
+     ('e2e-settlement-exp-002', '${E2E_PARTNER_USER_ID}', 10000, 'e2e-partner-cat-001', '${E2E_PARTNER_USER_ID}', 'approved', ${settlementDay})`
 	);
 
 	console.log('E2E セッション・シードデータを投入しました');

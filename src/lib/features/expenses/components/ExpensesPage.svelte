@@ -6,7 +6,7 @@
   @description
   支出一覧ページのUIロジック全体を担うコンポーネント。
   承認ワークフロー操作（check/uncheck/request/cancel/approve）と
-  CRUD 操作（create/edit/delete）をサポートする。
+  CRUD 操作（create/edit/delete）、選択月の精算額確認（モーダル）をサポートする。
 
   @props
   - expenses: ExpenseWithRelations[] - 支出一覧
@@ -17,17 +17,20 @@
   - selectedMonth: string - 選択中の月 YYYY-MM
   - currentMonth: string - サーバー基準（JST）の当月 YYYY-MM。月選択肢の起点
   - partnerPendingCount: number - 相手の未承認件数（全期間）
+  - settlement: SettlementSummary | null - 選択月の精算額（null のとき精算ボタン非表示）
 -->
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { Plus, Tag } from '@lucide/svelte';
+	import { HandCoins, Plus, Tag } from '@lucide/svelte';
 	import Button from '$lib/components/Button.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import ExpenseItem from './ExpenseItem.svelte';
 	import ExpenseFormDialog from './ExpenseFormDialog.svelte';
+	import SettlementDialog from '../settlements/components/SettlementDialog.svelte';
 	import type { ExpenseWithRelations, Category, User } from '../types';
+	import type { SettlementSummary } from '../settlements/types';
 	import { generateMonthOptions } from '$lib/utils/date';
 	import { formatAmount } from '$lib/utils/format';
 
@@ -39,7 +42,8 @@
 		currentUserId,
 		selectedMonth,
 		currentMonth,
-		partnerPendingCount
+		partnerPendingCount,
+		settlement
 	}: {
 		expenses: ExpenseWithRelations[];
 		monthTotal: number;
@@ -49,10 +53,12 @@
 		selectedMonth: string;
 		currentMonth: string;
 		partnerPendingCount: number;
+		settlement: SettlementSummary | null;
 	} = $props();
 
 	// ---- ダイアログ状態 ----
 	let createDialogOpen = $state(false);
+	let settlementDialogOpen = $state(false);
 	let editTarget = $state<ExpenseWithRelations | null>(null);
 	let deleteTarget = $state<ExpenseWithRelations | null>(null);
 	let deleteLoading = $state(false);
@@ -310,10 +316,23 @@
 		{/if}
 	</div>
 
-	<!-- 月間合計 -->
-	<p data-testid="expense-total" class="mb-2 text-xl font-semibold text-label">
-		{formatAmount(monthTotal)}
-	</p>
+	<!-- 月間合計 + 精算額確認 -->
+	<div class="mb-2 flex items-center justify-between gap-2">
+		<p data-testid="expense-total" class="text-xl font-semibold text-label">
+			{formatAmount(monthTotal)}
+		</p>
+		{#if settlement}
+			<Button
+				data-testid="expense-settlement-button"
+				variant="secondary"
+				size="md"
+				onclick={() => (settlementDialogOpen = true)}
+			>
+				<HandCoins size={14} aria-hidden="true" />
+				<span>精算</span>
+			</Button>
+		{/if}
+	</div>
 
 	<!-- check/uncheck エラー -->
 	{#if actionError}
@@ -367,6 +386,17 @@
 	onSuccess={handleEditSuccess}
 	onClose={() => (editTarget = null)}
 />
+
+<!-- 精算額確認ダイアログ -->
+{#if settlement}
+	<SettlementDialog
+		open={settlementDialogOpen}
+		summary={settlement}
+		{currentUserId}
+		{currentMonth}
+		onClose={() => (settlementDialogOpen = false)}
+	/>
+{/if}
 
 <!-- 支出削除確認ダイアログ -->
 <ConfirmDialog
