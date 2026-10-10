@@ -184,6 +184,7 @@ GitHub Secrets TF_VAR_* → terraform.yml → Cloudflare Pages secrets → 本�
 | `@types/node` 23 以上                     | 上げない。型は `engines.node`（`>=22`）の最小版に合わせる                                |
 
 - `npm audit` の残存（上流未修正・dev のみ）: `drizzle-kit` 内の旧 `esbuild`（moderate）、`@sveltejs/kit` 内の `cookie`（low）
+- `package.json` の `overrides`: `miniflare` が完全一致で固定する `sharp` / `undici` を修正版に上げている（`@cloudflare/vitest-pool-workers` が旧 `wrangler` / `miniflare` を固定しているため）。同梱版が修正版以上になったら外す
 
 ---
 
