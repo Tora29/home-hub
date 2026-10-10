@@ -15,26 +15,27 @@ resource "cloudflare_pages_project" "this" {
     ignore_changes = [source, build_config]
   }
 
-  deployment_configs {
-    production {
+  deployment_configs = {
+    production = {
       compatibility_date  = "2026-01-01"
       compatibility_flags = ["nodejs_compat"]
       usage_model         = "standard"
       fail_open           = true
 
       d1_databases = {
-        DB = var.d1_id
+        DB = { id = var.d1_id }
       }
 
-      secrets = {
-        BETTER_AUTH_URL           = var.better_auth_url
-        BETTER_AUTH_SECRET        = var.better_auth_secret
-        LINE_CHANNEL_ACCESS_TOKEN = var.line_channel_access_token
-        LINE_USER_ID_PRIMARY      = var.line_user_id_primary
-        LINE_USER_ID_SPOUSE       = var.line_user_id_spouse
-        GOOGLE_CLIENT_ID          = var.google_client_id
-        GOOGLE_CLIENT_SECRET      = var.google_client_secret
-        ALLOWED_EMAILS            = var.allowed_emails
+      # v5 では secrets が env_vars に統合され、type = "secret_text" で暗号化された secret として登録される
+      env_vars = {
+        BETTER_AUTH_URL           = { type = "secret_text", value = var.better_auth_url }
+        BETTER_AUTH_SECRET        = { type = "secret_text", value = var.better_auth_secret }
+        LINE_CHANNEL_ACCESS_TOKEN = { type = "secret_text", value = var.line_channel_access_token }
+        LINE_USER_ID_PRIMARY      = { type = "secret_text", value = var.line_user_id_primary }
+        LINE_USER_ID_SPOUSE       = { type = "secret_text", value = var.line_user_id_spouse }
+        GOOGLE_CLIENT_ID          = { type = "secret_text", value = var.google_client_id }
+        GOOGLE_CLIENT_SECRET      = { type = "secret_text", value = var.google_client_secret }
+        ALLOWED_EMAILS            = { type = "secret_text", value = var.allowed_emails }
       }
     }
   }
