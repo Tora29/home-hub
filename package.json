@@ -63,8 +63,9 @@
 		"zod": "^4.3.6"
 	},
 	"overrides": {
-		"@cloudflare/vitest-pool-workers": {
-			"sharp": "0.35.4"
+		"miniflare": {
+			"sharp": "0.35.5",
+			"undici": "7.29.1"
 		}
 	}
 }
