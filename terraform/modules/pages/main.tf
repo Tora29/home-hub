@@ -12,7 +12,14 @@ resource "cloudflare_pages_project" "this" {
   production_branch = "main"
 
   lifecycle {
-    ignore_changes = [source, build_config]
+    ignore_changes = [
+      source,
+      build_config,
+      # AI binding と wrangler_config_hash は wrangler.toml（wrangler pages deploy）が管理する。
+      # v5 は設定に無い binding を削除しにいくため、Terraform からは触らない
+      deployment_configs.production.ai_bindings,
+      deployment_configs.production.wrangler_config_hash,
+    ]
   }
 
   deployment_configs = {
